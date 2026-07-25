@@ -1,4 +1,4 @@
-insert into lgas (code, NAME)
+insert into lgas (code, name)
 values
 ('ADO', 'Ado'),
 ('AGA', 'Agatu'),
