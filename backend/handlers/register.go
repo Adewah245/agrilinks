@@ -1,0 +1,76 @@
+package handlers
+
+import (
+	"log"
+	"net/http"
+
+	"backend/render"
+)
+
+type UserReg struct {
+	First_Name       string
+	Last_Name        string
+	Phone            string
+	Email            string
+	Password         string
+	Confirm_Password string
+	Role             string
+}
+
+func (h *Register) RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		log.Println("User Visited Register page")
+		if err := render.RenderTemplates(w, "register.html", nil); err != nil {
+			log.Println("render error", err)
+			http.Error(w, "Internal Server error", http.StatusInternalServerError)
+			return
+		}
+	case http.MethodPost:
+		user := UserReg{
+			First_Name:       r.FormValue("first-name"),
+			Last_Name:        r.FormValue("last-name"),
+			Phone:            r.FormValue("phone"),
+			Email:            r.FormValue("email"),
+			Password:         r.FormValue("password"),
+			Confirm_Password: r.FormValue("confirm-password"),
+			Role:             r.FormValue("role"),
+		}
+		if user.First_Name == "" || user.Last_Name == "" || user.Phone == "" || user.Password == "" || user.Confirm_Password == "" {
+			log.Println("user details must not be empty")
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		} else if user.Password != user.Confirm_Password {
+			log.Println("Password Mismatch")
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+		location := r.FormValue("location")
+
+		// Uses the service injected into this handler (h.service), not a
+		// package-level global — a prior version used an uninitialized
+		// global and would have panicked on every registration.
+		err := h.service.Register(
+			user.First_Name,
+			user.Last_Name,
+			user.Phone,
+			user.Password,
+			location,
+			user.Role,
+		)
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		log.Println("User registered successfully as", user.Role)
+
+		// New users always land on /login first — they're redirected from
+		// there into the correct dashboard for their role once they sign in.
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+}

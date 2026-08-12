@@ -1,0 +1,69 @@
+.dashboard{
+    padding:50px 80px;
+}
+
+.welcome h1{
+    font-size:42px;
+}
+
+.welcome p{
+    color:gray;
+    margin-top:10px;
+    margin-bottom:40px;
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:25px;
+    margin-bottom:50px;
+}
+
+.stat-card{
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    box-shadow:0 4px 12px lightgray;
+}
+
+.stat-card h3{
+    color:gray;
+    margin-bottom:15px;
+}
+
+.stat-card h2{
+    font-size:36px;
+    color:green;
+}
+
+.quick-actions h2{
+    margin-bottom:25px;
+}
+
+.actions{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:25px;
+}
+
+.action-card{
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    text-decoration:none;
+    color:black;
+    box-shadow:0 4px 12px lightgray;
+    transition:.3s;
+}
+
+.action-card:hover{
+    transform:translateY(-6px);
+}
+
+.action-card h3{
+    margin-bottom:15px;
+}
+
+.action-card p{
+    color:gray;
+}

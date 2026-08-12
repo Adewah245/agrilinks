@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Account | Agro-Shield</title>
+
+<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/register.css">
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<style>
+.role-select { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.role-option { display: flex; align-items: center; gap: 10px; font-weight: normal; border: 1px solid lightgray; border-radius: 8px; padding: 12px 16px; cursor: pointer; }
+.role-option input { width: auto; }
+</style>
+</head>
+
+<body>
+
+<div class="auth-container">
+
+<div class="auth-left">
+
+<h1>Join Agro-Shield</h1>
+
+<p>
+            Create your account to monitor farm produce,
+            connect with buyers, receive AI-powered crop
+            diagnosis, and grow your agricultural business.
+</p>
+
+</div>
+
+<div class="auth-right">
+
+<form id="register-form" action="/register" method="POST">
+<h2>Create Account</h2>
+
+<label>I am a</label>
+<div class="row role-select">
+
+<label class="role-option">
+<input type="radio" name="role" value="farmer" checked>
+                    🌾 Farmer — I grow and sell produce
+</label>
+
+<label class="role-option">
+<input type="radio" name="role" value="buyer">
+                    🛒 Buyer — I want to buy produce
+</label>
+
+</div>
+
+<div class="row">
+
+<div>
+<label for="first-name">First Name</label>
+<input
+name="first-name"
+type="text"
+id="first-name"
+placeholder="First Name"
+required
+>
+</div>
+
+<div>
+<label for="last-name">Last Name</label>
+<input
+name="last-name"
+type="text"
+id="last-name"
+placeholder="Last Name"
+required
+>
+</div>
+
+</div>
+
+<label for="email">Email Address</label>
+<input
+name="email"
+type="email"
+id="email"
+placeholder="Enter your email"
+required
+>
+
+<label for="phone">Phone Number</label>
+<input
+name="phone"
+type="tel"
+id="phone"
+placeholder="Enter your phone number"
+required
+>
+
+<label for="location">Location (LGA)</label>
+<select
+name="location"
+id="location"
+required
+>
+<option value="" disabled selected>Select your LGA</option>
+<option value="Ado">Ado</option>
+<option value="Agatu">Agatu</option>
+<option value="Apa">Apa</option>
+<option value="Buruku">Buruku</option>
+<option value="Gboko">Gboko</option>
+<option value="Guma">Guma</option>
+<option value="Gwer East">Gwer East</option>
+<option value="Gwer West">Gwer West</option>
+<option value="Katsina-Ala">Katsina-Ala</option>
+<option value="Konshisha">Konshisha</option>
+<option value="Kwande">Kwande</option>
+<option value="Logo">Logo</option>
+<option value="Makurdi">Makurdi</option>
+<option value="Obi">Obi</option>
+<option value="Ogbadibo">Ogbadibo</option>
+<option value="Ohimini">Ohimini</option>
+<option value="Oju">Oju</option>
+<option value="Okpokwu">Okpokwu</option>
+<option value="Otukpo">Otukpo</option>
+<option value="Tarka">Tarka</option>
+<option value="Ukum">Ukum</option>
+<option value="Ushongo">Ushongo</option>
+<option value="Vandeikya">Vandeikya</option>
+</select>
+
+<label for="password">Password</label>
+<div class="password-wrapper">
+<input
+name="password"
+type="password"
+id="password"
+placeholder="Create password"
+required
+>
+<i
+class="fa-solid fa-eye toggle-password"
+id="toggle-password"
+></i>
+</div>
+
+<label for="confirm-password">Confirm Password</label>
+<div class="password-wrapper">
+<input
+name="confirm-password"
+type="password"
+id="confirm-password"
+placeholder="Confirm password"
+required
+>
+<i
+class="fa-solid fa-eye toggle-password"
+id="toggle-confirm-password"
+></i>
+</div>
+
+<button type="submit">
+                Create Account
+</button>
+
+<p>
+                Already have an account?
+<a href="/login">Login</a>
+</p>
+
+</form>
+
+</div>
+
+</div>
+
+<script src="/static/js/register.js"></script>
+
+</body>
+</html>

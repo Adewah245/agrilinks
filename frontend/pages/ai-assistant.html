@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant | Agro-Shield</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/ai-assistant.css">
+</head>
+<body>
+
+<header class="navbar">
+    <div class="logo">🌾 Agro-Shield</div>
+    <nav>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/storage">Storage</a>
+        <a href="/marketplace">Marketplace</a>
+        <a href="/negotiations">Negotiations</a>
+        <a href="/ai-assistant">AI Assistant</a>
+        <a href="/profile">Profile</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</header>
+
+<main class="ai-assistant">
+
+    <h1>🤖 AI Crop Assistant</h1>
+    <p>Upload a photo of your crop and get an instant health check.</p>
+
+    {{if .Error}}
+    <p class="message" style="color:red;">{{.Error}}</p>
+    {{end}}
+
+    <form method="POST" action="/ai-assistant" enctype="multipart/form-data" class="ai-form">
+        <input type="file" name="crop_image" accept="image/*" required>
+        <button type="submit">Analyze</button>
+    </form>
+
+    {{if .Result}}
+    <div class="ai-result">
+        <h2>Result</h2>
+        <p>{{.Result}}</p>
+    </div>
+    {{end}}
+
+    <section class="ai-history">
+        <h2>Past Diagnoses</h2>
+        {{if .History}}
+        <table>
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th>Result</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .History}}
+                <tr>
+                    <td>{{.ImageName}}</td>
+                    <td>{{.Result}}</td>
+                    <td>{{.CreatedAt.Format "02 Jan 2006"}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+        {{else}}
+        <p>No diagnoses yet — upload a photo above to get started.</p>
+        {{end}}
+    </section>
+
+</main>
+
+</body>
+</html>

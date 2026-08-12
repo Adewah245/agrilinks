@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgot Password | Agro-Shield</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/login.css">
+</head>
+
+<body>
+
+<div class="auth-container">
+
+    <div class="auth-left">
+
+        <h1>Reset Password</h1>
+
+        <p>
+            Enter the phone number on your account and choose a new password.
+        </p>
+
+    </div>
+
+    <div class="auth-right">
+
+        <form id="forgot-form" method="POST" action="/forgot-password">
+
+            <h2>Forgot Password</h2>
+
+            {{if .Error}}
+            <p class="message" style="color:red;">{{.Error}}</p>
+            {{end}}
+
+            {{if .Success}}
+            <p class="message" style="color:green;">{{.Success}}</p>
+            {{end}}
+
+            <label>Phone Number</label>
+            <input type="tel" name="phone" placeholder="Enter your phone number" required>
+
+            <label>New Password</label>
+            <input type="password" name="new_password" placeholder="At least 8 characters" required>
+
+            <label>Confirm New Password</label>
+            <input type="password" name="confirm_password" placeholder="Confirm new password" required>
+
+            <button type="submit">Reset Password</button>
+
+            <p><a href="/login">Back to login</a></p>
+
+        </form>
+
+    </div>
+
+</div>
+
+</body>
+</html>

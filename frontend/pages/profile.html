@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile | Agro-Shield</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/profile.css">
+</head>
+
+<body>
+
+<header class="navbar">
+
+    <div class="logo">🌾 Agro-Shield</div>
+
+    <nav>
+        <a href="/dashboard">Dashboard</a>
+        {{if not .IsBuyer}}
+        <a href="/storage">Storage</a>
+        {{end}}
+        <a href="/marketplace">Marketplace</a>
+        <a href="/negotiations">Negotiations</a>
+        {{if not .IsBuyer}}
+        <a href="/ai-assistant">AI Assistant</a>
+        {{end}}
+        <a href="/profile">Profile</a>
+        <a href="/logout">Logout</a>
+    </nav>
+
+</header>
+
+<main class="profile">
+
+    <div class="profile-header">
+
+        {{if .PhotoURL}}
+        <img src="{{.PhotoURL}}" alt="Profile Photo">
+        {{else}}
+        <div class="profile-photo-placeholder">👤</div>
+        {{end}}
+
+        <div>
+
+            <h1>{{.FullName}}</h1>
+
+            <p>{{if .IsBuyer}}Buyer{{else}}Farmer{{end}} • {{.Location}}</p>
+
+            <button type="button" id="edit-profile-btn">Edit Profile</button>
+
+        </div>
+
+    </div>
+
+    <section class="profile-grid">
+
+        <div class="card">
+
+            <h2>Personal Information</h2>
+
+            <p><strong>Full Name:</strong> {{.FullName}}</p>
+            <p><strong>Phone:</strong> {{.Phone}}</p>
+            <p><strong>Location:</strong> {{.Location}}</p>
+            <p><strong>Account Type:</strong> {{if .IsBuyer}}Buyer{{else}}Farmer{{end}}</p>
+            <p><strong>Member Since:</strong> {{.CreatedAt.Format "January 2006"}}</p>
+
+        </div>
+
+        {{if .IsBuyer}}
+
+        <div class="card">
+
+            <h2>Purchase History</h2>
+
+            {{if .Purchases}}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Crop</th>
+                        <th>Seller</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Purchases}}
+                    <tr>
+                        <td>{{.CropName}}</td>
+                        <td>{{.SellerName}}</td>
+                        <td>{{.Quantity}}</td>
+                        <td>₦{{printf "%.2f" .TotalPrice}}</td>
+                        <td>{{.CreatedAt.Format "02 Jan 2006"}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p>No purchases yet. <a href="/marketplace">Browse the marketplace</a></p>
+            {{end}}
+
+        </div>
+
+        {{else}}
+
+        <div class="card">
+
+            <h2>My Crops</h2>
+
+            {{if .Crops}}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Crop</th>
+                        <th>Quantity</th>
+                        <th>Listed for Sale</th>
+                        <th>Price/Unit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Crops}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        <td>{{.Quantity}} {{.Unit}}</td>
+                        <td>{{if .ListedForSale}}Yes{{else}}No{{end}}</td>
+                        <td>₦{{printf "%.2f" .PricePerUnit}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p>No crops added yet. <a href="/storage">Register your first crop</a></p>
+            {{end}}
+
+        </div>
+
+        <div class="card">
+
+            <h2>Recent Sales</h2>
+
+            {{if .Sales}}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Crop</th>
+                        <th>Buyer</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Sales}}
+                    <tr>
+                        <td>{{.CropName}}</td>
+                        <td>{{.BuyerName}}</td>
+                        <td>{{.Quantity}}</td>
+                        <td>₦{{printf "%.2f" .TotalPrice}}</td>
+                        <td>{{.CreatedAt.Format "02 Jan 2006"}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p>No sales yet.</p>
+            {{end}}
+
+        </div>
+
+        {{end}}
+
+        <div class="card">
+
+            <h2>Security</h2>
+
+            <a href="/forgot-password"><button type="button">Change Password</button></a>
+
+        </div>
+
+    </section>
+
+</main>
+
+<div id="edit-modal" class="modal">
+    <form method="POST" action="/profile/edit" enctype="multipart/form-data">
+        <h2>Edit Profile</h2>
+
+        <label>Full Name</label>
+        <input type="text" name="full_name" value="{{.FullName}}" required>
+
+        <label>Phone</label>
+        <input type="tel" name="phone" value="{{.Phone}}" required>
+
+        <label>Location</label>
+        <input type="text" name="location" value="{{.Location}}">
+
+        <label>Passport Photograph</label>
+        <input type="file" name="passport" accept="image/*">
+
+        <div class="modal-actions">
+            <button type="submit">Save</button>
+            <button type="button" id="cancel-edit-btn">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<script src="/static/js/profile.js"></script>
+
+</body>
+</html>

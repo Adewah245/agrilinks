@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storage | Agro-Shield</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/storage.css">
+</head>
+<body>
+
+<header class="navbar">
+    <div class="logo">🌾 Agro-Shield</div>
+    <nav>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/storage">Storage</a>
+        <a href="/marketplace">Marketplace</a>
+        <a href="/negotiations">Negotiations</a>
+        <a href="/ai-assistant">AI Assistant</a>
+        <a href="/profile">Profile</a>
+        <a href="/logout">Logout</a>
+    </nav>
+</header>
+
+<main class="storage">
+
+    <div class="storage-header">
+        <div>
+            <h1>Storage Management</h1>
+            <p>Register your produce and choose what to list on the Marketplace.</p>
+        </div>
+        <button id="add-btn" type="button">Add product</button>
+    </div>
+
+    {{if .Error}}
+    <p class="message" style="color:red;">{{.Error}}</p>
+    {{end}}
+
+    <div class="storage-search">
+        <input type="search" id="search" placeholder="Search produce...">
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Photo</th>
+                <th>Products</th>
+                <th>Quantity</th>
+                <th>Unit</th>
+                <th>Location</th>
+                <th>Price/Unit</th>
+                <th>Listed for Sale</th>
+                <th>Date Stored</th>
+            </tr>
+        </thead>
+        <tbody id="storage-body">
+            {{range .Crops}}
+            <tr>
+                <td>{{if .ImageURL}}<img src="{{.ImageURL}}" alt="{{.Name}}" class="thumb">{{else}}—{{end}}</td>
+                <td>{{.Name}}</td>
+                <td>{{.Quantity}}</td>
+                <td>{{.Unit}}</td>
+                <td>{{.Location}}</td>
+                <td>₦{{printf "%.2f" .PricePerUnit}}</td>
+                <td>{{if .ListedForSale}}Yes{{else}}No{{end}}</td>
+                <td>{{.CreatedAt.Format "02 Jan 2006"}}</td>
+            </tr>
+            {{else}}
+            <tr><td colspan="8">No product in storage yet — add your first item above.</td></tr>
+            {{end}}
+        </tbody>
+    </table>
+
+    <div id="modal" class="modal">
+        <form id="storage-form" method="POST" action="/storage" enctype="multipart/form-data">
+            <h2>Add Products</h2>
+
+            <label>Product Name</label>
+            <input type="text" name="produce" placeholder="e.g. Maize" required>
+
+            <label>Quantity</label>
+            <input type="number" step="0.01" min="0.01" name="quantity" required>
+
+            <label>Unit</label>
+            <input type="text" name="unit" placeholder="Bags, Kg, Tons..." required>
+
+            <label>Storage Location</label>
+            <input type="text" name="location" placeholder="Warehouse A" required>
+
+            <label>Price per Unit (₦)</label>
+            <input type="number" step="0.01" min="0" name="price" placeholder="Required if listing for sale">
+
+            <label>Photo</label>
+            <input type="file" name="produce_image" accept="image/*">
+
+            <label class="checkbox-row">
+                <input type="checkbox" name="list_for_sale">
+                List this on the Marketplace
+            </label>
+
+            <div class="modal-actions">
+                <button type="submit">Save</button>
+                <button type="button" id="close-btn">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+</main>
+
+<script src="/static/js/storage.js"></script>
+
+</body>
+</html>

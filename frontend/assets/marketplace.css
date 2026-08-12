@@ -1,0 +1,90 @@
+.marketplace{
+    padding:50px 80px;
+}
+
+.market-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:30px;
+}
+
+.market-header h1{
+    font-size:40px;
+}
+
+.market-header p{
+    color:gray;
+    margin-top:8px;
+}
+
+.search-box{
+    width:100%;
+    max-width:400px;
+    padding:14px;
+    border:1px solid lightgray;
+    border-radius:8px;
+    margin-bottom:40px;
+    display:block;
+}
+
+.message{
+    margin-bottom:20px;
+    font-weight:bold;
+}
+
+.product-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:30px;
+}
+
+.product-card{
+    background:white;
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow:0 6px 20px lightgray;
+    transition:.3s;
+    padding:20px;
+}
+
+.product-card:hover{
+    transform:translateY(-8px);
+}
+
+.product-card h3{
+    color:green;
+    margin:6px 0;
+}
+
+.product-card .price{
+    font-weight:bold;
+    font-size:18px;
+}
+
+.buy-form{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+}
+
+.buy-form input{
+    flex:1;
+    padding:10px;
+    border:1px solid lightgray;
+    border-radius:8px;
+}
+
+.buy-form button{
+    background:green;
+    color:white;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.buy-form button:hover{
+    background:darkgreen;
+}

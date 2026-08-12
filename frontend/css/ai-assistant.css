@@ -1,0 +1,75 @@
+.ai-assistant{
+    padding:50px 80px;
+}
+
+.ai-assistant h1{
+    font-size:40px;
+}
+
+.ai-assistant > p{
+    color:gray;
+    margin-top:8px;
+    margin-bottom:30px;
+}
+
+.message{
+    margin-bottom:20px;
+    font-weight:bold;
+}
+
+.ai-form{
+    display:flex;
+    gap:16px;
+    align-items:center;
+    background:white;
+    padding:24px;
+    border-radius:12px;
+    box-shadow:0 4px 12px lightgray;
+    margin-bottom:30px;
+}
+
+.ai-form button{
+    background:green;
+    color:white;
+    border:none;
+    padding:12px 28px;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.ai-form button:hover{
+    background:darkgreen;
+}
+
+.ai-result{
+    background:#eaf7ea;
+    border:1px solid green;
+    padding:20px;
+    border-radius:8px;
+    margin-bottom:40px;
+}
+
+.ai-history table{
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow:0 4px 12px lightgray;
+}
+
+.ai-history th{
+    background:green;
+    color:white;
+}
+
+.ai-history th,
+.ai-history td{
+    padding:16px;
+    text-align:left;
+}
+
+.ai-history tbody tr{
+    border-bottom:1px solid lightgray;
+}
