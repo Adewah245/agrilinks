@@ -1,143 +1,477 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
     <title>Dashboard | Agro-Shield</title>
 
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/dashboard.css"
+    >
+
 </head>
+
+
 <body>
+
 
 <header class="navbar">
 
-    <div class="logo">🌾 Agro-Shield</div>
+    <div class="logo">
+        🌾 Agro-Shield
+    </div>
+
 
     <nav>
-        <a href="/dashboard">Dashboard</a>
+
+        <a href="/dashboard">
+            Dashboard
+        </a>
+
         {{if not .IsBuyer}}
-        <a href="/storage">Storage</a>
+        <a href="/storage">
+            Storage
+        </a>
         {{end}}
-        <a href="/marketplace">Marketplace</a>
-        <a href="/negotiations">Negotiations</a>
+
+        <a href="/marketplace">
+            Marketplace
+        </a>
+
+        <a href="/negotiations">
+            Negotiations
+        </a>
+
         {{if not .IsBuyer}}
-        <a href="/ai-assistant">AI Assistant</a>
+        <a href="/ai-assistant">
+            AI Assistant
+        </a>
         {{end}}
-        <a href="/profile">Profile</a>
-        <a href="/logout">Logout</a>
+
     </nav>
 
 </header>
 
+
+
 <main class="dashboard">
+
+
+    <!-- =========================================
+         WELCOME SECTION
+    ========================================== -->
 
     <section class="welcome">
 
-        <h1><span id="greeting">Welcome Back</span>, {{.FullName}} 👋</h1>
-        {{if .IsBuyer}}
-        <p>Browse the marketplace and find fresh produce from local farmers.</p>
-        {{else}}
-        <p>Monitor your farm operations from one place.</p>
-        {{end}}
 
-    </section>
+        <div class="welcome-text">
 
-    <section class="stats">
-
-        {{if .IsBuyer}}
-
-        <div class="stat-card">
-            <h3>Purchases Made</h3>
-            <h2 class="counter" data-target="{{.PurchasesMade}}">0</h2>
-            <p>Total Orders</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>Total Spent</h3>
-            <h2>₦{{printf "%.2f" .TotalSpent}}</h2>
-            <p>All Time</p>
-        </div>
-
-        {{else}}
-
-        <div class="stat-card">
-            <h3>Produce in Storage</h3>
-            <h2 class="counter" data-target="{{.ProduceInStorage}}">0</h2>
-            <p>Items Available</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>Marketplace Listings</h3>
-            <h2 class="counter" data-target="{{.ListingsActive}}">0</h2>
-            <p>Active Listings</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>AI Diagnoses</h3>
-            <h2 class="counter" data-target="{{.AIDiagnosesThisMonth}}">0</h2>
-            <p>This Month</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>Revenue</h3>
-            <h2>₦{{printf "%.2f" .Revenue}}</h2>
-            <p>Total Sales</p>
-        </div>
-
-        {{end}}
-
-    </section>
-
-    <section class="quick-actions">
-
-        <h2>Quick Actions</h2>
-
-        <div class="actions">
+            <h1>
+                <span id="greeting">
+                    Welcome Back
+                </span>,
+                {{.FullName}} 👋
+            </h1>
 
             {{if .IsBuyer}}
 
-            <a href="/marketplace" class="action-card">
-                <h3>🛒 Marketplace</h3>
-                <p>Browse produce to buy</p>
-            </a>
-
-            <a href="/profile" class="action-card">
-                <h3>👤 Profile</h3>
-                <p>View your purchase history</p>
-            </a>
+            <p>
+                Browse the marketplace and find fresh
+                produce from local farmers.
+            </p>
 
             {{else}}
 
-            <a href="/storage" class="action-card">
-                <h3>📦 Storage</h3>
-                <p>Register and manage produce</p>
-            </a>
-
-            <a href="/marketplace" class="action-card">
-                <h3>🛒 Marketplace</h3>
-                <p>See what's listed for sale</p>
-            </a>
-
-            <a href="/ai-assistant" class="action-card">
-                <h3>🤖 AI Assistant</h3>
-                <p>Analyze crop images</p>
-            </a>
-
-            <a href="/profile" class="action-card">
-                <h3>👤 Profile</h3>
-                <p>Manage your account</p>
-            </a>
+            <p>
+                Monitor your farm operations from one place.
+            </p>
 
             {{end}}
 
         </div>
 
+
+
+        <!-- =====================================
+             PROFILE MENU
+        ====================================== -->
+
+        <div class="profile-menu">
+
+
+            <button
+                type="button"
+                class="profile-trigger"
+                id="profile-arrow"
+                aria-expanded="false"
+                aria-label="Open profile menu"
+            >
+
+                {{if .PhotoURL}}
+
+                <img
+                    src="{{.PhotoURL}}"
+                    alt="{{.FullName}}"
+                    class="avatar"
+                >
+
+                {{else}}
+
+                <div class="avatar avatar-placeholder">
+                    <span>👤</span>
+                </div>
+
+                {{end}}
+
+
+                <span
+                    class="profile-arrow"
+                    aria-hidden="true"
+                ></span>
+
+            </button>
+
+
+
+            <!-- =================================
+                 DROPDOWN
+            ================================== -->
+
+            <div
+                class="profile-dropdown"
+                id="profile-dropdown"
+            >
+
+                <a href="/profile">
+                    <span class="dropdown-icon">
+                        👤
+                    </span>
+
+                    <span>
+                        Profile
+                    </span>
+                </a>
+
+
+                <a href="/settings">
+                    <span class="dropdown-icon">
+                        ⚙️
+                    </span>
+
+                    <span>
+                        Settings
+                    </span>
+                </a>
+
+
+                <a
+                    href="/logout"
+                    class="logout-link"
+                >
+
+                    <span class="dropdown-icon">
+                        🚪
+                    </span>
+
+                    <span>
+                        Log Out
+                    </span>
+
+                </a>
+
+            </div>
+
+        </div>
+
     </section>
 
+
+
+    <!-- =========================================
+         STATISTICS
+    ========================================== -->
+
+    <section class="stats">
+
+
+        {{if .IsBuyer}}
+
+
+        <div class="stat-card">
+
+            <h3>
+                Purchases Made
+            </h3>
+
+            <h2
+                class="counter"
+                data-target="{{.PurchasesMade}}"
+            >
+                0
+            </h2>
+
+            <p>
+                Total Orders
+            </p>
+
+        </div>
+
+
+
+        <div class="stat-card">
+
+            <h3>
+                Total Spent
+            </h3>
+
+            <h2>
+                ₦{{printf "%.2f" .TotalSpent}}
+            </h2>
+
+            <p>
+                All Time
+            </p>
+
+        </div>
+
+
+        {{else}}
+
+
+        <div class="stat-card">
+
+            <h3>
+                Produce in Storage
+            </h3>
+
+            <h2
+                class="counter"
+                data-target="{{.ProduceInStorage}}"
+            >
+                0
+            </h2>
+
+            <p>
+                Items Available
+            </p>
+
+        </div>
+
+
+
+        <div class="stat-card">
+
+            <h3>
+                Marketplace Listings
+            </h3>
+
+            <h2
+                class="counter"
+                data-target="{{.ListingsActive}}"
+            >
+                0
+            </h2>
+
+            <p>
+                Active Listings
+            </p>
+
+        </div>
+
+
+
+        <div class="stat-card">
+
+            <h3>
+                AI Diagnoses
+            </h3>
+
+            <h2
+                class="counter"
+                data-target="{{.AIDiagnosesThisMonth}}"
+            >
+                0
+            </h2>
+
+            <p>
+                This Month
+            </p>
+
+        </div>
+
+
+
+        <div class="stat-card">
+
+            <h3>
+                Revenue
+            </h3>
+
+            <h2>
+                ₦{{printf "%.2f" .Revenue}}
+            </h2>
+
+            <p>
+                Total Sales
+            </p>
+
+        </div>
+
+
+        {{end}}
+
+
+    </section>
+
+
+
+    <!-- =========================================
+         QUICK ACTIONS
+    ========================================== -->
+
+    <section class="quick-actions">
+
+        <h2>
+            Quick Actions
+        </h2>
+
+
+        <div class="actions">
+
+
+            {{if .IsBuyer}}
+
+
+            <a
+                href="/marketplace"
+                class="action-card"
+            >
+
+                <h3>
+                    🛒 Marketplace
+                </h3>
+
+                <p>
+                    Browse produce to buy
+                </p>
+
+            </a>
+
+
+
+            <a
+                href="/profile"
+                class="action-card"
+            >
+
+                <h3>
+                    👤 Profile
+                </h3>
+
+                <p>
+                    View your purchase history
+                </p>
+
+            </a>
+
+
+            {{else}}
+
+
+            <a
+                href="/storage"
+                class="action-card"
+            >
+
+                <h3>
+                    📦 Storage
+                </h3>
+
+                <p>
+                    Register and manage produce
+                </p>
+
+            </a>
+
+
+
+            <a
+                href="/marketplace"
+                class="action-card"
+            >
+
+                <h3>
+                    🛒 Marketplace
+                </h3>
+
+                <p>
+                    See what's listed for sale
+                </p>
+
+            </a>
+
+
+
+            <a
+                href="/ai-assistant"
+                class="action-card"
+            >
+
+                <h3>
+                    🤖 AI Assistant
+                </h3>
+
+                <p>
+                    Analyze crop images
+                </p>
+
+            </a>
+
+
+
+            <a
+                href="/profile"
+                class="action-card"
+            >
+
+                <h3>
+                    👤 Profile
+                </h3>
+
+                <p>
+                    Manage your account
+                </p>
+
+            </a>
+
+
+            {{end}}
+
+
+        </div>
+
+    </section>
+
+
 </main>
+
+
 
 <script src="/static/js/dashboard.js"></script>
 
 </body>
+
 </html>

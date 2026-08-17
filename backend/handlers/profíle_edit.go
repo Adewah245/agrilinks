@@ -35,6 +35,7 @@ func (h *ProfileEdit) Handler(w http.ResponseWriter, r *http.Request) {
 
 	fullName := r.FormValue("full_name")
 	phone := r.FormValue("phone")
+	//email := r.FormValue("email")
 	location := r.FormValue("location")
 
 	if err := h.auth.UpdateProfile(farmer.ID, fullName, phone, location); err != nil {

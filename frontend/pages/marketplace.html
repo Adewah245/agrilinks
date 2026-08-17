@@ -1,127 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Marketplace | Agro-Shield</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="/static/css/style.css">
-<link rel="stylesheet" href="/static/css/marketplace.css">
+    <title>Marketplace | Agro-Shield</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/marketplace.css">
 </head>
+
 <body>
 
 <header class="navbar">
 
-<div class="logo">🌾 Agro-Shield</div>
+    <div class="logo">🌾 Agro-Shield</div>
 
-<nav>
-<a href="/dashboard">Dashboard</a>
+    <nav>
+        <a href="/dashboard">Dashboard</a>
+
         {{if not .IsBuyer}}
-<a href="/storage">Storage</a>
+            <a href="/storage">Storage</a>
         {{end}}
-<a href="/marketplace">Marketplace</a>
-<a href="/negotiations">Negotiations</a>
+
+        <a href="/marketplace">Marketplace</a>
+        <a href="/negotiations">Negotiations</a>
+
         {{if not .IsBuyer}}
-<a href="/ai-assistant">AI Assistant</a>
+            <a href="/ai-assistant">AI Assistant</a>
         {{end}}
-<a href="/profile">Profile</a>
-<a href="/logout">Logout</a>
-</nav>
+
+        <a href="/profile">Profile</a>
+        <a href="/logout">Logout</a>
+    </nav>
 
 </header>
 
 <main class="marketplace">
 
-<div class="market-header">
+    <div class="market-header">
 
-<div>
-<h1>Marketplace</h1>
+        <div>
+            <h1>Marketplace</h1>
+
             {{if .IsBuyer}}
-<p>Browse fresh produce from farmers and place an order.</p>
+                <p>Browse fresh produce from farmers and place an order.</p>
             {{else}}
-<p>See what's currently listed for sale across Agro-Shield.</p>
+                <p>See what's currently listed for sale across Agro-Shield.</p>
             {{end}}
-</div>
+        </div>
 
-</div>
+    </div>
 
     {{if .Message}}
-<p class="message" style="color:green;">{{.Message}}</p>
+        <p class="message" style="color:green;">
+            {{.Message}}
+        </p>
     {{end}}
+
     {{if .Error}}
-<p class="message" style="color:red;">{{.Error}}</p>
+        <p class="message" style="color:red;">
+            {{.Error}}
+        </p>
     {{end}}
 
-<input
-type="search"
-id="search"
-placeholder="Search products..."
-class="search-box"
->
+    <input
+        type="search"
+        id="search"
+        placeholder="Search products..."
+        class="search-box"
+    >
 
-<section class="product-grid" id="product-grid">
+    <section class="product-grid" id="product-grid">
 
         {{range .Crops}}
-<div class="product-card">
 
-            {{if .ImageURL}}
-<img src="{{.ImageURL}}" alt="{{.Name}}" class="product-image">
-            {{end}}
+            <div class="product-card">
 
-<h3>{{.Name}}</h3>
+                {{if .ImageURL}}
+                    <img
+                        src="{{.ImageURL}}"
+                        alt="{{.Name}}"
+                        class="product-image"
+                    >
+                {{end}}
 
-<p class="price">₦{{printf "%.2f" .PricePerUnit}} / {{.Unit}}</p>
+                <h3>{{.Name}}</h3>
 
-<p>Seller: {{.SellerName}}</p>
+                <p class="price">
+                    ₦{{printf "%.2f" .PricePerUnit}} / {{.Unit}}
+                </p>
 
-<p>{{.Quantity}} {{.Unit}} available</p>
+                <p>
+                    Seller: {{.SellerName}}
+                </p>
 
-            {{if $.IsBuyer}}
-<form method="POST" action="/marketplace" class="buy-form">
-<input type="hidden" name="crop_id" value="{{.ID}}">
-<input
-type="number"
-name="quantity"
-min="0.01"
-max="{{.Quantity}}"
-step="0.01"
-placeholder="Qty"
-required
->
-<button type="submit">Buy</button>
-</form>
-            {{end}}
+                <p>
+                    {{.Quantity}} {{.Unit}} available
+                </p>
 
-            {{if ne .FarmerID $.CurrentUserID}}
-<form method="POST" action="/negotiation/start" class="negotiate-form">
-<input type="hidden" name="crop_id" value="{{.ID}}">
-<input
-type="number"
-name="quantity"
-min="0.01"
-max="{{.Quantity}}"
-step="0.01"
-placeholder="Qty"
-required
->
-<input
-type="number"
-name="offer_price"
-min="0.01"
-step="0.01"
-placeholder="Your offer ₦"
-required
->
-<button type="submit">Negotiate</button>
-</form>
-            {{end}}
+                <!-- Opens the Product Details page. -->
+                <a
+                    href="/product?id={{.ID}}"
+                    class="view-product"
+                >
+                    View Product
+                </a>
 
-</div>
+                {{if $.IsBuyer}}
+
+                    <form
+                        method="POST"
+                        action="/marketplace"
+                        class="buy-form"
+                    >
+
+                        <input
+                            type="hidden"
+                            name="crop_id"
+                            value="{{.ID}}"
+                        >
+
+                        <input
+                            type="number"
+                            name="quantity"
+                            min="0.01"
+                            max="{{.Quantity}}"
+                            step="0.01"
+                            placeholder="Qty"
+                            required
+                        >
+
+                        <button type="submit">
+                            Buy
+                        </button>
+
+                    </form>
+
+                {{end}}
+
+                {{if ne .FarmerID $.CurrentUserID}}
+
+                    <form
+                        method="POST"
+                        action="/negotiation/start"
+                        class="negotiate-form"
+                    >
+
+                        <input
+                            type="hidden"
+                            name="crop_id"
+                            value="{{.ID}}"
+                        >
+
+                        <input
+                            type="number"
+                            name="quantity"
+                            min="0.01"
+                            max="{{.Quantity}}"
+                            step="0.01"
+                            placeholder="Qty"
+                            required
+                        >
+
+                        <input
+                            type="number"
+                            name="offer_price"
+                            min="0.01"
+                            step="0.01"
+                            placeholder="Your offer ₦"
+                            required
+                        >
+
+                        <button type="submit">
+                            Negotiate
+                        </button>
+
+                    </form>
+
+                {{end}}
+
+            </div>
+
         {{else}}
-<p>No product listed for sale yet.</p>
+
+            <p>
+                No product listed for sale yet.
+            </p>
+
         {{end}}
 
-</section>
+    </section>
 
 </main>
 

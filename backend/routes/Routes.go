@@ -63,6 +63,12 @@ func RegisterRoutes(container *app.Container) {
 		"/marketplace",
 		middleware.OnlyPath("/marketplace", middleware.RequireAuth(container.FarmerRepo, marketplaceHandler.MarketplaceHandler)),
 	)
+	// Product Details: displays information about one marketplace product.
+	productHandler := handlers.NewProductHandler(container.Crop)
+	http.HandleFunc(
+		"/product",
+		middleware.OnlyPath("/product", middleware.RequireAuth(container.FarmerRepo, productHandler.ProductDetailsHandler)),
+	)
 
 	// AI Assistant handles its own GET/POST switch (image upload).
 	aiHandler := handlers.NewAIAssistantHandler(container.AI)

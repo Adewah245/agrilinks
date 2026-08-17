@@ -107,3 +107,23 @@
     flex:1;
     padding:10px;
     border:1px solid lightgray
+}
+/* View Product button
+   Purpose: Lets users open the full details of a marketplace product.
+*/
+
+.view-product {
+    display: inline-block;
+    margin: 12px 0;
+    padding: 10px 16px;
+    background: #2e7d32;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: background 0.2s ease;
+}
+
+.view-product:hover {
+    background: #1b5e20;
+}

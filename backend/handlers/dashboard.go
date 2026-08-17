@@ -26,10 +26,11 @@ type DashboardData struct {
 	FullName string
 	Role     string
 	IsBuyer  bool
+	PhotoURL string
 
 	// Farmer stats
-	ProduceInStorage    int
-	ListingsActive      int
+	ProduceInStorage     int
+	ListingsActive       int
 	AIDiagnosesThisMonth int
 	Revenue              float64
 
@@ -50,6 +51,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 			data.FullName = farmer.FullName
 			data.Role = farmer.Role
 			data.IsBuyer = farmer.IsBuyer()
+			data.PhotoURL = farmer.PhotoURL
 
 			if farmer.IsBuyer() {
 				if purchases, err := h.order.MyPurchases(farmer.ID); err == nil {

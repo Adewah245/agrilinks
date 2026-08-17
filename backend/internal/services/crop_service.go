@@ -47,3 +47,6 @@ func (s *CropService) MyCrops(farmerID int) ([]models.Crop, error) {
 func (s *CropService) AvailableCrops() ([]models.Crop, error) {
 	return s.repo.ListAvailable()
 }
+func (s *CropService) GetCrop(cropID int) (*models.Crop, error) {
+	return s.repo.GetByID(cropID)
+}

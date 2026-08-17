@@ -1,75 +1,316 @@
-.ai-assistant{
-    padding:50px 80px;
+.ai-assistant {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 50px 80px;
 }
 
-.ai-assistant h1{
-    font-size:40px;
+.ai-assistant h1 {
+    margin-bottom: 10px;
+    color: #1f2937;
+    font-size: 40px;
 }
 
-.ai-assistant > p{
-    color:gray;
-    margin-top:8px;
-    margin-bottom:30px;
+.ai-assistant > p {
+    color: #6b7280;
+    margin-top: 8px;
+    margin-bottom: 30px;
+    line-height: 1.6;
 }
 
-.message{
-    margin-bottom:20px;
-    font-weight:bold;
+.message {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-weight: bold;
 }
 
-.ai-form{
-    display:flex;
-    gap:16px;
-    align-items:center;
-    background:white;
-    padding:24px;
-    border-radius:12px;
-    box-shadow:0 4px 12px lightgray;
-    margin-bottom:30px;
+.error-message {
+    color: #991b1b;
+    background: #fee2e2;
+    border: 1px solid #ef4444;
 }
 
-.ai-form button{
-    background:green;
-    color:white;
-    border:none;
-    padding:12px 28px;
-    border-radius:8px;
-    font-weight:bold;
-    cursor:pointer;
+/* Main form */
+
+.ai-form {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
 }
 
-.ai-form button:hover{
-    background:darkgreen;
+.ai-form label {
+    margin-top: 10px;
+    color: #1f2937;
+    font-size: 16px;
+    font-weight: 700;
 }
 
-.ai-result{
-    background:#eaf7ea;
-    border:1px solid green;
-    padding:20px;
-    border-radius:8px;
-    margin-bottom:40px;
+.ai-form small {
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: normal;
 }
 
-.ai-history table{
-    width:100%;
-    border-collapse:collapse;
-    background:white;
-    border-radius:12px;
-    overflow:hidden;
-    box-shadow:0 4px 12px lightgray;
+/* Form fields */
+
+.ai-form select,
+.ai-form textarea,
+.ai-form input[type="file"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #1f2937;
+    font: inherit;
 }
 
-.ai-history th{
-    background:green;
-    color:white;
+.ai-form select:focus,
+.ai-form textarea:focus,
+.ai-form input[type="file"]:focus {
+    outline: none;
+    border-color: #15803d;
+    box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.15);
+}
+
+.ai-form textarea {
+    resize: vertical;
+    min-height: 130px;
+}
+
+/* Media sections */
+
+.media-section {
+    margin-top: 18px;
+    padding: 20px;
+    border: 1px solid #dbe7dc;
+    border-radius: 12px;
+    background: #f8fcf8;
+}
+
+.media-section h2 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: #166534;
+    font-size: 20px;
+}
+
+.media-section p {
+    margin-top: 0;
+    margin-bottom: 14px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+/* Recording buttons */
+
+.record-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.ai-form button {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.ai-form button:hover {
+    transform: translateY(-1px);
+}
+
+.ai-form button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#start-audio,
+#start-video {
+    background: #15803d;
+    color: #ffffff;
+}
+
+#start-audio:hover,
+#start-video:hover {
+    background: #166534;
+}
+
+#stop-audio,
+#stop-video {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+#stop-audio:hover,
+#stop-video:hover {
+    background: #b91c1c;
+}
+
+.submit-button {
+    width: 100%;
+    margin-top: 20px;
+    background: #166534;
+    color: #ffffff;
+    font-size: 16px;
+}
+
+.submit-button:hover {
+    background: #14532d;
+}
+
+/* Recording status */
+
+.recording-status {
+    min-height: 20px;
+    margin: 12px 0 0;
+    color: #166534 !important;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* Audio and video previews */
+
+#audio-preview,
+#video-preview {
+    display: block;
+    max-width: 100%;
+    margin-top: 16px;
+    border-radius: 8px;
+    background: #111827;
+}
+
+#video-preview {
+    width: 100%;
+    max-width: 480px;
+    height: auto;
+}
+
+.media-help {
+    margin-top: 20px !important;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* AI result */
+
+.ai-result {
+    padding: 24px;
+    border: 1px solid #16a34a;
+    border-radius: 12px;
+    background: #eaf7ea;
+    margin-bottom: 40px;
+    line-height: 1.7;
+}
+
+.ai-result h2 {
+    margin-top: 0;
+    color: #166534;
+}
+
+/* History */
+
+.ai-history {
+    margin-top: 30px;
+}
+
+.ai-history h2 {
+    color: #1f2937;
+}
+
+.ai-history table {
+    width: 100%;
+    border-collapse: collapse;
+    overflow: hidden;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.ai-history th {
+    background: #166534;
+    color: #ffffff;
 }
 
 .ai-history th,
-.ai-history td{
-    padding:16px;
-    text-align:left;
+.ai-history td {
+    padding: 16px;
+    text-align: left;
+    vertical-align: top;
+    line-height: 1.5;
 }
 
-.ai-history tbody tr{
-    border-bottom:1px solid lightgray;
+.ai-history tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.ai-history tbody tr:last-child {
+    border-bottom: none;
+}
+
+.ai-history tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* Mobile layout */
+
+@media (max-width: 768px) {
+    .ai-assistant {
+        padding: 30px 16px;
+    }
+
+    .ai-assistant h1 {
+        font-size: 30px;
+    }
+
+    .ai-form {
+        padding: 20px;
+    }
+
+    .record-controls {
+        flex-direction: column;
+    }
+
+    .record-controls button {
+        width: 100%;
+    }
+
+    .ai-history {
+        overflow-x: auto;
+    }
+
+    .ai-history table {
+        min-width: 700px;
+    }
+}
+.ai-result-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #1f2937;
+    line-height: 1.8;
+    font-size: 16px;
+}
+
+.history-result {
+    max-width: 450px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+}
+
+.ai-result h2 {
+    margin-top: 0;
 }

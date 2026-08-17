@@ -24,22 +24,27 @@ func NewAIService(
 
 func (s *AIService) Diagnose(
 	farmerID int,
-	imageName string,
-	imageBytes []byte,
+	request AIRequest,
 ) (*models.Diagnosis, error) {
-	if len(imageBytes) == 0 {
-		return nil, errors.New("no image was uploaded")
+
+	if request.Category == "" &&
+		request.Description == "" &&
+		len(request.Image) == 0 &&
+		len(request.Audio) == 0 &&
+		len(request.Video) == 0 {
+		return nil, errors.New("no information was provided")
 	}
 
-	aiResult, err := s.provider.AnalyzeImage(imageBytes)
+	aiResult, err := s.provider.Analyze(request)
 	if err != nil {
 		return nil, err
 	}
 
 	diagnosis := &models.Diagnosis{
-		FarmerID:  farmerID,
-		ImageName: imageName,
-		Result:    aiResult.Result,
+		FarmerID:    farmerID,
+		Category:    request.Category,
+		Description: request.Description,
+		Result:      aiResult.Result,
 	}
 
 	if err := s.repo.Create(diagnosis); err != nil {

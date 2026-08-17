@@ -1,9 +1,23 @@
 package services
 
+type AIRequest struct {
+	Category    string
+	Description string
+
+	Image     []byte
+	ImageType string
+
+	Audio     []byte
+	AudioType string
+
+	Video     []byte
+	VideoType string
+}
+
 type DiagnosisResult struct {
 	Result string
 }
 
 type AIProvider interface {
-	AnalyzeImage(imageBytes []byte) (*DiagnosisResult, error)
+	Analyze(request AIRequest) (*DiagnosisResult, error)
 }

@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>AI Assistant | Agro-Shield</title>
+
     <link rel="stylesheet" href="/static/css/style.css">
     <link rel="stylesheet" href="/static/css/ai-assistant.css">
 </head>
+
 <body>
 
 <header class="navbar">
     <div class="logo">🌾 Agro-Shield</div>
+
     <nav>
         <a href="/dashboard">Dashboard</a>
         <a href="/storage">Storage</a>
@@ -24,52 +28,294 @@
 
 <main class="ai-assistant">
 
-    <h1>🤖 AI Crop Assistant</h1>
-    <p>Upload a photo of your crop and get an instant health check.</p>
+    <h1>🤖 Agro-Shield AI Assistant</h1>
+
+    <p>
+        Ask questions about farming, describe a problem,
+        or provide an image, audio, or video for analysis.
+    </p>
 
     {{if .Error}}
-    <p class="message" style="color:red;">{{.Error}}</p>
+        <div
+            class="message error-message"
+            role="alert"
+        >
+            {{.Error}}
+        </div>
     {{end}}
 
-    <form method="POST" action="/ai-assistant" enctype="multipart/form-data" class="ai-form">
-        <input type="file" name="crop_image" accept="image/*" required>
-        <button type="submit">Analyze</button>
+    <form
+        method="POST"
+        action="/ai-assistant"
+        enctype="multipart/form-data"
+        class="ai-form"
+    >
+
+        <!-- CATEGORY -->
+
+        <label for="category">
+            Farming Category
+        </label>
+
+        <select
+            id="category"
+            name="category"
+            required
+        >
+            <option value="">
+                Select a category
+            </option>
+
+            <option value="Crops">
+                🌾 Crops
+            </option>
+
+            <option value="Livestock">
+                🐄 Livestock
+            </option>
+
+            <option value="Poultry">
+                🐔 Poultry
+            </option>
+
+            <option value="Goats">
+                🐐 Goats
+            </option>
+
+            <option value="Fish">
+                🐟 Fish
+            </option>
+
+            <option value="Pests/Insects">
+                🐛 Pests/Insects
+            </option>
+
+            <option value="Plant Problems">
+                🌱 Plant Problems
+            </option>
+
+            <option value="General Farming Questions">
+                📝 General Farming Questions
+            </option>
+        </select>
+
+        <!-- DESCRIPTION -->
+
+        <label for="description">
+            What happened?
+        </label>
+
+        <textarea
+            id="description"
+            name="description"
+            rows="5"
+            placeholder="Describe what you noticed..."
+        ></textarea>
+
+        <!-- IMAGE -->
+
+        <section class="media-section">
+            <h2>📷 Image</h2>
+
+            <p>
+                Upload an image or take a picture using your phone camera.
+            </p>
+
+            <input
+                type="file"
+                id="image"
+                name="image"
+                accept="image/*"
+                capture="environment"
+            >
+        </section>
+
+        <!-- AUDIO -->
+
+        <section class="media-section">
+            <h2>🎤 Voice or Audio</h2>
+
+            <p>
+                Upload an audio file or record your voice.
+            </p>
+
+            <input
+                type="file"
+                id="audio"
+                name="audio"
+                accept="audio/*"
+                capture
+            >
+
+            <div class="record-controls">
+                <button
+                    type="button"
+                    id="start-audio"
+                >
+                    Start Voice Recording
+                </button>
+
+                <button
+                    type="button"
+                    id="stop-audio"
+                    disabled
+                >
+                    Stop Voice Recording
+                </button>
+            </div>
+
+            <p
+                id="audio-status"
+                class="recording-status"
+                aria-live="polite"
+            ></p>
+
+            <audio
+                id="audio-preview"
+                controls
+                hidden
+            ></audio>
+        </section>
+
+        <!-- VIDEO -->
+
+        <section class="media-section">
+            <h2>🎥 Video</h2>
+
+            <p>
+                Upload a video or record a new video using your camera.
+            </p>
+
+            <input
+                type="file"
+                id="video"
+                name="video"
+                accept="video/*"
+                capture="environment"
+            >
+
+            <div class="record-controls">
+                <button
+                    type="button"
+                    id="start-video"
+                >
+                    Start Video Recording
+                </button>
+
+                <button
+                    type="button"
+                    id="stop-video"
+                    disabled
+                >
+                    Stop Video Recording
+                </button>
+            </div>
+
+            <p
+                id="video-status"
+                class="recording-status"
+                aria-live="polite"
+            ></p>
+
+            <video
+                id="video-preview"
+                controls
+                playsinline
+                width="320"
+                hidden
+            ></video>
+        </section>
+
+        <p class="media-help">
+            You can provide any combination of the information above.
+            You do not need to upload every type of media.
+        </p>
+
+        <button
+            type="submit"
+            class="submit-button"
+        >
+            🤖 Analyze with Agro-Shield AI
+        </button>
+
     </form>
 
+    <!-- AI RESULT -->
+
     {{if .Result}}
-    <div class="ai-result">
-        <h2>Result</h2>
-        <p>{{.Result}}</p>
-    </div>
+        <section
+            class="ai-result"
+            aria-live="polite"
+        >
+            <h2>🤖 AI Result</h2>
+
+            <div class="ai-result-text">
+                {{.Result}}
+            </div>
+        </section>
     {{end}}
 
+    <!-- HISTORY -->
+
     <section class="ai-history">
-        <h2>Past Diagnoses</h2>
+
+        <h2>Past AI Consultations</h2>
+
         {{if .History}}
-        <table>
-            <thead>
-                <tr>
-                    <th>Image</th>
-                    <th>Result</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .History}}
-                <tr>
-                    <td>{{.ImageName}}</td>
-                    <td>{{.Result}}</td>
-                    <td>{{.CreatedAt.Format "02 Jan 2006"}}</td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th>Result</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {{range .History}}
+                        <tr>
+                            <td>
+                                {{.Category}}
+                            </td>
+
+                            <td>
+                                {{if .Description}}
+                                    {{.Description}}
+                                {{else}}
+                                    —
+                                {{end}}
+                            </td>
+
+                            <td>
+                                <div class="history-result">
+                                    {{.Result}}
+                                </div>
+                            </td>
+
+                            <td>
+                                {{.CreatedAt.Format "02 Jan 2006"}}
+                            </td>
+                        </tr>
+                    {{end}}
+                </tbody>
+            </table>
+
         {{else}}
-        <p>No diagnoses yet — upload a photo above to get started.</p>
+
+            <p>
+                No AI consultations yet.
+                Ask Agro-Shield AI a farming question to get started.
+            </p>
+
         {{end}}
+
     </section>
 
 </main>
+
+<script src="/static/js/ai-assistant.js"></script>
 
 </body>
 </html>

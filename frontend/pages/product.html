@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="/static/css/product.css">
+
+    <title>{{.Crop.Name}} - Agro-Shield</title>
+</head>
+
+<body>
+
+    <!-- Product Details Page: displays information about one product. -->
+    <main class="product-page">
+
+        <section class="product-card">
+
+            <h1 class="product-name">
+                {{.Crop.Name}}
+            </h1>
+
+            {{if .Crop.ImageURL}}
+                <img
+                    class="product-image"
+                    src="{{.Crop.ImageURL}}"
+                    alt="{{.Crop.Name}}"
+                >
+            {{end}}
+
+            <p class="product-price">
+                ₦{{printf "%.0f" .Crop.PricePerUnit}} / {{.Crop.Unit}}
+            </p>
+
+            <p class="product-info">
+                <strong>Available:</strong>
+                {{.Crop.Quantity}} {{.Crop.Unit}}
+            </p>
+
+            <p class="product-info">
+                <strong>Location:</strong>
+                {{.Crop.Location}}
+            </p>
+
+            {{if .Crop.ListedForSale}}
+                <span class="product-status available">
+                    Available for Sale
+                </span>
+            {{else}}
+                <span class="product-status not-available">
+                    Not Available
+                </span>
+            {{end}}
+
+            <br>
+
+            <a class="back-button" href="/marketplace">
+                Back to Marketplace
+            </a>
+
+        </section>
+
+    </main>
+
+    <script src="/static/js/product.js"></script>
+
+</body>
+</html>
