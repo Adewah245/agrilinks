@@ -10,15 +10,18 @@
 <body>
 
 <header class="navbar">
-    <div class="logo">🌾 Agro-Shield</div>
-    <nav>
-        <a href="/dashboard">Dashboard</a>
-        <a href="/storage">Storage</a>
-        <a href="/marketplace">Marketplace</a>
-        <a href="/negotiations">Negotiations</a>
-        <a href="/ai-assistant">AI Assistant</a>
-        <a href="/profile">Profile</a>
-        <a href="/logout">Logout</a>
+    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+    <nav aria-label="Main navigation">
+    <a href="/dashboard">Dashboard</a>
+<a href="/storage">Storage</a>
+<a href="/marketplace">Marketplace</a>
+<a href="/negotiations" aria-current="page">Negotiations</a>
+<a href="/chat">Chat</a>
+<a href="/ai-assistant">AI Assistant</a>
+<a href="/cart">🛒</a>
+<a href="/notifications">Notifications</a>
+<a href="/profile">Profile</a>
+<a href="/logout">Logout</a>
     </nav>
 </header>
 
@@ -41,10 +44,10 @@
             {{range .Negotiations}}
             <tr>
                 <td>{{.CropName}}</td>
-                <td>{{if eq .BuyerID $.UserID}}{{.SellerName}}{{else}}{{.BuyerName}}{{end}}</td>
+                <td class="negotiation-person">{{if eq .BuyerID $.UserID}}{{if .SellerPhotoURL}}<img src="{{.SellerPhotoURL}}" alt="">{{else}}👤{{end}}{{.SellerName}}{{else}}{{if .BuyerPhotoURL}}<img src="{{.BuyerPhotoURL}}" alt="">{{else}}👤{{end}}{{.BuyerName}}{{end}}</td>
                 <td><span class="status status-{{.Status}}">{{.Status}}</span></td>
                 <td>{{.RoundCount}}/{{.MaxRounds}}</td>
-                <td><a href="/negotiation?id={{.ID}}">Open Chat</a></td>
+                <td><a class="open-chat-btn" href="/negotiation?id={{.ID}}">Open chat</a></td>
             </tr>
             {{else}}
             <tr><td colspan="5">No negotiations yet. Start one from a Marketplace listing.</td></tr>
@@ -54,5 +57,6 @@
 
 </main>
 
+<script src="/static/js/navigation.js"></script>
 </body>
 </html>

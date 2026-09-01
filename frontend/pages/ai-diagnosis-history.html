@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>AI Diagnosis History | Agro-Shield</title>
+
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/ai-diagnosis-history.css"
+    >
+
+</head>
+
+
+<body>
+
+
+<!-- =========================================
+     NAVIGATION
+========================================= -->
+
+<header class="navbar">
+
+    <a class="logo" href="/dashboard">
+        <img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield">
+    </a>
+
+
+    <nav aria-label="Main navigation">
+
+        <a href="/dashboard">
+            Dashboard
+        </a>
+
+        <a href="/storage">
+            Storage
+        </a>
+
+        <a href="/marketplace">
+            Marketplace</a>
+            <a href="/negotiations">
+    Negotiations
+</a>
+
+<a href="/ai-assistant" aria-current="page">
+    AI Assistant
+</a>
+
+        <a href="/notifications">Notifications</a>
+
+        <a href="/profile">
+            Profile
+        </a>
+
+        <a href="/logout">
+            Logout
+        </a>
+
+    </nav>
+
+</header>
+
+
+
+<!-- =========================================
+     MAIN CONTENT
+========================================= -->
+
+<main class="diagnosis-history">
+
+
+    <!-- PAGE HEADER -->
+
+    <section class="page-header">
+
+        <div>
+
+            <a
+                href="/ai-assistant"
+                class="back-link"
+            >
+                ← AI Assistant
+            </a>
+
+            <h1>
+                AI Diagnosis History
+            </h1>
+
+            <p>
+                Review your previous farming consultations
+                and AI-powered diagnoses.
+            </p>
+
+        </div>
+
+
+        <a
+            href="/ai-assistant"
+            class="new-diagnosis-button"
+        >
+            🤖 New Diagnosis
+        </a>
+
+    </section>
+
+
+
+    <!-- =========================================
+         FILTER BAR
+    ========================================== -->
+
+    <section class="history-controls">
+
+        <div class="search-wrapper">
+
+            <span class="search-icon">
+                🔍
+            </span>
+
+            <input
+                type="search"
+                id="history-search"
+                placeholder="Search diagnosis history..."
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <div class="filter-wrapper">
+
+            <label for="category-filter">
+                Category
+            </label>
+
+            <select id="category-filter">
+
+                <option value="all">
+                    All Categories
+                </option>
+
+                <option value="Crops">
+                    🌾 Crops
+                </option>
+
+                <option value="Livestock">
+                    🐄 Livestock
+                </option>
+
+                <option value="Poultry">
+                    🐔 Poultry
+                </option>
+
+                <option value="Goats">
+                    🐐 Goats
+                </option>
+
+                <option value="Fish">
+                    🐟 Fish
+                </option>
+
+                <option value="Pests/Insects">
+                    🐛 Pests/Insects
+                </option>
+
+                <option value="Plant Problems">
+                    🌱 Plant Problems
+                </option>
+
+                <option value="General Farming Questions">
+                    📝 General Farming Questions
+                </option>
+
+            </select>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================
+         RESULT COUNT
+    ========================================== -->
+
+    <div class="history-summary">
+
+        <span>
+            Your AI consultations
+        </span>
+
+        <strong id="result-count">
+            0
+        </strong>
+
+    </div>
+
+
+
+    <!-- =========================================
+         HISTORY
+    ========================================== -->
+
+    <section class="history-container">
+
+
+        {{if .History}}
+
+
+        <div
+            class="diagnosis-list"
+            id="diagnosis-list"
+        >
+
+
+            {{range .History}}
+
+
+            <article
+                class="diagnosis-card"
+                data-category="{{.Category}}"
+                data-search="{{.Category}} {{.Description}} {{.Result}}"
+            >
+
+
+                <!-- CARD HEADER -->
+
+                <div class="diagnosis-card-header">
+
+                    <div class="diagnosis-category">
+
+                        <span class="category-icon">
+
+                            {{if eq .Category "Crops"}}
+                            🌾
+
+                            {{else if eq .Category "Livestock"}}
+                            🐄
+
+                            {{else if eq .Category "Poultry"}}
+                            🐔
+
+                            {{else if eq .Category "Goats"}}
+                            🐐
+
+                            {{else if eq .Category "Fish"}}
+                            🐟
+
+                            {{else if eq .Category "Pests/Insects"}}
+                            🐛
+
+                            {{else if eq .Category "Plant Problems"}}
+                            🌱
+
+                            {{else}}
+                            📝
+
+                            {{end}}
+
+                        </span>
+
+
+                        <div>
+
+                            <h2>
+                                {{.Category}}
+                            </h2>
+
+                            <time>
+                                {{.CreatedAt.Format "02 Jan 2006, 03:04 PM"}}
+                            </time>
+
+                        </div>
+
+                    </div>
+
+
+                    <span class="diagnosis-id">
+                        #{{.ID}}
+                    </span>
+
+                </div>
+
+
+
+                <!-- DESCRIPTION -->
+
+                <div class="diagnosis-description">
+
+                    <h3>
+                        Problem Description
+                    </h3>
+
+                    {{if .Description}}
+
+                    <p>
+                        {{.Description}}
+                    </p>
+
+                    {{else}}
+
+                    <p class="empty-description">
+                        No description was provided.
+                    </p>
+
+                    {{end}}
+
+                </div>
+
+
+
+                <!-- RESULT -->
+
+                <div class="diagnosis-result">
+
+                    <div class="result-header">
+
+                        <h3>
+                            🤖 AI Diagnosis
+                        </h3>
+
+                    </div>
+
+
+                    <div class="result-content">
+
+                        {{.Result}}
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- CARD FOOTER -->
+
+                <div class="diagnosis-card-footer">
+
+                    <span class="diagnosis-date">
+
+                        {{.CreatedAt.Format "02 Jan 2006"}}
+
+                    </span>
+
+
+                    <button
+                        type="button"
+                        class="view-result-button"
+                    >
+                        View Full Result
+                    </button>
+
+                    <form method="POST" action="/ai-diagnosis-history" class="delete-diagnosis-form">
+                        <input type="hidden" name="id" value="{{.ID}}">
+                        <button type="submit" class="delete-diagnosis-button">Delete</button>
+                    </form>
+
+                </div>
+
+
+            </article>
+
+
+            {{end}}
+
+
+        </div>
+
+
+        <!-- NO SEARCH RESULTS -->
+
+        <div
+            id="no-search-results"
+            class="no-results"
+            hidden
+        >
+
+            <div class="no-results-icon">
+                🔍
+            </div>
+
+            <h2>
+                No diagnoses found
+            </h2>
+
+            <p>
+                Try changing your search term or category filter.
+            </p>
+
+        </div>
+
+
+        {{else}}
+
+
+        <!-- EMPTY HISTORY -->
+
+        <div class="empty-history">
+
+            <div class="empty-history-icon">
+                🤖
+            </div>
+
+            <h2>
+                No AI diagnoses yet
+            </h2>
+
+            <p>
+                You haven't used Agro-Shield AI for a diagnosis yet.
+                Start your first consultation to get expert farming
+                assistance.
+            </p>
+
+            <a
+                href="/ai-assistant"
+                class="new-diagnosis-button"
+            >
+                Start Your First Diagnosis
+            </a>
+
+        </div>
+
+
+        {{end}}
+
+
+    </section>
+
+
+</main>
+
+
+
+<!-- =========================================
+     RESULT MODAL
+========================================= -->
+
+<div
+    class="result-modal"
+    id="result-modal"
+    hidden
+>
+
+    <div
+        class="modal-overlay"
+        id="modal-overlay"
+    ></div>
+
+
+    <div
+        class="modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+    >
+
+        <button
+            type="button"
+            class="modal-close"
+            id="modal-close"
+            aria-label="Close diagnosis result"
+        >
+            ×
+        </button>
+
+
+        <div class="modal-header">
+
+            <span class="modal-icon">
+                🤖
+            </span>
+
+            <div>
+
+                <h2 id="modal-title">
+                    AI Diagnosis
+                </h2>
+
+                <p id="modal-date"></p>
+
+            </div>
+
+        </div>
+
+
+        <div class="modal-body">
+
+            <div class="modal-section">
+
+                <h3>
+                    Category
+                </h3>
+
+                <p id="modal-category"></p>
+
+            </div>
+
+
+            <div class="modal-section">
+
+                <h3>
+                    Problem Description
+                </h3>
+
+                <p id="modal-description"></p>
+
+            </div>
+
+
+            <div class="modal-section">
+
+                <h3>
+                    AI Diagnosis
+                </h3>
+
+                <div
+                    class="modal-result"
+                    id="modal-result"
+                ></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script src="/static/js/ai-diagnosis-history.js"></script>
+
+<script src="/static/js/navigation.js"></script>
+</body>
+
+</html>

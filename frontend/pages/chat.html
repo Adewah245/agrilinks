@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Agro-Shield Chat</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/chat.css">
+</head>
+
+<body>
+
+<header class="navbar">
+    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+    <nav aria-label="Main navigation">
+        <a href="/dashboard">Dashboard</a><a href="/storage">Storage</a><a href="/marketplace">Marketplace</a><a href="/negotiations">Negotiations</a><a href="/ai-assistant">AI Assistant</a><a href="/chat" aria-current="page">Chat{{if gt .UnreadCount 0}} <span class="chat-nav-unread">{{.UnreadCount}}</span>{{end}}</a><a href="/profile">Profile</a><a href="/notifications">Notifications</a><a href="/logout">Logout</a>
+    </nav>
+</header>
+
+    <!-- =====================================================
+         CHAT PAGE
+         ===================================================== -->
+
+    <div class="chat-container">
+
+        <!-- =================================================
+             HEADER
+             ================================================= -->
+
+        <header class="chat-header">
+
+            <div>
+                <h1>Agro-Shield Chat</h1>
+
+                <p>
+                    Connect with farmers, buyers, sellers,
+                    and agricultural groups.
+                </p>
+            </div>
+
+            <a
+                href="/dashboard"
+                class="back-button"
+            >
+                Dashboard
+            </a>
+
+        </header>
+
+
+        <!-- =================================================
+             ERROR MESSAGE
+             ================================================= -->
+
+        {{if .Error}}
+
+        <div class="error-message">
+            {{.Error}}
+        </div>
+
+        {{end}}
+
+
+        <!-- =================================================
+             CREATE GROUP
+             ================================================= -->
+
+        <section class="create-group">
+
+            <h2>Create a Group</h2>
+
+            <p>
+                Create a community for farmers, sellers,
+                associations, or agricultural discussions.
+            </p>
+
+            <form
+                action="/chat/group/create"
+                method="POST"
+            >
+
+                <input
+                    type="text"
+                    name="name"
+                    placeholder="Example: Maize Farmers Association"
+                    maxlength="100"
+                    required
+                >
+
+                <button type="submit">
+                    Create Group
+                </button>
+
+            </form>
+
+        </section>
+
+        <details class="people">
+            <summary class="people-toggle"><span><strong>People</strong><small>Find someone to start a conversation</small></span><b>{{len .Users}} <i>⌄</i></b></summary>
+            <div class="people-content">
+            <form action="/chat" method="GET" class="people-search">
+                <input type="search" name="q" value="{{.Query}}" placeholder="Find a farmer or buyer">
+                <button type="submit">Search</button>
+            </form>
+            {{if .Users}}
+                <div class="people-list">
+                    {{range .Users}}
+                        <div class="person-row" data-user-id="{{.ID}}">
+                            <a class="person-identity" href="/profile?id={{.ID}}">{{if .PhotoURL}}<img class="person-avatar" src="{{.PhotoURL}}" alt="{{.FullName}} profile picture">{{else}}<span class="person-avatar">👤</span>{{end}}<span><strong>{{.FullName}}</strong><small>{{.Role}} · {{.Location}}</small><span class="presence-status"><i></i><span>Offline</span></span></span></a>
+                            <form action="/chat/private" method="POST"><input type="hidden" name="user_id" value="{{.ID}}"><button type="submit">Chat</button></form>
+                        </div>
+                    {{end}}
+                </div>
+            {{else}}<p>No other registered users found.</p>{{end}}
+            </div>
+        </details>
+
+
+        <!-- =================================================
+             MY CONVERSATIONS
+             ================================================= -->
+
+        <section class="conversations">
+
+            <div class="section-title">
+
+                <h2>My Chats</h2>
+				{{if gt .UnreadCount 0}}<strong class="unread-summary">{{.UnreadCount}} unread</strong>{{end}}
+
+                <span>
+                    {{len .Conversations}}
+                </span>
+
+            </div>
+
+
+            {{if .Conversations}}
+
+                <div class="conversation-list">
+
+                    {{range .Conversations}}
+
+                        <a
+                            href="/chat/view?id={{.ID}}"
+                            class="conversation-card" {{if and (eq .Type "private") (gt .OtherUserID 0)}}data-user-id="{{.OtherUserID}}"{{end}}
+                        >
+
+                            <div class="conversation-icon">
+
+                                {{if eq .Type "group"}}
+                                    <span class="group-avatar">👥</span>
+                                {{else}}
+                                    {{if .OtherPhotoURL}}
+                                        <img src="{{.OtherPhotoURL}}" alt="{{.OtherName}} profile picture">
+                                    {{else}}
+                                        <span class="group-avatar">👤</span>
+                                    {{end}}
+                                {{end}}
+
+                            </div>
+
+
+                            <div class="conversation-info">
+
+                                <h3>
+
+                                    {{if eq .Type "private"}}
+
+                                        {{if .OtherName}}{{.OtherName}}{{else}}Private Chat{{end}}
+
+                                    {{else if .Name}}
+
+                                        {{.Name}}
+
+                                    {{else}}
+
+                                        Private Chat
+
+                                    {{end}}
+
+                                </h3>
+
+                                <p>
+
+                                    {{if eq .Type "group"}}
+
+                                        Group conversation
+
+                                    {{else}}
+
+                                        <span class="conversation-presence"><i></i><span>Offline</span></span>
+
+                                    {{end}}
+
+                                </p>
+
+                            </div>
+
+
+                            <div class="conversation-arrow">
+                                {{if gt .UnreadCount 0}}<span class="chat-unread" aria-label="{{.UnreadCount}} unread messages">{{.UnreadCount}}</span>{{end}}
+                                →
+                            </div>
+
+                        </a>
+
+                    {{end}}
+
+                </div>
+
+            {{else}}
+
+                <!-- =========================================
+                     NO CONVERSATIONS
+                     ========================================= -->
+
+                <div class="empty-state">
+
+                    <div class="empty-icon">
+                        💬
+                    </div>
+
+                    <h3>
+                        No conversations yet
+                    </h3>
+
+                    <p>
+                        Create a group or start a private
+                        conversation to begin chatting.
+                    </p>
+
+                </div>
+
+            {{end}}
+
+        </section>
+
+    </div>
+
+<script src="/static/js/navigation.js"></script>
+<script src="/static/js/chat.js" defer></script>
+</body>
+</html>

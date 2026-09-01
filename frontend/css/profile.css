@@ -123,6 +123,7 @@
 }
 
 .modal form input[type="text"],
+.modal form input[type="email"],
 .modal form input[type="tel"],
 .modal form input[type="file"]{
     padding:12px;

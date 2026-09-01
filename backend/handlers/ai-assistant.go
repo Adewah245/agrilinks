@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	"backend/internal/models"
 	"backend/internal/services"
@@ -25,6 +28,61 @@ type AIAssistantPageData struct {
 	Error   string
 }
 
+const (
+	maxImageSize = 10 << 20
+	maxAudioSize = 10 << 20
+	maxVideoSize = 30 << 20
+)
+
+var validAICategories = map[string]bool{
+	"Crops": true, "Livestock": true, "Poultry": true, "Goats": true,
+	"Fish": true, "Pests/Insects": true, "Plant Problems": true,
+	"General Farming Questions": true,
+}
+
+func readAIUpload(r *http.Request, field string, maxSize int64, allowedPrefix string) ([]byte, string, error) {
+	file, header, err := r.FormFile(field)
+	if errors.Is(err, http.ErrMissingFile) {
+		return nil, "", nil
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(io.LimitReader(file, maxSize+1))
+	if err != nil {
+		return nil, "", err
+	}
+	if int64(len(data)) > maxSize {
+		return nil, "", errors.New(field + " is too large")
+	}
+	detectedMIME := http.DetectContentType(data)
+	declaredMIME := strings.ToLower(strings.TrimSpace(header.Header.Get("Content-Type")))
+	if separator := strings.IndexByte(declaredMIME, ';'); separator >= 0 {
+		declaredMIME = strings.TrimSpace(declaredMIME[:separator])
+	}
+
+	mime := detectedMIME
+	valid := strings.HasPrefix(detectedMIME, allowedPrefix+"/")
+	// Browser-recorded audio often uses WebM or MP4 containers. Go detects
+	// those containers as video or generic binary even when they contain only
+	// an audio track, so retain the browser's audio MIME after validating it.
+	if field == "audio" && strings.HasPrefix(declaredMIME, "audio/") {
+		validContainer := strings.HasPrefix(detectedMIME, "audio/") ||
+			detectedMIME == "video/webm" || detectedMIME == "video/mp4" ||
+			detectedMIME == "application/octet-stream"
+		if validContainer {
+			valid = true
+			mime = declaredMIME
+		}
+	}
+	if !valid {
+		return nil, "", errors.New("unsupported " + field + " format")
+	}
+	return data, mime, nil
+}
+
 func (h *AIAssistant) Handler(w http.ResponseWriter, r *http.Request) {
 	farmer, ok := middleware.FarmerFromContext(r)
 	if !ok || farmer == nil {
@@ -39,6 +97,8 @@ func (h *AIAssistant) Handler(w http.ResponseWriter, r *http.Request) {
 		h.render(w, farmer.ID, "", "")
 
 	case http.MethodPost:
+		// Enforce a real request limit before multipart parsing.
+		r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
 		if err := r.ParseMultipartForm(50 << 20); err != nil {
 			h.render(
 				w,
@@ -48,80 +108,59 @@ func (h *AIAssistant) Handler(w http.ResponseWriter, r *http.Request) {
 			)
 			return
 		}
+		// Clean up temporary multipart files when request finishes
+		defer func() {
+			if r.MultipartForm != nil {
+				_ = r.MultipartForm.RemoveAll()
+			}
+		}()
 
-		// Create the request that will be sent to the AI service.
+		// 2. Create the request that will be sent to the AI service
 		request := services.AIRequest{
 			Category:    r.FormValue("category"),
 			Description: r.FormValue("description"),
+			Thinking:    r.FormValue("thinking") == "true",
+		}
+		var err error
+		if !validAICategories[request.Category] {
+			h.render(w, farmer.ID, "", "Please select a valid farming category")
+			return
+		}
+		if strings.TrimSpace(request.Description) == "" && r.MultipartForm.File["image"] == nil && r.MultipartForm.File["audio"] == nil && r.MultipartForm.File["video"] == nil {
+			h.render(w, farmer.ID, "", "Describe the issue or attach media before sending")
+			return
 		}
 
 		// --------------------------------------------------
 		// OPTIONAL IMAGE
 		// --------------------------------------------------
-
-		if file, header, err := r.FormFile("image"); err == nil {
-			defer file.Close()
-
-			request.Image, err = io.ReadAll(file)
-			if err != nil {
-				h.render(
-					w,
-					farmer.ID,
-					"",
-					"Couldn't read the image",
-				)
-				return
-			}
-
-			request.ImageType = header.Header.Get("Content-Type")
+		request.Image, request.ImageType, err = readAIUpload(r, "image", maxImageSize, "image")
+		if err != nil {
+			h.render(w, farmer.ID, "", err.Error())
+			return
 		}
 
 		// --------------------------------------------------
 		// OPTIONAL AUDIO
 		// --------------------------------------------------
-
-		if file, header, err := r.FormFile("audio"); err == nil {
-			defer file.Close()
-
-			request.Audio, err = io.ReadAll(file)
-			if err != nil {
-				h.render(
-					w,
-					farmer.ID,
-					"",
-					"Couldn't read the audio",
-				)
-				return
-			}
-
-			request.AudioType = header.Header.Get("Content-Type")
+		request.Audio, request.AudioType, err = readAIUpload(r, "audio", maxAudioSize, "audio")
+		if err != nil {
+			h.render(w, farmer.ID, "", err.Error())
+			return
 		}
 
 		// --------------------------------------------------
 		// OPTIONAL VIDEO
 		// --------------------------------------------------
-
-		if file, header, err := r.FormFile("video"); err == nil {
-			defer file.Close()
-
-			request.Video, err = io.ReadAll(file)
-			if err != nil {
-				h.render(
-					w,
-					farmer.ID,
-					"",
-					"Couldn't read the video",
-				)
-				return
-			}
-
-			request.VideoType = header.Header.Get("Content-Type")
+		request.Video, request.VideoType, err = readAIUpload(r, "video", maxVideoSize, "video")
+		if err != nil {
+			h.render(w, farmer.ID, "", err.Error())
+			return
 		}
 
 		// --------------------------------------------------
 		// SEND REQUEST TO AI SERVICE
 		// --------------------------------------------------
-
 		diagnosis, err := h.ai.Diagnose(
 			farmer.ID,
 			request,
@@ -137,10 +176,17 @@ func (h *AIAssistant) Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		greeting := "Good evening"
+		hour := time.Now().Hour()
+		if hour < 12 {
+			greeting = "Good morning"
+		} else if hour < 17 {
+			greeting = "Good afternoon"
+		}
 		h.render(
 			w,
 			farmer.ID,
-			diagnosis.Result,
+			greeting+", "+farmer.FullName+". I’m Agro-Shield AI, and I’m ready to help you.\n\n"+diagnosis.Result,
 			"",
 		)
 
@@ -159,7 +205,12 @@ func (h *AIAssistant) render(
 	result string,
 	errMsg string,
 ) {
+	historyStart := time.Now()
+
+	log.Println("⏱️ Loading diagnosis history")
+
 	history, err := h.ai.History(farmerID)
+
 	if err != nil {
 		log.Println(
 			"failed to load diagnosis history:",
@@ -167,6 +218,8 @@ func (h *AIAssistant) render(
 		)
 	}
 
+	log.Printf("⏱️ History loading took: %v", time.Since(historyStart))
+	// The greeting is added in the template using the authenticated farmer.
 	data := AIAssistantPageData{
 		History: history,
 		Result:  result,
@@ -178,12 +231,12 @@ func (h *AIAssistant) render(
 		"ai-assistant.html",
 		data,
 	); err != nil {
+		if clientDisconnected(err) {
+			log.Printf("AI assistant client disconnected while rendering: %v", err)
+			return
+		}
 		log.Println("render error", err)
-
-		http.Error(
-			w,
-			"Internal Server Error",
-			http.StatusInternalServerError,
-		)
+		// A template can fail after writing headers/body. Avoid attempting a
+		// second response, which produces a misleading superfluous-header log.
 	}
 }

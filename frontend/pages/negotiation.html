@@ -10,13 +10,14 @@
 <body>
 
 <header class="navbar">
-    <div class="logo">🌾 Agro-Shield</div>
-    <nav>
+    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+    <nav aria-label="Main navigation">
         <a href="/dashboard">Dashboard</a>
         <a href="/storage">Storage</a>
         <a href="/marketplace">Marketplace</a>
-        <a href="/negotiations">Negotiations</a>
         <a href="/ai-assistant">AI Assistant</a>
+        <a href="/cart">Cart</a>
+        <a href="/notifications">Notifications</a>
         <a href="/profile">Profile</a>
         <a href="/logout">Logout</a>
     </nav>
@@ -45,9 +46,26 @@
     <div class="chat-thread">
         {{range .Messages}}
         <div class="chat-bubble {{if eq .SenderID $.UserID}}mine{{else}}theirs{{end}}">
-            <p class="offer">₦{{printf "%.2f" .OfferPrice}}</p>
+            {{if eq .MessageType "offer"}}
+            <p class="offer">₦{{money .OfferPrice}}</p>
+            <span class="offer-status offer-status-{{.OfferStatus}}">{{.OfferStatus}}</span>
+            {{end}}
             {{if .Message}}<p class="text">{{.Message}}</p>{{end}}
             <small>{{.CreatedAt.Format "02 Jan, 3:04 PM"}}</small>
+            {{if and (eq $.Negotiation.Status "open") (eq .MessageType "offer") (eq .OfferStatus "pending") (ne .SenderID $.UserID)}}
+            <div class="offer-actions">
+                <form method="POST" action="/negotiation?id={{$.Negotiation.ID}}">
+                    <input type="hidden" name="action" value="accept">
+                    <input type="hidden" name="offer_id" value="{{.ID}}">
+                    <button type="submit" class="accept-btn">Accept offer</button>
+                </form>
+                <form method="POST" action="/negotiation?id={{$.Negotiation.ID}}">
+                    <input type="hidden" name="action" value="reject">
+                    <input type="hidden" name="offer_id" value="{{.ID}}">
+                    <button type="submit" class="reject-btn">Reject offer</button>
+                </form>
+            </div>
+            {{end}}
         </div>
         {{else}}
         <p>No messages yet.</p>
@@ -55,6 +73,12 @@
     </div>
 
     {{if eq .Negotiation.Status "open"}}
+
+        <form method="POST" action="/negotiation?id={{.Negotiation.ID}}" class="chat-form">
+            <input type="hidden" name="action" value="chat">
+            <input type="text" name="message" placeholder="Write a message…" required>
+            <button type="submit">Send message</button>
+        </form>
 
         {{if eq .TimeLeft "Expired"}}
         <p class="message" style="color:red;">This negotiation has expired — start a new one from the Marketplace if you're still interested.</p>
@@ -69,16 +93,10 @@
         </form>
         {{end}}
 
-        <div class="decision-actions">
-            <form method="POST" action="/negotiation?id={{.Negotiation.ID}}">
-                <input type="hidden" name="action" value="accept">
-                <button type="submit" class="accept-btn">Accept Current Offer</button>
-            </form>
-            <form method="POST" action="/negotiation?id={{.Negotiation.ID}}">
-                <input type="hidden" name="action" value="reject">
-                <button type="submit" class="reject-btn">Reject / End Negotiation</button>
-            </form>
-        </div>
+        <form method="POST" action="/negotiation?id={{.Negotiation.ID}}" class="end-form">
+            <input type="hidden" name="action" value="end">
+            <button type="submit" class="reject-btn">End negotiation</button>
+        </form>
 
     {{else}}
     <p class="message"><strong>This negotiation is {{.Negotiation.Status}}.</strong></p>
@@ -86,5 +104,6 @@
 
 </main>
 
+<script src="/static/js/navigation.js"></script>
 </body>
 </html>

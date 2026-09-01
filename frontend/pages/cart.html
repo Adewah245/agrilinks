@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>My Cart | Agro-Shield</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/cart.css">
+</head>
+
+<body>
+
+<header class="navbar">
+    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+    <nav aria-label="Main navigation">
+        <a href="/dashboard">Dashboard</a><a href="/storage">Storage</a><a href="/marketplace">Marketplace</a><a href="/negotiations">Negotiations</a><a href="/cart" aria-current="page">Cart</a><a href="/ai-assistant">AI Assistant</a><a href="/profile">Profile</a><a href="/notifications">Notifications</a><a href="/logout">Logout</a>
+    </nav>
+</header>
+
+    <!-- ============================================================
+         PAGE HEADER
+         ============================================================ -->
+
+    <header class="cart-header">
+
+        <div>
+            <h1>My Cart</h1>
+
+            <p>
+                Products you have agreed to purchase.
+            </p>
+        </div>
+
+        <a
+            href="/marketplace"
+            class="back-button"
+        >
+            ← Marketplace
+        </a>
+
+    </header>
+
+
+    <!-- ============================================================
+         ERROR MESSAGE
+         ============================================================ -->
+
+    {{if .Error}}
+
+        <div class="error-message">
+            {{.Error}}
+        </div>
+
+    {{end}}
+
+
+    <!-- ============================================================
+         CART CONTENT
+         ============================================================ -->
+
+    <main class="cart-container">
+
+        {{if .Items}}
+
+            <!-- ====================================================
+                 CART ITEMS
+                 ==================================================== -->
+
+            <div class="cart-items">
+
+                {{range .Items}}
+
+                    <article class="cart-item">
+
+                        <!-- =================================================
+                             PRODUCT IMAGE
+                             ================================================= -->
+
+                        <div class="cart-image">
+
+                            {{if .ImageURL}}
+
+                                <img
+                                    src="{{.ImageURL}}"
+                                    alt="{{.CropName}}"
+                                >
+
+                            {{else}}
+
+                                <div class="no-image">
+                                    No Image
+                                </div>
+
+                            {{end}}
+
+                        </div>
+
+
+                        <!-- =================================================
+                             PRODUCT INFORMATION
+                             ================================================= -->
+
+                        <div class="cart-product">
+
+                            <h2>
+                                {{.CropName}}
+                            </h2>
+
+                            <p>
+                                Quantity:
+                                <strong>
+                                    {{.Quantity}} {{.Unit}}
+                                </strong>
+                            </p>
+
+                            <p>
+                                Price per unit:
+                                <strong>
+                                    ₦{{money .PricePerUnit}}
+                                </strong>
+                            </p>
+
+                            <p class="total-price">
+                                Total:
+                                <strong>
+                                    ₦{{money .TotalPrice}}
+                                </strong>
+                            </p>
+
+                        </div>
+
+
+                        <!-- =================================================
+                             SELLER INFORMATION
+                             ================================================= -->
+
+                        <div class="seller-information">
+
+                            <h3>
+                                Seller
+                            </h3>
+
+                            {{if .SellerPhotoURL}}
+
+                                <img
+                                    class="profile-image"
+                                    src="{{.SellerPhotoURL}}"
+                                    alt="{{.SellerName}}"
+                                >
+
+                            {{end}}
+
+                            <p>
+                                <strong>
+                                    {{.SellerName}}
+                                </strong>
+                            </p>
+
+                            <p>
+                                Email:
+                                {{.SellerEmail}}
+                            </p>
+
+                            <p>
+                                Phone:
+                                {{.SellerPhone}}
+                            </p>
+
+                            <p>
+                                Location:
+                                {{.SellerLocation}}
+                            </p>
+
+                        </div>
+
+
+                        <!-- =================================================
+                             BUYER INFORMATION
+                             ================================================= -->
+
+                        <div class="buyer-information">
+
+                            <h3>
+                                Buyer
+                            </h3>
+
+                            {{if .BuyerPhotoURL}}
+
+                                <img
+                                    class="profile-image"
+                                    src="{{.BuyerPhotoURL}}"
+                                    alt="{{.BuyerName}}"
+                                >
+
+                            {{end}}
+
+                            <p>
+                                <strong>
+                                    {{.BuyerName}}
+                                </strong>
+                            </p>
+
+                            <p>
+                                Email:
+                                {{.BuyerEmail}}
+                            </p>
+
+                            <p>
+                                Phone:
+                                {{.BuyerPhone}}
+                            </p>
+
+                            <p>
+                                Location:
+                                {{.BuyerLocation}}
+                            </p>
+
+                        </div>
+
+
+                        <!-- =================================================
+                             NEGOTIATION INFORMATION
+                             ================================================= -->
+
+                        <div class="negotiation-information">
+
+                            <p>
+                                Negotiation ID:
+                                <strong>
+                                    #{{.NegotiationID}}
+                                </strong>
+                            </p>
+
+                            <p>
+                                Agreed Price:
+                                <strong>
+                                    ₦{{money .PricePerUnit}}
+                                </strong>
+                            </p>
+
+                            <p>
+                                Added:
+                                {{.CreatedAt.Format "02 Jan 2006 03:04 PM"}}
+                            </p>
+
+                        </div>
+
+
+                        <!-- =================================================
+                             REMOVE FROM CART
+                             ================================================= -->
+
+                        <form
+                            method="POST"
+                            action="/cart"
+                            class="remove-form"
+                        >
+
+                            <input
+                                type="hidden"
+                                name="action"
+                                value="remove"
+                            >
+
+                            <input
+                                type="hidden"
+                                name="cart_id"
+                                value="{{.ID}}"
+                            >
+
+                            <button
+                                type="submit"
+                                class="remove-button"
+                            >
+                                Remove
+                            </button>
+
+                        </form>
+
+                    </article>
+
+                {{end}}
+
+            </div>
+
+
+            <!-- ====================================================
+                 CART SUMMARY
+                 ==================================================== -->
+
+            <section class="cart-summary">
+
+                <h2>
+                    Cart Summary
+                </h2>
+
+                <p>
+                    Items in cart:
+                    <strong>
+                        {{len .Items}}
+                    </strong>
+                </p>
+
+                <p>
+                    Negotiated total:
+                    <strong>₦{{money .Total}}</strong>
+                </p>
+
+                <p>
+                    These prices are the prices agreed during
+                    negotiation.
+                </p>
+
+            </section>
+
+        {{else}}
+
+            <!-- ====================================================
+                 EMPTY CART
+                 ==================================================== -->
+
+            <section class="empty-cart">
+
+                <h2>
+                    Your cart is empty
+                </h2>
+
+                <p>
+                    When you accept a negotiated offer,
+                    the product will appear here.
+                </p>
+
+                <a
+                    href="/marketplace"
+                    class="marketplace-button"
+                >
+                    Go to Marketplace
+                </a>
+
+            </section>
+
+        {{end}}
+
+    </main>
+
+<script src="/static/js/navigation.js"></script>
+</body>
+
+</html>

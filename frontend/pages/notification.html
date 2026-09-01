@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Notifications - Agro-Shield</title>
+
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css"
+    >
+    <link rel="stylesheet" href="/static/css/notifications.css">
+</head>
+
+<body>
+
+<header class="navbar">
+    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+    <nav aria-label="Main navigation">
+        <a href="/dashboard">Dashboard</a><a href="/storage">Storage</a><a href="/marketplace">Marketplace</a><a href="/negotiations">Negotiations</a><a href="/cart">Cart</a><a href="/ai-assistant">AI Assistant</a><a href="/profile">Profile</a><a href="/notifications" aria-current="page">Notifications</a><a href="/logout">Logout</a>
+    </nav>
+</header>
+
+    <!-- =====================================================
+         NOTIFICATIONS CONTAINER
+         ===================================================== -->
+
+    <main class="notifications-container">
+
+        <!-- =================================================
+             PAGE HEADER
+             ================================================= -->
+
+        <div class="notifications-header">
+
+            <div>
+                <h1 class="notifications-title">
+                    🔔 Notifications
+
+                    {{if gt .UnreadCount 0}}
+                        <span class="unread-count">
+                            {{.UnreadCount}}
+                        </span>
+                    {{end}}
+                </h1>
+
+                <p>
+                    Stay updated with activity on your Agro-Shield account.
+                </p>
+            </div>
+
+            <!-- =============================================
+                 MARK ALL AS READ
+                 ============================================= -->
+
+            {{if gt .UnreadCount 0}}
+                <form
+                    method="POST"
+                    action="/notifications/read-all"
+                >
+                    <button
+                        type="submit"
+                        class="mark-all-button"
+                    >
+                        Mark all as read
+                    </button>
+                </form>
+            {{end}}
+
+        </div>
+
+        <!-- =================================================
+             NOTIFICATION LIST
+             ================================================= -->
+
+        {{if .Notifications}}
+
+            <div class="notification-list">
+
+                {{range .Notifications}}
+
+                    <article
+                        class="notification-card {{if .IsRead}}read{{else}}unread{{end}}"
+                    >
+
+                        <div class="notification-top">
+
+                            <h2 class="notification-title">
+                                {{.Title}}
+                            </h2>
+
+                            <span class="notification-type">
+                                {{.Type}}
+                            </span>
+
+                        </div>
+
+                        <p class="notification-message">
+                            {{.Message}}
+                        </p>
+
+                        <div class="notification-date">
+                            {{.CreatedAt.Format "02 Jan 2006, 03:04 PM"}}
+                        </div>
+
+                        <!-- =================================
+                             MARK ONE AS READ
+                             ================================= -->
+
+                        {{if not .IsRead}}
+
+                            <div class="notification-actions">
+
+                                <form
+                                    method="POST"
+                                    action="/notifications/read?id={{.ID}}"
+                                >
+
+                                    <button
+                                        type="submit"
+                                        class="mark-read-button"
+                                    >
+                                        Mark as read
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        {{end}}
+
+                    </article>
+
+                {{end}}
+
+            </div>
+
+        {{else}}
+
+            <!-- =============================================
+                 EMPTY STATE
+                 ============================================= -->
+
+            <div class="empty-notifications">
+
+                <div class="empty-notifications-icon">
+                    🔔
+                </div>
+
+                <h2>No notifications yet</h2>
+
+                <p>
+                    You will see important updates about your
+                    negotiations, orders, and Agro-Shield activity here.
+                </p>
+
+            </div>
+
+        {{end}}
+
+    </main>
+
+<script src="/static/js/navigation.js"></script>
+</body>
+</html>

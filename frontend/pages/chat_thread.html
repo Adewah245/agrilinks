@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        {{if .Conversation}}
+            {{.Conversation.Name}}
+        {{else}}
+            Chat
+        {{end}}
+        - Agro-Shield
+    </title>
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <link rel="stylesheet" href="/static/css/chat-thread.css">
+</head>
+
+<body>
+
+<header class="navbar">
+    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+    <nav aria-label="Main navigation">
+        <a href="/dashboard">Dashboard</a><a href="/chat" aria-current="page">Chat</a><a href="/storage">Storage</a><a href="/marketplace">Marketplace</a><a href="/negotiations">Negotiations</a><a href="/cart">Cart</a><a href="/ai-assistant">AI Assistant</a><a href="/profile">Profile</a><a href="/notifications">Notifications</a><a href="/logout">Logout</a>
+    </nav>
+</header>
+
+<div class="chat-container">
+
+    <!-- =====================================================
+         CHAT HEADER
+         ===================================================== -->
+
+    <header class="chat-header">
+
+        <div class="chat-header-left">
+
+            <a
+                href="/chat"
+                class="back-button"
+                title="Back to chats"
+            >
+                ←
+            </a>
+
+            <div class="chat-title">
+
+                <h2 class="chat-heading">
+                    {{if eq .Conversation.Type "group"}}
+                        {{.Conversation.Name}}
+                    {{else}}
+                        {{range .Members}}{{if ne .UserID $.Farmer.ID}}<a class="chat-profile-link" href="/profile?id={{.UserID}}">{{if .PhotoURL}}<img class="thread-avatar" src="{{.PhotoURL}}" alt="{{.FullName}} profile picture">{{else}}<span class="thread-avatar">👤</span>{{end}}{{.FullName}}</a>{{end}}{{end}}
+                    {{end}}
+                </h2>
+
+                <span class="chat-type">
+
+                    {{if eq .Conversation.Type "group"}}
+                        Group conversation
+                    {{else}}
+                        Private conversation
+                    {{end}}
+                    <span class="chat-status"><i></i> Active conversation</span>
+
+                </span>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- =====================================================
+         MEMBERS
+         ===================================================== -->
+
+    {{if eq .Conversation.Type "group"}}
+
+    <section class="members-section">
+
+        <div class="members-title">
+            Group Members
+        </div>
+
+        <div class="members">
+
+            {{range .Members}}
+
+                <a class="member" href="/profile?id={{.UserID}}">
+                    {{if .PhotoURL}}<img src="{{.PhotoURL}}" alt="">{{else}}<span class="member-avatar">👤</span>{{end}}
+                    <span>{{.FullName}}</span>
+                </a>
+
+            {{end}}
+
+        </div>
+
+    </section>
+
+    {{end}}
+
+
+    <!-- =====================================================
+         MESSAGES
+         ===================================================== -->
+
+    <main class="messages" id="messages">
+
+        {{if .Messages}}
+
+            {{range .Messages}}
+                {{$message := .}}
+
+                <div
+                    class="message
+                    {{if eq .SenderID $.Farmer.ID}}
+                        mine
+                    {{else}}
+                        theirs
+                    {{end}}"
+                >
+
+                    {{if ne .SenderID $.Farmer.ID}}
+
+                        {{range $.Members}}{{if eq .UserID $message.SenderID}}
+                        <a class="sender" href="/profile?id={{.UserID}}">
+                            {{if .PhotoURL}}<img src="{{.PhotoURL}}" alt="">{{else}}<span>👤</span>{{end}}
+                            {{.FullName}}
+                        </a>
+                        {{end}}{{end}}
+
+                    {{end}}
+
+                    <div class="message-bubble">
+
+                        {{.Message}}
+
+                    </div>
+
+                    <div class="message-time">
+
+                        <time class="local-time" datetime="{{.CreatedAt.UTC.Format "2006-01-02T15:04:05Z07:00"}}">{{.CreatedAt.Format "02 Jan 2006 15:04"}}</time>
+						{{if eq .SenderID $.Farmer.ID}}<span class="message-receipt">{{if .Seen}}✓✓ Seen{{else}}✓ Sent{{end}}</span>{{end}}
+
+                    </div>
+
+                </div>
+
+            {{end}}
+
+        {{else}}
+
+            <div class="empty-chat">
+
+                <h3>No messages yet</h3>
+
+                <p>
+                    Start the conversation.
+                </p>
+
+            </div>
+
+        {{end}}
+
+    </main>
+
+
+    <!-- =====================================================
+         SEND MESSAGE
+         ===================================================== -->
+
+    <form
+        class="message-form"
+        method="POST"
+        action="/chat/send"
+    >
+
+            <input
+            type="hidden"
+            name="conversation_id"
+            value="{{.Conversation.ID}}"
+        >
+
+        <input
+            type="text"
+            name="message"
+            class="message-input"
+            placeholder="Type a message..."
+            maxlength="5000"
+            required
+            autocomplete="off"
+            aria-label="Message"
+        >
+
+        <button
+            type="submit"
+            class="send-button"
+        >
+            <span>Send</span>
+        </button>
+
+    </form>
+	<div id="typing-status" class="typing-status" aria-live="polite"></div>
+
+</div>
+
+
+<!-- =========================================================
+     AUTO-SCROLL TO LATEST MESSAGE
+     ========================================================= -->
+
+<script>
+
+    const messages = document.getElementById("messages");
+
+    if (messages) {
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+</script>
+
+<script src="/static/js/chat-thread.js" defer></script>
+<script>
+document.querySelectorAll('.local-time').forEach((el) => {
+    const date = new Date(el.dateTime);
+    if (!Number.isNaN(date.getTime())) el.textContent = date.toLocaleString([], {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+});
+</script>
+
+<script src="/static/js/navigation.js"></script>
+</body>
+</html>

@@ -270,6 +270,10 @@ Agro-Shield/
 │   └── go.sum
 │
 ├── frontend/
+│   ├── assets
+│   ├── css
+│   ├── js
+│   └── pages
 │
 ├── docs/
 │
@@ -379,7 +383,7 @@ Planned support includes:
 
 * English
 * Idoma
-* Egede
+* Igede
 * Apa
 * Ufia
 * Other relevant local languages
@@ -457,6 +461,16 @@ Built for the **Idoma Centenary Plus Hackathon 2026**.
 
 Together, we believe technology can transform agriculture and empower every farmer.
 
+Agro-Shield is built by a multidisciplinary team working together to develop
+technology that empowers farmers and reduces post-harvest losses.
+
+| Team Member | Role |
+|---|---|
+| Akilozi Samuel | Team Lead |
+| Otete Benjamin Agogo | Frontend Engineer |
+| Adewa James | Backend Engineer |
+
+For detailed team profiles, see [`docs/team/`](docs/team/).
 ---
 
 # 📖 Vision

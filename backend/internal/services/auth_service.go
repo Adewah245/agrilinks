@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"strings"
 
 	"backend/internal/models"
 	"backend/internal/repository"
@@ -21,7 +22,7 @@ func NewAuthService(repo *repository.FarmerRepository) *AuthService {
 
 // Register creates a new farmer or buyer account. role should be "farmer" or
 // "buyer" — anything else defaults to "farmer".
-func (s *AuthService) Register(firstName, lastName, phone, password, location, role string) error {
+func (s *AuthService) Register(firstName, lastName, phone, email, password, location, role, photoURL string) error {
 
 	if firstName == "" || lastName == "" {
 		return errors.New("name is required")
@@ -31,6 +32,9 @@ func (s *AuthService) Register(firstName, lastName, phone, password, location, r
 	}
 	if password == "" {
 		return errors.New("password is required")
+	}
+	if photoURL == "" {
+		return errors.New("profile picture is required")
 	}
 	if len(password) < 8 {
 		return errors.New("password must be at least 8 characters")
@@ -55,9 +59,11 @@ func (s *AuthService) Register(firstName, lastName, phone, password, location, r
 	farmer := &models.Farmer{
 		FullName:     firstName + " " + lastName,
 		Phone:        phone,
+		Email:        email,
 		PasswordHash: string(hash),
 		Location:     location,
 		Role:         role,
+		PhotoURL:     photoURL,
 	}
 
 	return s.repo.Create(farmer)
@@ -92,17 +98,23 @@ func (s *AuthService) GetFarmerByID(id int) (*models.Farmer, error) {
 }
 
 // UpdateProfile edits a user's name, phone and location.
-func (s *AuthService) UpdateProfile(id int, fullName, phone, location string) error {
+func (s *AuthService) UpdateProfile(id int, fullName, phone, email, location string) error {
+	fullName = strings.TrimSpace(fullName)
+	phone = strings.TrimSpace(phone)
+	email = strings.TrimSpace(email)
+	location = strings.TrimSpace(location)
 	if fullName == "" {
 		return errors.New("full name is required")
 	}
 	if phone == "" {
 		return errors.New("phone is required")
 	}
-	return s.repo.UpdateProfile(id, fullName, phone, location)
+	if location == "" {
+		return errors.New("location is required")
+	}
+	return s.repo.UpdateProfile(id, fullName, phone, email, location)
 }
 
-// UpdatePhoto sets the user's passport photograph.
 // UpdatePhoto sets the user's passport photograph.
 func (s *AuthService) UpdatePhoto(id int, photoURL string) error {
 	if photoURL == "" {

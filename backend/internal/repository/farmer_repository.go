@@ -3,6 +3,7 @@ package repository
 import (
 	"backend/internal/models"
 	"database/sql"
+	"strings"
 )
 
 type FarmerRepository struct {
@@ -18,32 +19,33 @@ func NewFarmerRepository(db *sql.DB) *FarmerRepository {
 func (r *FarmerRepository) Create(farmer *models.Farmer) error {
 	query := `
 	INSERT INTO farmers
-	(full_name, phone, password_hash, location, role)
-	VALUES ($1, $2, $3, $4, $5)
+	(full_name, phone, email, password_hash, location, lga, state, country, role, photo_url)
+	VALUES ($1, $2, $3, $4, $5, $5, 'Benue', 'Nigeria', $6, $7)
 	RETURNING id
 	`
-
 	_, err := r.db.Exec(
 		query,
 		farmer.FullName,
 		farmer.Phone,
+		farmer.Email,
 		farmer.PasswordHash,
 		farmer.Location,
 		farmer.Role,
+		farmer.PhotoURL,
 	)
-
 	return err
 }
 
 func (r *FarmerRepository) GetByPhone(phone string) (*models.Farmer, error) {
-
 	query := `
 	SELECT
 		id,
 		full_name,
 		phone,
+		COALESCE(email, '') AS email,
 		password_hash,
 		location,
+		COALESCE(lga, location), COALESCE(state, ''), COALESCE(country, 'Nigeria'),
 		role,
 		COALESCE(photo_url, '') AS photo_url,
 		created_at,
@@ -51,40 +53,39 @@ func (r *FarmerRepository) GetByPhone(phone string) (*models.Farmer, error) {
 	FROM farmers
 	WHERE phone = $1
 	`
-
 	var farmer models.Farmer
-
 	err := r.db.QueryRow(query, phone).Scan(
 		&farmer.ID,
 		&farmer.FullName,
 		&farmer.Phone,
+		&farmer.Email,
 		&farmer.PasswordHash,
 		&farmer.Location,
+		&farmer.LGA, &farmer.State, &farmer.Country,
 		&farmer.Role,
 		&farmer.PhotoURL,
 		&farmer.CreatedAt,
 		&farmer.UpdatedAt,
 	)
-
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-
 	return &farmer, nil
 }
 
 func (r *FarmerRepository) GetByID(id int) (*models.Farmer, error) {
-
 	query := `
 	SELECT
 		id,
 		full_name,
 		phone,
+		COALESCE(email, '') AS email,
 		password_hash,
 		location,
+		COALESCE(lga, location), COALESCE(state, ''), COALESCE(country, 'Nigeria'),
 		role,
 		COALESCE(photo_url, '') AS photo_url,
 		created_at,
@@ -92,39 +93,61 @@ func (r *FarmerRepository) GetByID(id int) (*models.Farmer, error) {
 	FROM farmers
 	WHERE id = $1
 	`
-
 	var farmer models.Farmer
-
 	err := r.db.QueryRow(query, id).Scan(
 		&farmer.ID,
 		&farmer.FullName,
 		&farmer.Phone,
+		&farmer.Email,
 		&farmer.PasswordHash,
 		&farmer.Location,
+		&farmer.LGA, &farmer.State, &farmer.Country,
 		&farmer.Role,
 		&farmer.PhotoURL,
 		&farmer.CreatedAt,
 		&farmer.UpdatedAt,
 	)
-
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-
 	return &farmer, nil
 }
 
+// ListForChat returns registered users that can be contacted in general chat.
+func (r *FarmerRepository) ListForChat(excludeID int, search string) ([]models.Farmer, error) {
+	rows, err := r.db.Query(`
+		SELECT id, full_name, phone, COALESCE(email, ''), password_hash,
+			location, COALESCE(lga, location), COALESCE(state, ''), COALESCE(country, 'Nigeria'),
+			role, COALESCE(photo_url, ''), created_at, updated_at
+		FROM farmers
+		WHERE id <> $1 AND ($2 = '' OR full_name ILIKE '%' || $2 || '%' OR role ILIKE '%' || $2 || '%' OR location ILIKE '%' || $2 || '%')
+		ORDER BY full_name ASC`, excludeID, strings.TrimSpace(search))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []models.Farmer
+	for rows.Next() {
+		var user models.Farmer
+		if err := rows.Scan(&user.ID, &user.FullName, &user.Phone, &user.Email, &user.PasswordHash, &user.Location, &user.LGA, &user.State, &user.Country, &user.Role, &user.PhotoURL, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, rows.Err()
+}
+
 // UpdateProfile updates the editable personal details.
-func (r *FarmerRepository) UpdateProfile(id int, fullName, phone, location string) error {
+func (r *FarmerRepository) UpdateProfile(id int, fullName, phone, email, location string) error {
 	query := `
 	UPDATE farmers
-	SET full_name = $1, phone = $2, location = $3, updated_at = CURRENT_TIMESTAMP
-	WHERE id = $4
+	SET full_name = $1, phone = $2, email = $3, location = $4, updated_at = CURRENT_TIMESTAMP
+	WHERE id = $5
 	`
-	_, err := r.db.Exec(query, fullName, phone, location, id)
+	_, err := r.db.Exec(query, fullName, phone, email, location, id)
 	return err
 }
 

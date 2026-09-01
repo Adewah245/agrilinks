@@ -15,24 +15,23 @@ func NewDiagnosisRepository(db *sql.DB) *DiagnosisRepository {
 
 func (r *DiagnosisRepository) Create(d *models.Diagnosis) error {
 	query := `
-		INSERT INTO diagnoses (
-			farmer_id,
-			category,
-			description,
-			result
-		)
-		VALUES ($1, $2, $3, $4)
-	`
+        INSERT INTO diagnoses (
+            farmer_id,
+            category,
+            description,
+            result
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, created_at
+    `
 
-	_, err := r.db.Exec(
+	return r.db.QueryRow(
 		query,
 		d.FarmerID,
 		d.Category,
 		d.Description,
 		d.Result,
-	)
-
-	return err
+	).Scan(&d.ID, &d.CreatedAt)
 }
 
 func (r *DiagnosisRepository) ListByFarmer(
@@ -40,17 +39,17 @@ func (r *DiagnosisRepository) ListByFarmer(
 ) ([]models.Diagnosis, error) {
 
 	query := `
-		SELECT
-			id,
-			farmer_id,
-			category,
-			description,
-			result,
-			created_at
-		FROM diagnoses
-		WHERE farmer_id = $1
-		ORDER BY created_at DESC
-	`
+        SELECT
+            id,
+            farmer_id,
+            category,
+            description,
+            result,
+            created_at
+        FROM diagnoses
+        WHERE farmer_id = $1
+        ORDER BY created_at DESC
+    `
 
 	rows, err := r.db.Query(query, farmerID)
 	if err != nil {
@@ -58,7 +57,7 @@ func (r *DiagnosisRepository) ListByFarmer(
 	}
 	defer rows.Close()
 
-	var list []models.Diagnosis
+	list := make([]models.Diagnosis, 0)
 
 	for rows.Next() {
 		var d models.Diagnosis
@@ -85,13 +84,13 @@ func (r *DiagnosisRepository) CountThisMonth(
 ) (int, error) {
 
 	query := `
-		SELECT COUNT(*)
-		FROM diagnoses
-		WHERE farmer_id = $1
-		  AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
-		  AND created_at < date_trunc('month', CURRENT_TIMESTAMP)
-		  + INTERVAL '1 month'
-	`
+        SELECT COUNT(*)
+        FROM diagnoses
+        WHERE farmer_id = $1
+          AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
+          AND created_at < date_trunc('month', CURRENT_TIMESTAMP)
+          + INTERVAL '1 month'
+    `
 
 	var count int
 
@@ -101,4 +100,19 @@ func (r *DiagnosisRepository) CountThisMonth(
 	).Scan(&count)
 
 	return count, err
+}
+
+func (r *DiagnosisRepository) DeleteForFarmer(diagnosisID, farmerID int) error {
+	result, err := r.db.Exec(`DELETE FROM diagnoses WHERE id = $1 AND farmer_id = $2`, diagnosisID, farmerID)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

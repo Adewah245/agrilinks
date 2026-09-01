@@ -1,68 +1,303 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet" href="/static/css/product.css">
-
     <title>{{.Crop.Name}} - Agro-Shield</title>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/product.css">
 </head>
 
 <body>
 
-    <!-- Product Details Page: displays information about one product. -->
-    <main class="product-page">
+<header class="navbar">
 
-        <section class="product-card">
+    <a class="logo" href="/dashboard">
+        <img
+            src="/static/assets/logo/Agro-Shield_logo.png"
+            alt="Agro-Shield"
+        >
+    </a>
 
-            <h1 class="product-name">
-                {{.Crop.Name}}
-            </h1>
+    <nav aria-label="Main navigation">
 
-            {{if .Crop.ImageURL}}
-                <img
-                    class="product-image"
-                    src="{{.Crop.ImageURL}}"
-                    alt="{{.Crop.Name}}"
-                >
+        <a href="/dashboard">
+            Dashboard
+        </a>
+
+        <a href="/storage">
+            Storage
+        </a>
+
+        <a
+            href="/marketplace"
+            aria-current="page"
+        >
+            Marketplace
+        </a>
+
+        <a href="/negotiations">
+            Negotiations
+        </a>
+
+        <a href="/cart">
+            Cart
+        </a>
+
+        <a href="/ai-assistant">
+            AI Assistant
+        </a>
+
+        <a href="/profile">
+            Profile
+        </a>
+
+        <a href="/notifications">
+            Notifications
+        </a>
+
+        <a href="/logout">
+            Logout
+        </a>
+
+    </nav>
+
+</header>
+
+
+<main class="product-page">
+
+    <section class="product-card">
+
+        <!-- =====================================================
+             PRODUCT NAME
+             ===================================================== -->
+
+        <h1 class="product-name">
+            {{.Crop.Name}}
+        </h1>
+
+
+        <!-- =====================================================
+             PRODUCT IMAGE GALLERY
+             ===================================================== -->
+
+        <div class="product-gallery">
+
+            {{if .Images}}
+
+                {{range .Images}}
+
+                    <div class="product-gallery-item">
+
+                        <img
+                            class="product-image"
+                            src="{{.ImageURL}}"
+                            alt="{{$.Crop.Name}}"
+                            loading="lazy"
+                        >
+
+                    </div>
+
+                {{end}}
+
+            {{else}}
+
+                {{if .Crop.ImageURL}}
+
+                    <div class="product-gallery-item">
+
+                        <img
+                            class="product-image"
+                            src="{{.Crop.ImageURL}}"
+                            alt="{{.Crop.Name}}"
+                        >
+
+                    </div>
+
+                {{else}}
+
+                    <div class="product-no-image">
+
+                        <p>
+                            No product image available.
+                        </p>
+
+                    </div>
+
+                {{end}}
+
             {{end}}
 
-            <p class="product-price">
-                ₦{{printf "%.0f" .Crop.PricePerUnit}} / {{.Crop.Unit}}
-            </p>
+        </div>
 
-            <p class="product-info">
-                <strong>Available:</strong>
-                {{.Crop.Quantity}} {{.Crop.Unit}}
-            </p>
 
-            <p class="product-info">
-                <strong>Location:</strong>
-                {{.Crop.Location}}
-            </p>
+        <!-- =====================================================
+             PRODUCT PRICE
+             ===================================================== -->
+
+        <p class="product-price">
+
+            ₦{{money0 .Crop.PricePerUnit}}
+            / {{.Crop.Unit}}
+
+        </p>
+
+
+        <!-- =====================================================
+             PRODUCT DETAILS
+             ===================================================== -->
+
+        <div class="product-details">
+
+            <div class="product-detail-box">
+
+                <span class="product-detail-label">
+                    Available Quantity
+                </span>
+
+                <span class="product-detail-value">
+                    {{.Crop.Quantity}} {{.Crop.Unit}}
+                </span>
+
+            </div>
+
+
+            <div class="product-detail-box">
+
+                <span class="product-detail-label">
+                    Price Per Unit
+                </span>
+
+                <span class="product-detail-value">
+                    ₦{{money0 .Crop.PricePerUnit}}
+                    / {{.Crop.Unit}}
+                </span>
+
+            </div>
+
+
+            <div class="product-detail-box">
+
+                <span class="product-detail-label">
+                    Location
+                </span>
+
+                <span class="product-detail-value">
+
+                    {{if .Crop.Location}}
+
+                        <a
+                            class="map-location-link"
+                            href="https://www.google.com/maps/search/?api=1&query={{urlquery .Crop.Location}}"
+                            target="_blank"
+                            rel="noopener"
+                        >
+                            {{.Crop.Location}}
+                            <span>
+                                ↗ View on map
+                            </span>
+                        </a>
+
+                    {{else}}
+
+                        Location not provided
+
+                    {{end}}
+
+                </span>
+
+            </div>
+
+
+            <div class="product-detail-box">
+
+                <span class="product-detail-label">
+                    Seller
+                </span>
+
+                <span class="product-detail-value seller-product">
+
+                    {{if .Crop.SellerPhotoURL}}
+
+                        <img
+                            src="{{.Crop.SellerPhotoURL}}"
+                            alt="{{.Crop.SellerName}}"
+                            class="seller-product-photo"
+                        >
+
+                    {{else}}
+
+                        <span class="seller-placeholder">
+                            👤
+                        </span>
+
+                    {{end}}
+
+                    <span>
+                        {{if .Crop.SellerName}}
+                            {{.Crop.SellerName}}
+                        {{else}}
+                            Farmer
+                        {{end}}
+                    </span>
+
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <!-- =====================================================
+             PRODUCT STATUS
+             ===================================================== -->
+
+        <div class="product-status-section">
 
             {{if .Crop.ListedForSale}}
+
                 <span class="product-status available">
                     Available for Sale
                 </span>
+
             {{else}}
+
                 <span class="product-status not-available">
                     Not Available
                 </span>
+
             {{end}}
 
-            <br>
+        </div>
 
-            <a class="back-button" href="/marketplace">
-                Back to Marketplace
+
+        <!-- =====================================================
+             BACK TO MARKETPLACE
+             ===================================================== -->
+
+        <div class="product-button-group">
+
+            <a
+                class="product-button secondary"
+                href="/marketplace"
+            >
+                ← Back to Marketplace
             </a>
 
-        </section>
+        </div>
 
-    </main>
+    </section>
 
-    <script src="/static/js/product.js"></script>
+</main>
+
+
+<script src="/static/js/product.js"></script>
+<script src="/static/js/navigation.js"></script>
 
 </body>
+
 </html>
