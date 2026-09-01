@@ -11,318 +11,570 @@
     <link rel="stylesheet" href="/static/css/register.css">
     <link rel="stylesheet" href="/static/css/register-extra.css">
 
-    <!-- Font Awesome -->
     <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
     >
 </head>
 
+
 <body>
 
-    <main class="auth-container">
 
-        <!-- LEFT SIDE -->
-        <section class="auth-left">
+<main class="auth-container">
 
-            <h1>Join Agro-Shield</h1>
 
-            <p>
-                Create your account to monitor farm produce,
-                connect with buyers, receive AI-powered crop
-                diagnosis, and grow your agricultural business.
-            </p>
+<!-- LEFT SIDE -->
 
-        </section>
+<section class="auth-left">
 
+<h1>
+Join Agro-Shield
+</h1>
 
-        <!-- RIGHT SIDE -->
-        <section class="auth-right">
 
-            <div class="auth-form-wrapper">
+<p>
+Create your account to manage your farm,
+monitor production, receive AI farming
+recommendations, connect with buyers,
+and improve your agricultural business.
+</p>
 
-                <!-- LOGO -->
-                <img
-                    class="auth-brand"
-                    src="/static/assets/logo/Agro-Shield_logo.png"
-                    alt="Agro-Shield"
-                >
 
-                <!-- REGISTRATION FORM -->
-                <form
-                    id="register-form"
-                    action="/register"
-                    method="POST"
-                    enctype="multipart/form-data"
-                >
+</section>
 
-                    <h2>Create Account</h2>
 
 
-                    <!-- ROLE -->
-                    <label>I am a</label>
 
-                    <div class="row role-select">
+<!-- RIGHT SIDE -->
 
-                        <label class="role-option">
-                            <input
-                                type="radio"
-                                name="role"
-                                value="farmer"
-                                checked
-                            >
+<section class="auth-right">
 
-                            <span>
-                                🌾 Farmer — I grow and sell produce
-                            </span>
-                        </label>
 
-                        <label class="role-option">
-                            <input
-                                type="radio"
-                                name="role"
-                                value="buyer"
-                            >
+<div class="auth-form-wrapper">
 
-                            <span>
-                                🛒 Buyer — I want to buy produce
-                            </span>
-                        </label>
 
-                    </div>
 
+<img
+class="auth-brand"
+src="/static/assets/logo/Agro-Shield_logo.png"
+alt="Agro-Shield"
+>
 
-                    <!-- FIRST NAME + LAST NAME -->
-                    <div class="row">
 
-                        <div class="form-group">
 
-                            <label for="first-name">
-                                First Name
-                            </label>
+<form
+id="register-form"
+action="/register"
+method="POST"
+enctype="multipart/form-data"
+>
 
-                            <input
-                                name="first-name"
-                                type="text"
-                                id="first-name"
-                                placeholder="First Name"
-                                autocomplete="given-name"
-                                required
-                            >
-
-                        </div>
-
-                        <div class="form-group">
-
-                            <label for="last-name">
-                                Last Name
-                            </label>
-
-                            <input
-                                name="last-name"
-                                type="text"
-                                id="last-name"
-                                placeholder="Last Name"
-                                autocomplete="family-name"
-                                required
-                            >
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- EMAIL -->
-                    <div class="form-group">
-
-                        <label for="email">
-                            Email Address
-                        </label>
-
-                        <input
-                            name="email"
-                            type="email"
-                            id="email"
-                            placeholder="Enter your email"
-                            autocomplete="email"
-                            required
-                        >
-
-                    </div>
-
-
-                    <!-- PHONE -->
-                    <div class="form-group">
-
-                        <label for="phone">
-                            Phone Number
-                        </label>
-
-                        <input
-                            name="phone"
-                            type="tel"
-                            id="phone"
-                            placeholder="Enter your phone number"
-                            autocomplete="tel"
-                            required
-                        >
-
-                    </div>
-
-
-                    <!-- LOCATION -->
-                    <div class="form-group">
-
-                        <label for="location">
-                            Location (LGA)
-                        </label>
-
-                        <select
-                            name="location"
-                            id="location"
-                            required
-                        >
-
-                            <option value="" disabled selected>
-                                Select your LGA
-                            </option>
-
-                            <option value="Ado">Ado</option>
-                            <option value="Agatu">Agatu</option>
-                            <option value="Apa">Apa</option>
-                            <option value="Buruku">Buruku</option>
-                            <option value="Gboko">Gboko</option>
-                            <option value="Guma">Guma</option>
-                            <option value="Gwer East">Gwer East</option>
-                            <option value="Gwer West">Gwer West</option>
-                            <option value="Katsina-Ala">Katsina-Ala</option>
-                            <option value="Konshisha">Konshisha</option>
-                            <option value="Kwande">Kwande</option>
-                            <option value="Logo">Logo</option>
-                            <option value="Makurdi">Makurdi</option>
-                            <option value="Obi">Obi</option>
-                            <option value="Ogbadibo">Ogbadibo</option>
-                            <option value="Ohimini">Ohimini</option>
-                            <option value="Oju">Oju</option>
-                            <option value="Okpokwu">Okpokwu</option>
-                            <option value="Otukpo">Otukpo</option>
-                            <option value="Tarka">Tarka</option>
-                            <option value="Ukum">Ukum</option>
-                            <option value="Ushongo">Ushongo</option>
-                            <option value="Vandeikya">Vandeikya</option>
-
-                        </select>
 
-                    </div>
+<h2>
+Create Account
+</h2>
 
 
-                    <!-- PASSWORD -->
-                    <div class="form-group">
 
-                        <label for="password">
-                            Password
-                        </label>
+<!-- ACCOUNT TYPE -->
 
-                        <div class="password-wrapper">
+<label>
+I am a
+</label>
 
-                            <input
-                                name="password"
-                                type="password"
-                                id="password"
-                                placeholder="Create password"
-                                autocomplete="new-password"
-                                required
-                            >
 
-                            <i
-                                class="fa-solid fa-eye toggle-password"
-                                id="toggle-password"
-                                aria-label="Show password"
-                                role="button"
-                                tabindex="0"
-                            ></i>
+<div class="role-select">
 
-                        </div>
 
-                    </div>
+<label class="role-option">
 
+<input
+type="radio"
+name="role"
+value="farmer"
+checked
+>
 
-                    <!-- CONFIRM PASSWORD -->
-                    <div class="form-group">
+<span>
+🌾 Farmer
+</span>
 
-                        <label for="confirm-password">
-                            Confirm Password
-                        </label>
+</label>
 
-                        <div class="password-wrapper">
 
-                            <input
-                                name="confirm-password"
-                                type="password"
-                                id="confirm-password"
-                                placeholder="Confirm password"
-                                autocomplete="new-password"
-                                required
-                            >
 
-                            <i
-                                class="fa-solid fa-eye toggle-password"
-                                id="toggle-confirm-password"
-                                aria-label="Show confirm password"
-                                role="button"
-                                tabindex="0"
-                            ></i>
+<label class="role-option">
 
-                        </div>
+<input
+type="radio"
+name="role"
+value="buyer"
+>
 
-                    </div>
+<span>
+🛒 Buyer
+</span>
 
+</label>
 
-                    <!-- PROFILE PICTURE -->
-                    <div class="form-group profile-upload">
 
-                        <label for="profile-picture">
-                            Profile Picture
-                        </label>
+</div>
 
-                        <input
-                            id="profile-picture"
-                            name="profile_picture"
-                            type="file"
-                            accept="image/*"
-                            required
-                        >
 
-                    </div>
 
 
-                    <!-- SUBMIT -->
-                    <button type="submit">
-                        Create Account
-                    </button>
 
 
-                    <!-- LOGIN LINK -->
-                    <p class="auth-footer">
+<!-- FARM TYPE -->
 
-                        Already have an account?
+<div class="farm-type-section">
 
-                        <a href="/login">
-                            Login
-                        </a>
 
-                    </p>
+<label>
+Type of Farming
+</label>
 
-                </form>
 
-            </div>
+<p class="field-help">
+Select all farming activities you do.
+</p>
 
-        </section>
 
-    </main>
 
+<div class="farm-options">
 
-    <script src="/static/js/register.js"></script>
+
+<label class="farm-option">
+
+<input
+type="checkbox"
+name="farm_type"
+value="crop"
+>
+
+<span>
+🌱 Crop Farming
+</span>
+
+</label>
+
+
+
+<label class="farm-option">
+
+<input
+type="checkbox"
+name="farm_type"
+value="livestock"
+>
+
+<span>
+🐄 Livestock Farming
+</span>
+
+</label>
+
+
+
+<label class="farm-option">
+
+<input
+type="checkbox"
+name="farm_type"
+value="poultry"
+>
+
+<span>
+🐓 Poultry Farming
+</span>
+
+</label>
+
+
+
+
+<label class="farm-option">
+
+<input
+type="checkbox"
+name="farm_type"
+value="fishery"
+>
+
+<span>
+🐟 Fish Farming
+</span>
+
+</label>
+
+
+
+
+<label class="farm-option">
+
+<input
+type="checkbox"
+name="farm_type"
+value="beekeeping"
+>
+
+<span>
+🐝 Beekeeping
+</span>
+
+</label>
+
+
+
+<label class="farm-option">
+
+<input
+type="checkbox"
+name="farm_type"
+value="other"
+>
+
+<span>
+🌍 Other Farming
+</span>
+
+</label>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- NAME -->
+
+<div class="row">
+
+
+<div class="form-group">
+
+<label>
+First Name
+</label>
+
+
+<input
+name="first-name"
+id="first-name"
+type="text"
+placeholder="First Name"
+required
+>
+
+
+</div>
+
+
+
+<div class="form-group">
+
+<label>
+Last Name
+</label>
+
+
+<input
+name="last-name"
+id="last-name"
+type="text"
+placeholder="Last Name"
+required
+>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- EMAIL -->
+
+
+<div class="form-group">
+
+
+<label>
+Email Address
+</label>
+
+
+<input
+name="email"
+id="email"
+type="email"
+placeholder="Enter your email"
+required
+>
+
+
+</div>
+
+
+
+
+
+
+<!-- PHONE -->
+
+
+<div class="form-group">
+
+
+<label>
+Phone Number
+</label>
+
+
+<input
+name="phone"
+id="phone"
+type="tel"
+placeholder="Enter phone number"
+required
+>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- LOCATION -->
+
+
+<div class="form-group">
+
+
+<label>
+Location (LGA)
+</label>
+
+
+<select
+name="location"
+required
+>
+
+
+<option value="">
+Select your LGA
+</option>
+
+
+<option>
+Ado
+</option>
+
+<option>
+Agatu
+</option>
+
+<option>
+Apa
+</option>
+
+<option>
+Gboko
+</option>
+
+<option>
+Makurdi
+</option>
+
+<option>
+Otukpo
+</option>
+
+
+<option>
+Others
+</option>
+
+
+</select>
+
+
+</div>
+
+
+
+
+
+
+
+
+<!-- PASSWORD -->
+
+
+<div class="form-group">
+
+
+<label>
+Password
+</label>
+
+
+
+<div class="password-wrapper">
+
+
+<input
+id="password"
+name="password"
+type="password"
+placeholder="Create password"
+required
+>
+
+
+
+<i
+class="fa-solid fa-eye toggle-password"
+id="toggle-password">
+</i>
+
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+<!-- CONFIRM PASSWORD -->
+
+
+<div class="form-group">
+
+
+<label>
+Confirm Password
+</label>
+
+
+
+<div class="password-wrapper">
+
+
+<input
+id="confirm-password"
+name="confirm-password"
+type="password"
+placeholder="Confirm password"
+required
+>
+
+
+
+<i
+class="fa-solid fa-eye toggle-password"
+id="toggle-confirm-password">
+</i>
+
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- PROFILE IMAGE -->
+
+
+<div class="form-group profile-upload">
+
+
+<label>
+Profile Picture
+</label>
+
+
+<input
+type="file"
+name="profile_picture"
+accept="image/*"
+required
+>
+
+
+</div>
+
+
+
+
+
+
+
+<button type="submit">
+
+Create Account
+
+</button>
+
+
+
+
+
+<p class="auth-footer">
+
+Already have an account?
+
+<a href="/login">
+Login
+</a>
+
+</p>
+
+
+
+
+</form>
+
+
+</div>
+
+
+</section>
+
+
+
+</main>
+
+
+
+<script src="/static/js/register.js"></script>
+
 
 </body>
 

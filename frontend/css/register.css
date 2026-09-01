@@ -613,3 +613,136 @@ body {
     }
 
 }
+/* ============================================================
+   FARM TYPE SELECTION
+   ============================================================ */
+
+
+.farm-type-section {
+    margin-top: 20px;
+}
+
+
+.field-help {
+    margin: 5px 0 12px;
+    color: #66756c;
+    font-size: 0.82rem;
+}
+
+
+.farm-options {
+
+    display: grid;
+
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 12px;
+
+}
+
+
+
+.farm-option {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+
+    padding: 14px;
+
+
+    border: 1px solid var(--color-border, #dbe7dc);
+
+    border-radius: 12px;
+
+
+    background: #ffffff;
+
+
+    cursor: pointer;
+
+
+    font-weight: 600;
+
+
+    transition:
+        border-color .2s ease,
+        background-color .2s ease,
+        transform .2s ease;
+
+}
+
+
+
+.farm-option:hover {
+
+    border-color: var(--color-brand, #1f7a4d);
+
+    background: var(--color-brand-soft, #eaf7ea);
+
+    transform: translateY(-2px);
+
+}
+
+
+
+.farm-option input {
+
+    width: 18px !important;
+
+    min-height: 18px !important;
+
+    accent-color: var(--color-brand, #1f7a4d);
+
+}
+
+
+
+.farm-option:has(input:checked) {
+
+
+    border-color: var(--color-brand, #1f7a4d);
+
+    background: var(--color-brand-soft, #eaf7ea);
+
+
+    box-shadow:
+    0 0 0 2px rgba(31,122,77,.08);
+
+}
+
+
+
+
+
+
+
+/* ============================================================
+   MOBILE FARM OPTIONS
+   ============================================================ */
+
+
+@media(max-width:600px){
+
+
+.farm-options {
+
+    grid-template-columns:1fr;
+
+}
+
+
+
+.farm-option {
+
+    padding:12px;
+
+    font-size:14px;
+
+}
+
+
+}

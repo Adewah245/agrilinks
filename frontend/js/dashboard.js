@@ -1,703 +1,515 @@
-/* =========================================================
-   AGRO-SHIELD DASHBOARD
-   Complete dashboard JavaScript
-========================================================= */
+/* ============================================================
+   AGRO-SHIELD DASHBOARD JAVASCRIPT
+   ============================================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
-    Dashboard.init();
-});
+
+    /* ========================================================
+       ELEMENT REFERENCES
+    ======================================================== */
+
+    const todayElement = document.getElementById("today");
+    const currentTimeElement = document.getElementById("currentTime");
+    const greetingElement = document.getElementById("greeting");
+
+    const counters = document.querySelectorAll(".counter");
+    const progressBars = document.querySelectorAll(".progress-value");
 
 
-/* =========================================================
-   DASHBOARD CONTROLLER
-========================================================= */
+    /* ========================================================
+       DATE + TIME
+    ======================================================== */
 
-const Dashboard = (() => {
-
-    /* ---------------------------------------------------------
-       Configuration
-    --------------------------------------------------------- */
-
-    const config = {
-        counterDuration: 1200,
-        toastDuration: 3500,
-        timeUpdateInterval: 1000,
-        animationDelay: 60
-    };
-
-
-    /* ---------------------------------------------------------
-       State
-    --------------------------------------------------------- */
-
-    let clockInterval = null;
-
-
-    /* ---------------------------------------------------------
-       DOM Helpers
-    --------------------------------------------------------- */
-
-    const $ = (selector, parent = document) => {
-        return parent.querySelector(selector);
-    };
-
-
-    const $$ = (selector, parent = document) => {
-        return Array.from(parent.querySelectorAll(selector));
-    };
-
-
-    /* ---------------------------------------------------------
-       Reduced Motion
-    --------------------------------------------------------- */
-
-    const prefersReducedMotion = () => {
-        return window.matchMedia(
-            "(prefers-reduced-motion: reduce)"
-        ).matches;
-    };
-
-
-    /* =========================================================
-       INITIALIZATION
-    ========================================================== */
-
-    function init() {
-
-        updateDate();
-        startClock();
-        updateGreeting();
-
-        animateCounters();
-        animateProgressBars();
-        animateDashboardEntrance();
-
-        setupCardInteractions();
-        setupActionInteractions();
-        setupNotificationInteractions();
-
-        setupVisibilityHandling();
-        setupReducedMotionListener();
-
-    }
-
-
-    /* =========================================================
-       DATE
-    ========================================================== */
-
-    function updateDate() {
-
-        const todayElement = $("#today");
-
-        if (!todayElement) {
-            return;
-        }
+    function updateDateTime() {
 
         const now = new Date();
 
-        const formatter = new Intl.DateTimeFormat(
-            "en-NG",
-            {
-                weekday: "long",
-                month: "long",
-                day: "numeric",
-                year: "numeric"
+        /* -----------------------------------------------
+           Greeting
+        ------------------------------------------------ */
+
+        if (greetingElement) {
+
+            const hour = now.getHours();
+
+            let greeting = "Welcome back";
+
+            if (hour >= 5 && hour < 12) {
+                greeting = "Good morning";
+            } else if (hour >= 12 && hour < 17) {
+                greeting = "Good afternoon";
+            } else if (hour >= 17 && hour < 21) {
+                greeting = "Good evening";
+            } else {
+                greeting = "Good night";
             }
-        );
 
-        todayElement.textContent =
-            formatter.format(now).toUpperCase();
-
-    }
-
-
-    /* =========================================================
-       LIVE CLOCK
-    ========================================================== */
-
-    function startClock() {
-
-        updateClock();
-
-        if (clockInterval) {
-            clearInterval(clockInterval);
+            greetingElement.textContent = greeting;
         }
 
-        clockInterval = setInterval(
-            updateClock,
-            config.timeUpdateInterval
-        );
 
-    }
+        /* -----------------------------------------------
+           Date
+        ------------------------------------------------ */
 
+        if (todayElement) {
 
-    function updateClock() {
+            const dateText = now.toLocaleDateString("en-NG", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric"
+            });
 
-        const timeElement = $("#currentTime");
-
-        if (!timeElement) {
-            return;
+            todayElement.textContent = dateText;
         }
 
-        const now = new Date();
 
-        const formatter = new Intl.DateTimeFormat(
-            "en-NG",
-            {
+        /* -----------------------------------------------
+           Current Time
+        ------------------------------------------------ */
+
+        if (currentTimeElement) {
+
+            const timeText = now.toLocaleTimeString("en-NG", {
                 hour: "numeric",
                 minute: "2-digit",
                 second: "2-digit",
                 hour12: true
-            }
-        );
+            });
 
-        timeElement.textContent =
-            formatter.format(now);
-
+            currentTimeElement.textContent = timeText;
+        }
     }
 
 
-    /* =========================================================
-       TIME-BASED GREETING
-    ========================================================== */
+    /* Run immediately */
+    updateDateTime();
 
-    function updateGreeting() {
 
-        const greetingElement = $("#greeting");
+    /* Update every second */
+    setInterval(updateDateTime, 1000);
 
-        if (!greetingElement) {
+
+    /* ========================================================
+       COUNTER ANIMATION
+    ======================================================== */
+
+    function animateCounter(element) {
+
+        const target = Number(element.dataset.target);
+
+        if (!Number.isFinite(target)) {
             return;
         }
 
-        const hour = new Date().getHours();
+        /* Don't animate negative values */
+        const finalValue = Math.max(0, target);
 
-        let greeting = "Welcome back";
-
-        if (hour >= 5 && hour < 12) {
-            greeting = "Good morning";
-        } else if (hour >= 12 && hour < 17) {
-            greeting = "Good afternoon";
-        } else if (hour >= 17 && hour < 22) {
-            greeting = "Good evening";
-        } else {
-            greeting = "Good night";
-        }
-
-        greetingElement.textContent = greeting;
-
-    }
-
-
-    /* =========================================================
-       ANIMATED METRIC COUNTERS
-    ========================================================== */
-
-    function animateCounters() {
-
-        const counters = $$(".counter");
-
-        if (!counters.length) {
+        /* Already at target */
+        if (finalValue === 0) {
+            element.textContent = "0";
             return;
         }
 
-        counters.forEach(counter => {
-
-            const target = parseFloat(
-                counter.dataset.target
-            );
-
-            if (Number.isNaN(target)) {
-                return;
-            }
-
-            if (prefersReducedMotion()) {
-                counter.textContent =
-                    formatNumber(target);
-
-                return;
-            }
-
-            animateNumber(counter, target);
-
-        });
-
-    }
-
-
-    function animateNumber(
-        element,
-        target
-    ) {
-
-        const duration = config.counterDuration;
-
+        const duration = 1000;
         const startTime = performance.now();
 
-        function update(currentTime) {
+        function updateCounter(currentTime) {
 
-            const elapsed =
-                currentTime - startTime;
+            const elapsed = currentTime - startTime;
 
-            const progress =
-                Math.min(elapsed / duration, 1);
+            const progress = Math.min(
+                elapsed / duration,
+                1
+            );
 
             /*
-             * Ease-out curve.
-             * Starts quickly and slows down naturally.
+             * Ease-out animation.
+             * Starts fast and slows down near the final number.
              */
-            const eased =
+            const easedProgress =
                 1 - Math.pow(1 - progress, 3);
 
-            const current =
-                target * eased;
+            const currentValue = Math.floor(
+                easedProgress * finalValue
+            );
 
             element.textContent =
-                formatNumber(current);
+                currentValue.toLocaleString("en-NG");
 
             if (progress < 1) {
-                requestAnimationFrame(update);
+
+                requestAnimationFrame(updateCounter);
+
             } else {
+
                 element.textContent =
-                    formatNumber(target);
+                    finalValue.toLocaleString("en-NG");
             }
-
         }
 
-        requestAnimationFrame(update);
-
+        requestAnimationFrame(updateCounter);
     }
 
 
-    function formatNumber(value) {
+    /* ========================================================
+       START COUNTERS WHEN VISIBLE
+    ======================================================== */
 
-        return new Intl.NumberFormat(
-            "en-NG",
-            {
-                maximumFractionDigits: 0
-            }
-        ).format(value);
+    if (counters.length > 0) {
 
+        /*
+         * IntersectionObserver prevents animations from
+         * running unnecessarily before the cards are visible.
+         */
+        if ("IntersectionObserver" in window) {
+
+            const counterObserver =
+                new IntersectionObserver(
+                    (entries, observer) => {
+
+                        entries.forEach(entry => {
+
+                            if (!entry.isIntersecting) {
+                                return;
+                            }
+
+                            animateCounter(entry.target);
+
+                            observer.unobserve(entry.target);
+                        });
+
+                    },
+                    {
+                        threshold: 0.25
+                    }
+                );
+
+
+            counters.forEach(counter => {
+                counterObserver.observe(counter);
+            });
+
+        } else {
+
+            /* Fallback for older browsers */
+            counters.forEach(counter => {
+                animateCounter(counter);
+            });
+        }
     }
 
 
-    /* =========================================================
-       PROGRESS BAR ANIMATION
-    ========================================================== */
+    /* ========================================================
+       HEALTH PROGRESS BARS
+    ======================================================== */
 
-    function animateProgressBars() {
-
-        const progressBars =
-            $$(".progress-value");
-
-        if (!progressBars.length) {
-            return;
-        }
+    function initializeProgressBars() {
 
         progressBars.forEach(bar => {
 
-            const width =
-                bar.dataset.width;
+            const width = bar.dataset.width;
 
             if (!width) {
                 return;
             }
 
-            if (prefersReducedMotion()) {
-                bar.style.width = width;
-                return;
-            }
+            /*
+             * Start from zero so the bar can animate.
+             */
+            bar.style.width = "0";
 
-            bar.style.width = "0%";
 
+            /*
+             * Small delay allows the browser to render
+             * the initial zero width before animating.
+             */
             requestAnimationFrame(() => {
 
                 requestAnimationFrame(() => {
 
-                    bar.style.width =
-                        width;
+                    bar.style.width = width;
 
                 });
 
             });
 
         });
-
     }
 
 
-    /* =========================================================
-       DASHBOARD ENTRANCE ANIMATION
-    ========================================================== */
+    initializeProgressBars();
 
-    function animateDashboardEntrance() {
 
-        if (prefersReducedMotion()) {
+    /* ========================================================
+       SMOOTH INTERNAL LINKS
+    ======================================================== */
+
+    const internalLinks =
+        document.querySelectorAll(
+            'a[href^="#"]'
+        );
+
+    internalLinks.forEach(link => {
+
+        link.addEventListener("click", event => {
+
+            const targetID =
+                link.getAttribute("href");
+
+            if (
+                !targetID ||
+                targetID === "#"
+            ) {
+                return;
+            }
+
+            const target =
+                document.querySelector(targetID);
+
+            if (!target) {
+                return;
+            }
+
+            event.preventDefault();
+
+            target.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+        });
+
+    });
+
+
+    /* ========================================================
+       DASHBOARD CARD INTERACTION
+    ======================================================== */
+
+    const interactiveCards =
+        document.querySelectorAll(
+            ".metric-card, .action-card"
+        );
+
+    interactiveCards.forEach(card => {
+
+        card.addEventListener("keydown", event => {
+
+            /*
+             * Allows keyboard users to activate
+             * card links naturally.
+             */
+            if (
+                event.key === "Enter" ||
+                event.key === " "
+            ) {
+
+                /*
+                 * Don't interfere with actual buttons
+                 * or links inside the card.
+                 */
+                if (
+                    event.target.tagName === "A" ||
+                    event.target.tagName === "BUTTON"
+                ) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const link =
+                    card.querySelector("a");
+
+                if (link) {
+                    link.click();
+                }
+            }
+
+        });
+
+    });
+
+
+    /* ========================================================
+       WEATHER CARD
+    ======================================================== */
+
+    const weatherCard =
+        document.querySelector(".weather-card");
+
+    if (weatherCard) {
+
+        /*
+         * Add a small visual state when weather
+         * information is unavailable.
+         */
+        const weatherMain =
+            weatherCard.querySelector(".weather-main");
+
+        const unavailableText =
+            weatherCard.textContent
+                .toLowerCase()
+                .includes("weather unavailable");
+
+        if (
+            unavailableText &&
+            weatherMain
+        ) {
+            weatherCard.classList.add(
+                "weather-unavailable"
+            );
+        }
+    }
+
+
+    /* ========================================================
+       RESPONSIVE DASHBOARD
+    ======================================================== */
+
+    function handleResponsiveDashboard() {
+
+        const width = window.innerWidth;
+
+        /*
+         * Store current device mode on the document.
+         * CSS can use this if needed later.
+         */
+        if (width <= 600) {
+
+            document.documentElement.dataset.device =
+                "mobile";
+
+        } else if (width <= 900) {
+
+            document.documentElement.dataset.device =
+                "tablet";
+
+        } else {
+
+            document.documentElement.dataset.device =
+                "desktop";
+        }
+    }
+
+
+    handleResponsiveDashboard();
+
+    window.addEventListener(
+        "resize",
+        handleResponsiveDashboard
+    );
+
+
+    /* ========================================================
+       PAGE VISIBILITY
+    ======================================================== */
+
+    /*
+     * When the user leaves the dashboard tab, we don't
+     * need to keep doing heavy work.
+     *
+     * The clock will still work because updateDateTime()
+     * is lightweight, but this gives us a clean hook for
+     * future dashboard live updates.
+     */
+    document.addEventListener(
+        "visibilitychange",
+        () => {
+
+            if (!document.hidden) {
+                updateDateTime();
+            }
+
+        }
+    );
+
+
+    /* ========================================================
+       ACCESSIBILITY
+    ======================================================== */
+
+    /*
+     * Make clickable cards keyboard-friendly where
+     * appropriate.
+     */
+    interactiveCards.forEach(card => {
+
+        if (
+            card.tagName !== "A" &&
+            card.getAttribute("role") !== "button"
+        ) {
             return;
         }
 
-        const sections = $$(
-            ".dashboard > section, .dashboard > .dashboard-grid"
-        );
-
-        sections.forEach((section, index) => {
-
-            section.style.opacity = "0";
-            section.style.transform =
-                "translateY(10px)";
-
-            setTimeout(() => {
-
-                section.style.transition =
-                    "opacity 450ms ease, transform 450ms ease";
-
-                section.style.opacity = "1";
-                section.style.transform =
-                    "translateY(0)";
-
-            }, index * config.animationDelay);
-
-        });
-
-    }
-
-
-    /* =========================================================
-       CARD INTERACTIONS
-    ========================================================== */
-
-    function setupCardInteractions() {
-
-        const cards = $$(
-            ".metric-card, .action-card, .panel"
-        );
-
-        cards.forEach(card => {
-
-            card.addEventListener(
-                "mouseenter",
-                () => {
-
-                    if (prefersReducedMotion()) {
-                        return;
-                    }
-
-                    card.style.setProperty(
-                        "--interaction-scale",
-                        "1"
-                    );
-
-                }
-            );
-
-        });
-
-    }
-
-
-    /* =========================================================
-       ACTION INTERACTIONS
-    ========================================================== */
-
-    function setupActionInteractions() {
-
-        const actionCards =
-            $$(".action-card");
-
-        actionCards.forEach(card => {
-
-            card.addEventListener(
-                "click",
-                () => {
-
-                    /*
-                     * Don't interrupt normal navigation.
-                     * This simply gives immediate visual feedback.
-                     */
-                    card.classList.add(
-                        "action-clicked"
-                    );
-
-                    setTimeout(() => {
-
-                        card.classList.remove(
-                            "action-clicked"
-                        );
-
-                    }, 250);
-
-                }
-            );
-
-        });
-
-
-        const primaryActions =
-            $$(".primary-action");
-
-        primaryActions.forEach(button => {
-
-            button.addEventListener(
-                "mousedown",
-                () => {
-
-                    button.classList.add(
-                        "button-pressed"
-                    );
-
-                }
-            );
-
-            button.addEventListener(
-                "mouseup",
-                () => {
-
-                    button.classList.remove(
-                        "button-pressed"
-                    );
-
-                }
-            );
-
-            button.addEventListener(
-                "mouseleave",
-                () => {
-
-                    button.classList.remove(
-                        "button-pressed"
-                    );
-
-                }
-            );
-
-        });
-
-    }
-
-
-    /* =========================================================
-       NOTIFICATIONS
-    ========================================================== */
-
-    function setupNotificationInteractions() {
-
-        const notifications =
-            $$(".notification-row");
-
-        notifications.forEach(notification => {
-
-            notification.addEventListener(
-                "click",
-                () => {
-
-                    notification.classList.add(
-                        "notification-opened"
-                    );
-
-                }
-            );
-
-        });
-
-    }
-
-
-    /* =========================================================
-       TOAST SYSTEM
-    ========================================================== */
-
-    function showToast(
-        message,
-        type = "success"
-    ) {
-
-        let container =
-            $(".toast-container");
-
-        if (!container) {
-
-            container =
-                document.createElement("div");
-
-            container.className =
-                "toast-container";
-
-            document.body.appendChild(
-                container
-            );
-
+        if (!card.hasAttribute("tabindex")) {
+            card.setAttribute("tabindex", "0");
         }
 
-
-        const toast =
-            document.createElement("div");
-
-        toast.className =
-            `toast toast-${type}`;
-
-        toast.setAttribute(
-            "role",
-            "status"
-        );
+    });
 
 
-        const icon =
-            document.createElement("span");
+    /* ========================================================
+       FARMING TYPE SUPPORT
+    ======================================================== */
 
-        icon.className =
-            "toast-icon";
+    /*
+     * Agro-Shield is NOT crop-only.
+     *
+     * The backend will eventually provide the farmer's
+     * selected farming types, for example:
+     *
+     * - Crop
+     * - Livestock
+     * - Poultry
+     * - Fishery
+     * - Pig Farming
+     * - Goat Farming
+     * - Cattle Farming
+     * - Beekeeping
+     * - Mixed Farming
+     *
+     * We intentionally do not hard-code those values here.
+     *
+     * The dashboard HTML can later receive something like:
+     *
+     * data-farming-types="crop,livestock,poultry"
+     *
+     * and render the appropriate dashboard sections.
+     */
 
-        icon.textContent =
-            getToastIcon(type);
+    const dashboard =
+        document.querySelector(".dashboard");
 
+    if (dashboard) {
 
-        const text =
-            document.createElement("span");
+        const farmingTypes =
+            dashboard.dataset.farmingTypes;
 
-        text.className =
-            "toast-message";
+        if (farmingTypes) {
 
-        text.textContent =
-            message;
+            const types =
+                farmingTypes
+                    .split(",")
+                    .map(type => type.trim().toLowerCase())
+                    .filter(Boolean);
 
-
-        toast.appendChild(icon);
-        toast.appendChild(text);
-
-        container.appendChild(toast);
-
-
-        requestAnimationFrame(() => {
-
-            toast.classList.add(
-                "toast-visible"
-            );
-
-        });
-
-
-        setTimeout(() => {
-
-            toast.classList.remove(
-                "toast-visible"
-            );
-
-            setTimeout(() => {
-
-                toast.remove();
-
-            }, 250);
-
-        }, config.toastDuration);
-
+            /*
+             * Store the selected farming types on the
+             * document for future dashboard components.
+             */
+            document.documentElement.dataset.farmingTypes =
+                types.join(",");
+        }
     }
 
 
-    function getToastIcon(type) {
+    /* ========================================================
+       INITIALIZATION COMPLETE
+    ======================================================== */
 
-        const icons = {
-            success: "✓",
-            warning: "!",
-            error: "×",
-            info: "i"
-        };
+    document.documentElement.classList.add(
+        "dashboard-ready"
+    );
 
-        return icons[type] || icons.info;
-
-    }
-
-
-    /* =========================================================
-       VISIBILITY HANDLING
-       Stops unnecessary clock work when tab is hidden.
-    ========================================================== */
-
-    function setupVisibilityHandling() {
-
-        document.addEventListener(
-            "visibilitychange",
-            () => {
-
-                if (document.hidden) {
-
-                    if (clockInterval) {
-
-                        clearInterval(
-                            clockInterval
-                        );
-
-                        clockInterval = null;
-
-                    }
-
-                } else {
-
-                    updateClock();
-                    updateGreeting();
-
-                    startClock();
-
-                }
-
-            }
-        );
-
-    }
-
-
-    /* =========================================================
-       REDUCED MOTION CHANGE LISTENER
-    ========================================================== */
-
-    function setupReducedMotionListener() {
-
-        const mediaQuery =
-            window.matchMedia(
-                "(prefers-reduced-motion: reduce)"
-            );
-
-        mediaQuery.addEventListener(
-            "change",
-            () => {
-
-                if (mediaQuery.matches) {
-                    document.documentElement
-                        .classList.add(
-                            "reduced-motion"
-                        );
-                } else {
-                    document.documentElement
-                        .classList.remove(
-                            "reduced-motion"
-                        );
-                }
-
-            }
-        );
-
-    }
-
-
-    /* =========================================================
-       PUBLIC API
-    ========================================================== */
-
-    return {
-
-        init,
-
-        showToast,
-
-        updateDate,
-
-        updateClock,
-
-        updateGreeting,
-
-        animateCounters,
-
-        animateProgressBars
-
-    };
-
-})();
+});
