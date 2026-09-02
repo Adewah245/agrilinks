@@ -25,7 +25,23 @@ func RegisterRoutes(container *app.Container) {
 			http.FileServer(http.Dir("../frontend")),
 		),
 	)
+	// ========================================================
+	// LOCATION API
+	// ========================================================
 
+	locationHandler := handlers.NewLocationHandler(
+		container.LocationRepo,
+	)
+
+	http.HandleFunc(
+		"/api/states",
+		locationHandler.GetStatesHandler,
+	)
+
+	http.HandleFunc(
+		"/api/states/",
+		locationHandler.GetLGAsHandler,
+	)
 	// ========================================================
 	// HOME
 	// ========================================================

@@ -102,7 +102,7 @@ func main() {
 	// ------------------------------------------------------------
 
 	farmerRepo := repository.NewFarmerRepository(db)
-
+	locationRepo := repository.NewLocationRepository(db)
 	// ------------------------------------------------------------
 	// CROP REPOSITORY
 	//
@@ -291,6 +291,7 @@ func main() {
 
 	container := app.NewContainer(
 		farmerRepo,
+		locationRepo,
 		cropRepo,
 		orderRepo,
 		cartRepo,
@@ -348,13 +349,13 @@ func main() {
 	// ============================================================
 
 	port := os.Getenv("PORT")
-    if port == "" {
-       port = "8080"
-    }
+	if port == "" {
+		port = "8080"
+	}
 
-    log.Println("Server starting on port:", port)
+	log.Println("Server starting on port:", port)
 
-    if err := http.ListenAndServe(":"+port, nil); err != nil {
-       log.Println(err)
-    }
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Println(err)
+	}
 }

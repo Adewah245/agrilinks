@@ -105,8 +105,7 @@ if accountType != "organization" {
 	// Verification preparation
 	NIN: nin,
 
-	VerificationStatus: "pending",
-
+	VerificationStatus: verificationStatus,
 
 	// Partner support
 	OrganisationName: organisationName,
@@ -116,7 +115,8 @@ if accountType != "organization" {
 	PhotoURL: photoURL,
 }
 
-	return s.repo.Create(farmer)
+	_, err = s.repo.Create(farmer)
+	return err
 }
 
 // Login verifies a phone number + password against the stored hash and
