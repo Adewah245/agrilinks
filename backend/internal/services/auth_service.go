@@ -22,8 +22,19 @@ func NewAuthService(repo *repository.FarmerRepository) *AuthService {
 
 // Register creates a new farmer or buyer account. role should be "farmer" or
 // "buyer" — anything else defaults to "farmer".
-func (s *AuthService) Register(firstName, lastName, phone, email, password, location, role, photoURL string) error {
-
+func (s *AuthService) Register(
+	firstName,
+	lastName,
+	phone,
+	email,
+	password,
+	location,
+	role,
+	photoURL,
+	accountType,
+	nin,
+	organisationName string,
+) error {
 	if firstName == "" || lastName == "" {
 		return errors.New("name is required")
 	}
@@ -39,9 +50,20 @@ func (s *AuthService) Register(firstName, lastName, phone, email, password, loca
 	if len(password) < 8 {
 		return errors.New("password must be at least 8 characters")
 	}
-	if role != "buyer" {
-		role = "farmer"
-	}
+	// Default account settings
+if accountType == "" {
+	accountType = "individual"
+}
+
+verificationStatus := "pending"
+
+if role == "partner" {
+	verificationStatus = "pending"
+}
+
+if accountType != "organization" {
+	organisationName = ""
+}
 
 	existing, err := s.repo.GetByPhone(phone)
 	if err != nil {
@@ -57,14 +79,42 @@ func (s *AuthService) Register(firstName, lastName, phone, email, password, loca
 	}
 
 	farmer := &models.Farmer{
-		FullName:     firstName + " " + lastName,
-		Phone:        phone,
-		Email:        email,
-		PasswordHash: string(hash),
-		Location:     location,
-		Role:         role,
-		PhotoURL:     photoURL,
-	}
+
+	FullName: firstName + " " + lastName,
+
+	Phone: phone,
+
+	Email: email,
+
+	PasswordHash: string(hash),
+
+	Location: location,
+
+
+	// Location information
+	LGA: location,
+	State: "Benue",
+	Country: "Nigeria",
+
+
+	// Account information
+	Role: role,
+	AccountType: accountType,
+
+
+	// Verification preparation
+	NIN: nin,
+
+	VerificationStatus: "pending",
+
+
+	// Partner support
+	OrganisationName: organisationName,
+
+
+	// Profile
+	PhotoURL: photoURL,
+}
 
 	return s.repo.Create(farmer)
 }

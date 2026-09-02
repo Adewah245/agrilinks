@@ -8,13 +8,24 @@ import (
 )
 
 type UserReg struct {
-	First_Name       string
-	Last_Name        string
-	Phone            string
-	Email            string
+	First_Name string
+	Last_Name  string
+
+	Phone string
+	Email string
+
 	Password         string
 	Confirm_Password string
-	Role             string
+
+	Role string
+
+	AccountType string
+
+	NIN string
+
+	OrganisationName string
+
+	FarmingTypes []string
 }
 
 func (h *Register) RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -36,6 +47,7 @@ func (h *Register) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Profile picture is required", http.StatusBadRequest)
 			return
 		}
+
 		user := UserReg{
 			First_Name:       r.FormValue("first-name"),
 			Last_Name:        r.FormValue("last-name"),
@@ -43,8 +55,18 @@ func (h *Register) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			Email:            r.FormValue("email"),
 			Password:         r.FormValue("password"),
 			Confirm_Password: r.FormValue("confirm-password"),
-			Role:             r.FormValue("role"),
+
+			Role: r.FormValue("role"),
+
+			AccountType: r.FormValue("account_type"),
+
+			NIN: r.FormValue("nin"),
+
+			OrganisationName: r.FormValue("organisation_name"),
+
+			FarmingTypes: r.Form["farm_type"],
 		}
+
 		if user.First_Name == "" || user.Last_Name == "" || user.Phone == "" || user.Password == "" || user.Confirm_Password == "" {
 			log.Println("user details must not be empty")
 			http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -68,6 +90,12 @@ func (h *Register) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			location,
 			user.Role,
 			photoURL,
+
+			user.NIN,
+
+			user.AccountType,
+
+			user.OrganisationName,
 		)
 
 		if err != nil {

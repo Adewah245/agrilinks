@@ -16,26 +16,64 @@ func NewFarmerRepository(db *sql.DB) *FarmerRepository {
 	}
 }
 
-func (r *FarmerRepository) Create(farmer *models.Farmer) error {
+func (r *FarmerRepository) Create(farmer *models.Farmer) (int, error) {
+
 	query := `
 	INSERT INTO farmers
-	(full_name, phone, email, password_hash, location, lga, state, country, role, photo_url)
-	VALUES ($1, $2, $3, $4, $5, $5, 'Benue', 'Nigeria', $6, $7)
+	(
+		full_name,
+		phone,
+		email,
+		password_hash,
+		location,
+		lga,
+		state,
+		country,
+		role,
+		account_type,
+		nin,
+		verification_status,
+		organisation_name,
+		photo_url
+	)
+	VALUES
+	(
+		$1,$2,$3,$4,
+		$5,$6,$7,$8,
+		$9,$10,$11,$12,
+		$13,$14
+	)
 	RETURNING id
 	`
-	_, err := r.db.Exec(
+
+	var id int
+
+	err := r.db.QueryRow(
 		query,
+
 		farmer.FullName,
 		farmer.Phone,
 		farmer.Email,
 		farmer.PasswordHash,
-		farmer.Location,
-		farmer.Role,
-		farmer.PhotoURL,
-	)
-	return err
-}
 
+		farmer.Location,
+		farmer.LGA,
+		farmer.State,
+		farmer.Country,
+
+		farmer.Role,
+		farmer.AccountType,
+
+		farmer.NIN,
+		farmer.VerificationStatus,
+
+		farmer.OrganisationName,
+
+		farmer.PhotoURL,
+	).Scan(&id)
+
+	return id, err
+}
 func (r *FarmerRepository) GetByPhone(phone string) (*models.Farmer, error) {
 	query := `
 	SELECT
