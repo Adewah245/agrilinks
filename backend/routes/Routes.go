@@ -11,7 +11,7 @@ import (
 
 func RegisterRoutes(container *app.Container) {
 	// USSD gateways post menu selections to this provider-neutral endpoint.
-	ussdHandler := ussd.NewHandler(container.FarmerRepo, container.Crop, services.NewWeatherService(), container.Order, container.Notification)
+	ussdHandler := ussd.NewHandler(container.UserRepo, container.Crop, services.NewWeatherService(), container.Order, container.Notification)
 	http.Handle("/ussd", ussdHandler)
 
 	// ========================================================
@@ -127,7 +127,7 @@ func RegisterRoutes(container *app.Container) {
 			"/dashboard",
 			middleware.OnlyGet(
 				middleware.RequireAuth(
-					container.FarmerRepo,
+					container.UserRepo,
 					dashboardHandler.DashBoard,
 				),
 			),
@@ -138,7 +138,7 @@ func RegisterRoutes(container *app.Container) {
 		"/market-insights",
 		middleware.OnlyPath(
 			"/market-insights",
-			middleware.OnlyGet(middleware.RequireAuth(container.FarmerRepo, dashboardHandler.MarketInsights)),
+			middleware.OnlyGet(middleware.RequireAuth(container.UserRepo, dashboardHandler.MarketInsights)),
 		),
 	)
 
@@ -149,7 +149,7 @@ func RegisterRoutes(container *app.Container) {
 	profileHandler := handlers.NewProfileHandler(
 		container.Crop,
 		container.Order,
-		container.FarmerRepo,
+		container.UserRepo,
 	)
 
 	http.HandleFunc(
@@ -158,7 +158,7 @@ func RegisterRoutes(container *app.Container) {
 			"/profile",
 			middleware.OnlyGet(
 				middleware.RequireAuth(
-					container.FarmerRepo,
+					container.UserRepo,
 					profileHandler.ProfileHandler,
 				),
 			),
@@ -174,7 +174,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/profile/edit",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				profileEditHandler.Handler,
 			),
 		),
@@ -188,14 +188,14 @@ func RegisterRoutes(container *app.Container) {
 		container.Crop,
 	)
 	salesHandler := handlers.NewSalesHandler(container.Order)
-	http.HandleFunc("/sales", middleware.OnlyPath("/sales", middleware.RequireAuth(container.FarmerRepo, salesHandler.Handler)))
+	http.HandleFunc("/sales", middleware.OnlyPath("/sales", middleware.RequireAuth(container.UserRepo, salesHandler.Handler)))
 
 	http.HandleFunc(
 		"/storage",
 		middleware.OnlyPath(
 			"/storage",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				storageHandler.StorageHandler,
 			),
 		),
@@ -216,7 +216,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/marketplace",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				marketplaceHandler.MarketplaceHandler,
 			),
 		),
@@ -236,7 +236,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/product",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				productHandler.ProductDetailsHandler,
 			),
 		),
@@ -256,7 +256,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/cart",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				cartHandler.Handler,
 			),
 		),
@@ -279,7 +279,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/notifications",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				notificationHandler.NotificationsHandler,
 			),
 		),
@@ -294,7 +294,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/notifications/read",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				notificationHandler.MarkAsReadHandler,
 			),
 		),
@@ -309,7 +309,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/notifications/read-all",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				notificationHandler.MarkAllAsReadHandler,
 			),
 		),
@@ -332,7 +332,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/ai-assistant",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				aiHandler.Handler,
 			),
 		),
@@ -343,7 +343,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/ai-diagnosis-history",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				diagnosisHistoryHandler.Handler,
 			),
 		),
@@ -368,7 +368,7 @@ func RegisterRoutes(container *app.Container) {
 			"/negotiations",
 			middleware.OnlyGet(
 				middleware.RequireAuth(
-					container.FarmerRepo,
+					container.UserRepo,
 					negotiationHandler.ListHandler,
 				),
 			),
@@ -386,7 +386,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/negotiation",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				negotiationHandler.ThreadHandler,
 			),
 		),
@@ -401,7 +401,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/negotiation/start",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				negotiationHandler.StartHandler,
 			),
 		),
@@ -439,7 +439,7 @@ func RegisterRoutes(container *app.Container) {
 
 	chatHandler := handlers.NewChatHandler(
 		container.Chat,
-		container.FarmerRepo,
+		container.UserRepo,
 	)
 
 	// --------------------------------------------------------
@@ -456,7 +456,7 @@ func RegisterRoutes(container *app.Container) {
 			"/chat",
 			middleware.OnlyGet(
 				middleware.RequireAuth(
-					container.FarmerRepo,
+					container.UserRepo,
 					chatHandler.ListHandler,
 				),
 			),
@@ -481,7 +481,7 @@ func RegisterRoutes(container *app.Container) {
 			"/chat/view",
 			middleware.OnlyGet(
 				middleware.RequireAuth(
-					container.FarmerRepo,
+					container.UserRepo,
 					chatHandler.ViewHandler,
 				),
 			),
@@ -494,7 +494,7 @@ func RegisterRoutes(container *app.Container) {
 			"/chat/presence",
 			middleware.OnlyGet(
 				middleware.RequireAuth(
-					container.FarmerRepo,
+					container.UserRepo,
 					chatHandler.PresenceHandler,
 				),
 			),
@@ -512,7 +512,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/chat/send",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				chatHandler.SendMessageHandler,
 			),
 		),
@@ -534,7 +534,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/chat/group/create",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				chatHandler.CreateGroupHandler,
 			),
 		),
@@ -555,7 +555,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/chat/private",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				chatHandler.CreatePrivateChatHandler,
 			),
 		),
@@ -572,7 +572,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/chat/member/add",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				chatHandler.AddMemberHandler,
 			),
 		),
@@ -589,7 +589,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/chat/member/remove",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				chatHandler.RemoveMemberHandler,
 			),
 		),
@@ -606,7 +606,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/chat/leave",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				chatHandler.LeaveGroupHandler,
 			),
 		),
@@ -623,7 +623,7 @@ func RegisterRoutes(container *app.Container) {
 		middleware.OnlyPath(
 			"/chat/message/delete",
 			middleware.RequireAuth(
-				container.FarmerRepo,
+				container.UserRepo,
 				chatHandler.DeleteMessageHandler,
 			),
 		),

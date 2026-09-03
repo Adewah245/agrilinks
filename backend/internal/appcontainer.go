@@ -35,7 +35,7 @@ type Container struct {
 	MarketEvents *repository.MarketEventRepository
 
 	// Used by authentication middleware.
-	FarmerRepo   *repository.FarmerRepository
+	UserRepo   *repository.UserRepository
 	LocationRepo *repository.LocationRepository
 }
 
@@ -44,7 +44,7 @@ type Container struct {
 // ============================================================
 
 func NewContainer(
-	farmerRepo *repository.FarmerRepository,
+	UserRepo *repository.UserRepository,
 	locationRepo *repository.LocationRepository,
 	cropRepo *repository.CropRepository,
 	orderRepo *repository.OrderRepository,
@@ -138,7 +138,7 @@ func NewContainer(
 		// ----------------------------------------------------
 
 		Auth: services.NewAuthService(
-			farmerRepo,
+			UserRepo,
 		),
 
 		// ----------------------------------------------------
@@ -196,7 +196,7 @@ func NewContainer(
 		// FARMER REPOSITORY
 		// ----------------------------------------------------
 
-		FarmerRepo:   farmerRepo,
+		UserRepo:   UserRepo,
 		LocationRepo: locationRepo,
 	}
 }

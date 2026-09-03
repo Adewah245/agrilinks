@@ -125,15 +125,15 @@ func SessionIDFromRequest(r *http.Request) (string, bool) {
 }
 
 // FarmerFromContext retrieves the logged-in farmer attached by RequireAuth.
-func FarmerFromContext(r *http.Request) (*models.Farmer, bool) {
-	farmer, ok := r.Context().Value(farmerContextKey).(*models.Farmer)
+func FarmerFromContext(r *http.Request) (*models.User, bool) {
+	farmer, ok := r.Context().Value(farmerContextKey).(*models.User)
 	return farmer, ok
 }
 
 // RequireAuth protects a handler. It checks for a valid session cookie,
 // loads the logged-in farmer, and attaches it to the request context.
 // If there's no valid session, it redirects to /login.
-func RequireAuth(repo *repository.FarmerRepository, next http.HandlerFunc) http.HandlerFunc {
+func RequireAuth(repo *repository.UserRepository, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		sessionID, ok := SessionIDFromRequest(r)
 		if !ok {

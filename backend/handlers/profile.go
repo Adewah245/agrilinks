@@ -15,17 +15,17 @@ import (
 type Profile struct {
 	crop    *services.CropService
 	order   *services.OrderService
-	farmers *repository.FarmerRepository
+	farmers *repository.UserRepository
 }
 
-func NewProfileHandler(crop *services.CropService, order *services.OrderService, farmers *repository.FarmerRepository) *Profile {
+func NewProfileHandler(crop *services.CropService, order *services.OrderService, farmers *repository.UserRepository) *Profile {
 	return &Profile{crop: crop, order: order, farmers: farmers}
 }
 
 // ProfilePageData embeds the farmer/buyer so the template can use .FullName,
 // .Phone, .Location, .Role, .CreatedAt directly, plus role-specific data.
 type ProfilePageData struct {
-	*models.Farmer
+	*models.User
 	IsOwner   bool
 	Crops     []models.Crop
 	Purchases []models.Order
@@ -54,7 +54,7 @@ func (h *Profile) ProfileHandler(w http.ResponseWriter, r *http.Request) {
 		farmer = profile
 	}
 
-	data := ProfilePageData{Farmer: farmer, IsOwner: r.URL.Query().Get("id") == ""}
+	data := ProfilePageData{User: farmer, IsOwner: r.URL.Query().Get("id") == ""}
 
 	if !data.IsOwner {
 		// Public profile: contact details only.

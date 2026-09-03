@@ -11,17 +11,17 @@ import (
 )
 
 type AuthService struct {
-	repo *repository.FarmerRepository
+	repo *repository.UserRepository
 }
 
-func NewAuthService(repo *repository.FarmerRepository) *AuthService {
+func NewAuthService(repo *repository.UserRepository) *AuthService {
 	return &AuthService{
 		repo: repo,
 	}
 }
 
-// Register creates a new farmer or buyer account. role should be "farmer" or
-// "buyer" — anything else defaults to "farmer".
+// Register creates a new user account.
+// role should normally be "farmer" or "buyer".
 func (s *AuthService) Register(
 	firstName,
 	lastName,
@@ -29,140 +29,199 @@ func (s *AuthService) Register(
 	email,
 	password,
 	location,
+	lga,
+	state,
+	country,
 	role,
 	photoURL,
 	accountType,
 	nin,
 	organisationName string,
+	farmingTypes []string,
 ) error {
+
 	if firstName == "" || lastName == "" {
 		return errors.New("name is required")
 	}
+
 	if phone == "" {
 		return errors.New("phone is required")
 	}
+
 	if password == "" {
 		return errors.New("password is required")
 	}
+
 	if photoURL == "" {
 		return errors.New("profile picture is required")
 	}
+
 	if len(password) < 8 {
 		return errors.New("password must be at least 8 characters")
 	}
-	// Default account settings
-if accountType == "" {
-	accountType = "individual"
-}
 
-verificationStatus := "pending"
+	if location == "" {
+		return errors.New("community is required")
+	}
 
-if role == "partner" {
-	verificationStatus = "pending"
-}
+	if lga == "" {
+		return errors.New("LGA is required")
+	}
 
-if accountType != "organization" {
-	organisationName = ""
-}
+	if state == "" {
+		return errors.New("state is required")
+	}
+
+	if country == "" {
+		return errors.New("country is required")
+	}
+
+	// Default account settings.
+	if accountType == "" {
+		accountType = "individual"
+	}
+
+	verificationStatus := "pending"
+
+	if role == "partner" {
+		verificationStatus = "pending"
+	}
+
+	if accountType != "organization" {
+		organisationName = ""
+	}
 
 	existing, err := s.repo.GetByPhone(phone)
 	if err != nil {
 		return err
 	}
+
 	if existing != nil {
 		return errors.New("phone number already registered")
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword(
+		[]byte(password),
+		bcrypt.DefaultCost,
+	)
 	if err != nil {
 		return err
 	}
 
-	farmer := &models.Farmer{
+	user := &models.User{
+		FullName: firstName + " " + lastName,
 
-	FullName: firstName + " " + lastName,
+		Phone: phone,
+		Email: email,
 
-	Phone: phone,
+		PasswordHash: string(hash),
 
-	Email: email,
+		// Location information.
+		Location: location,
+		LGA:      lga,
+		State:    state,
+		Country:  country,
 
-	PasswordHash: string(hash),
+		// Account information.
+		Role:        role,
+		AccountType: accountType,
 
-	Location: location,
+		// Verification.
+		NIN:                nin,
+		VerificationStatus: verificationStatus,
 
+		// Organisation / Partner.
+		OrganisationName: organisationName,
 
-	// Location information
-	LGA: location,
-	State: "Benue",
-	Country: "Nigeria",
+		// Profile.
+		PhotoURL: photoURL,
 
+		// Farming types.
+		FarmingTypes: farmingTypes,
+	}
 
-	// Account information
-	Role: role,
-	AccountType: accountType,
+	userID, err := s.repo.Create(user)
+	if err != nil {
+		return err
+	}
 
+	if len(user.FarmingTypes) > 0 {
+		if err := s.repo.SaveFarmingTypes(
+			userID,
+			user.FarmingTypes,
+		); err != nil {
+			return err
+		}
+	}
 
-	// Verification preparation
-	NIN: nin,
-
-	VerificationStatus: verificationStatus,
-
-	// Partner support
-	OrganisationName: organisationName,
-
-
-	// Profile
-	PhotoURL: photoURL,
+	return nil
 }
 
-	_, err = s.repo.Create(farmer)
-	return err
-}
-
-// Login verifies a phone number + password against the stored hash and
-// returns the matching farmer/buyer on success.
-func (s *AuthService) Login(phone, password string) (*models.Farmer, error) {
+// Login verifies a phone number + password against the stored hash
+// and returns the matching user on success.
+func (s *AuthService) Login(phone, password string) (*models.User, error) {
 
 	if phone == "" || password == "" {
 		return nil, errors.New("phone and password are required")
 	}
 
-	farmer, err := s.repo.GetByPhone(phone)
+	user, err := s.repo.GetByPhone(phone)
 	if err != nil {
 		return nil, err
 	}
-	if farmer == nil {
+
+	if user == nil {
 		return nil, errors.New("invalid phone number or password")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(farmer.PasswordHash), []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword(
+		[]byte(user.PasswordHash),
+		[]byte(password),
+	); err != nil {
 		return nil, errors.New("invalid phone number or password")
 	}
 
-	return farmer, nil
+	return user, nil
 }
 
-// GetFarmerByID loads a user's full details, e.g. for the profile page.
-func (s *AuthService) GetFarmerByID(id int) (*models.Farmer, error) {
+// GetUserByID loads a user's full details, e.g. for the profile page.
+func (s *AuthService) GetUserByID(id int) (*models.User, error) {
 	return s.repo.GetByID(id)
 }
 
 // UpdateProfile edits a user's name, phone and location.
-func (s *AuthService) UpdateProfile(id int, fullName, phone, email, location string) error {
+func (s *AuthService) UpdateProfile(
+	id int,
+	fullName,
+	phone,
+	email,
+	location string,
+) error {
+
 	fullName = strings.TrimSpace(fullName)
 	phone = strings.TrimSpace(phone)
 	email = strings.TrimSpace(email)
 	location = strings.TrimSpace(location)
+
 	if fullName == "" {
 		return errors.New("full name is required")
 	}
+
 	if phone == "" {
 		return errors.New("phone is required")
 	}
+
 	if location == "" {
 		return errors.New("location is required")
 	}
-	return s.repo.UpdateProfile(id, fullName, phone, email, location)
+
+	return s.repo.UpdateProfile(
+		id,
+		fullName,
+		phone,
+		email,
+		location,
+	)
 }
 
 // UpdatePhoto sets the user's passport photograph.
@@ -175,7 +234,11 @@ func (s *AuthService) UpdatePhoto(id int, photoURL string) error {
 }
 
 // ResetPassword changes a user's password.
-func (s *AuthService) ResetPassword(phone, newPassword string) error {
+func (s *AuthService) ResetPassword(
+	phone,
+	newPassword string,
+) error {
+
 	if phone == "" {
 		return errors.New("phone number is required")
 	}
@@ -188,19 +251,25 @@ func (s *AuthService) ResetPassword(phone, newPassword string) error {
 		return errors.New("password must be at least 8 characters")
 	}
 
-	farmer, err := s.repo.GetByPhone(phone)
+	user, err := s.repo.GetByPhone(phone)
 	if err != nil {
 		return err
 	}
 
-	if farmer == nil {
+	if user == nil {
 		return errors.New("account not found")
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword(
+		[]byte(newPassword),
+		bcrypt.DefaultCost,
+	)
 	if err != nil {
 		return err
 	}
 
-	return s.repo.UpdatePassword(farmer.ID, string(hash))
+	return s.repo.UpdatePassword(
+		user.ID,
+		string(hash),
+	)
 }

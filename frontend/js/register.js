@@ -1,16 +1,19 @@
 const registerForm = document.getElementById("register-form");
 
-
 const firstName = document.getElementById("first-name");
 const lastName = document.getElementById("last-name");
 const email = document.getElementById("email");
 const phone = document.getElementById("phone");
 
+const country = document.getElementById("country");
+const state = document.getElementById("state");
+const lga = document.getElementById("lga");
+const community = document.getElementById("community");
+
 const password = document.getElementById("password");
 const confirmPassword = document.getElementById("confirm-password");
 
-const button = registerForm.querySelector("button");
-
+const button = document.getElementById("register-submit");
 
 
 // ===============================
@@ -24,13 +27,9 @@ message.className = "message";
 registerForm.appendChild(message);
 
 
-
-
-
 // ===============================
 // PASSWORD STRENGTH
 // ===============================
-
 
 const strength = document.createElement("small");
 
@@ -38,72 +37,53 @@ strength.className = "password-strength";
 
 password.parentNode.appendChild(strength);
 
+password.addEventListener("input", () => {
 
+    if (password.value.length < 8) {
 
-password.addEventListener("input",()=>{
+        strength.textContent = "Weak Password";
+        strength.style.color = "red";
 
+    } else if (password.value.length < 12) {
 
-    if(password.value.length < 8){
+        strength.textContent = "Medium Password";
+        strength.style.color = "orange";
 
-        strength.textContent="Weak Password";
-        strength.style.color="red";
+    } else {
 
-    }
-
-    else if(password.value.length < 12){
-
-        strength.textContent="Medium Password";
-        strength.style.color="orange";
-
-    }
-
-    else{
-
-        strength.textContent="Strong Password";
-        strength.style.color="green";
+        strength.textContent = "Strong Password";
+        strength.style.color = "green";
 
     }
-
 
 });
-
-
-
-
-
 
 
 // ===============================
 // SHOW / HIDE PASSWORD
 // ===============================
 
-
 const togglePassword =
-document.getElementById("toggle-password");
-
+    document.getElementById("toggle-password");
 
 const toggleConfirm =
-document.getElementById("toggle-confirm-password");
+    document.getElementById("toggle-confirm-password");
 
 
+togglePassword.addEventListener("click", () => {
 
-togglePassword.addEventListener("click",()=>{
+    if (password.type === "password") {
 
-
-    if(password.type==="password"){
-
-        password.type="text";
+        password.type = "text";
 
         togglePassword.classList.replace(
             "fa-eye",
             "fa-eye-slash"
         );
 
-    }
+    } else {
 
-    else{
-
-        password.type="password";
+        password.type = "password";
 
         togglePassword.classList.replace(
             "fa-eye-slash",
@@ -112,35 +92,23 @@ togglePassword.addEventListener("click",()=>{
 
     }
 
-
 });
 
 
+toggleConfirm.addEventListener("click", () => {
 
+    if (confirmPassword.type === "password") {
 
-
-
-toggleConfirm.addEventListener("click",()=>{
-
-
-    if(confirmPassword.type==="password"){
-
-        confirmPassword.type="text";
-
+        confirmPassword.type = "text";
 
         toggleConfirm.classList.replace(
             "fa-eye",
             "fa-eye-slash"
         );
 
-    }
+    } else {
 
-
-    else{
-
-
-        confirmPassword.type="password";
-
+        confirmPassword.type = "password";
 
         toggleConfirm.classList.replace(
             "fa-eye-slash",
@@ -149,278 +117,325 @@ toggleConfirm.addEventListener("click",()=>{
 
     }
 
-
 });
 
 
+// ===============================
+// LOAD STATES
+// ===============================
+
+async function loadStates() {
+
+    try {
+
+        const response = await fetch("/api/states");
+
+        if (!response.ok) {
+            throw new Error("Failed to load states");
+        }
+
+        const states = await response.json();
+
+        state.innerHTML =
+            '<option value="">Select your state</option>';
+
+        states.forEach(item => {
+
+            const option = document.createElement("option");
+
+            option.value = item.name;
+
+            option.textContent = item.name;
+
+            option.dataset.stateId = item.id;
+
+            state.appendChild(option);
+
+        });
+
+    } catch (error) {
+
+        console.error("State loading error:", error);
+
+        message.textContent =
+            "Unable to load states. Please refresh the page.";
+
+        message.style.color = "red";
+    }
+}
 
 
+// Load states when page opens.
+loadStates();
 
 
+// ===============================
+// LOAD LGAs
+// ===============================
 
+state.addEventListener("change", async () => {
+
+    const selectedOption =
+        state.options[state.selectedIndex];
+
+    const stateID =
+        selectedOption.dataset.stateId;
+
+    // Reset LGA.
+    lga.innerHTML =
+        '<option value="">Select your LGA</option>';
+
+    lga.disabled = true;
+
+    if (!stateID) {
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch(`/api/states/${stateID}/lgas`);
+
+        if (!response.ok) {
+            throw new Error("Failed to load LGAs");
+        }
+
+        const lgas =
+            await response.json();
+
+        lgas.forEach(item => {
+
+            const option =
+                document.createElement("option");
+
+            option.value = item.name;
+
+            option.textContent = item.name;
+
+            option.dataset.lgaId = item.id;
+
+            lga.appendChild(option);
+
+        });
+
+        lga.disabled = false;
+
+    } catch (error) {
+
+        console.error("LGA loading error:", error);
+
+        message.textContent =
+            "Unable to load LGAs. Please try again.";
+
+        message.style.color = "red";
+    }
+
+});
 
 
 // ===============================
 // FORM VALIDATION
 // ===============================
 
+registerForm.addEventListener("submit", (event) => {
 
-registerForm.addEventListener("submit",(event)=>{
+    message.textContent = "";
 
+    // -------------------------------
+    // PURPOSE
+    // -------------------------------
 
-message.textContent="";
+    const selectedPurposes =
+        document.querySelectorAll(
+            'input[name="purpose"]:checked'
+        );
 
+    if (selectedPurposes.length === 0) {
 
+        event.preventDefault();
 
+        message.textContent =
+            "Please select your purpose.";
 
+        message.style.color = "red";
 
-const role =
-document.querySelector(
-'input[name="role"]:checked'
-).value;
+        return;
+    }
 
 
+    // -------------------------------
+    // FARMING TYPE
+    // -------------------------------
 
+    const wantsToSell =
+        Array.from(selectedPurposes)
+            .some(input => input.value === "sell");
 
+    const farmTypes =
+        document.querySelectorAll(
+            'input[name="farm_type"]:checked'
+        );
 
-// BASIC CHECK
+    if (wantsToSell && farmTypes.length === 0) {
 
-if(
-firstName.value.trim()==="" ||
-lastName.value.trim()==="" ||
-email.value.trim()==="" ||
-phone.value.trim()===""
-){
+        event.preventDefault();
 
+        message.textContent =
+            "Please select at least one farming type.";
 
-event.preventDefault();
+        message.style.color = "red";
 
+        return;
+    }
 
-message.textContent=
-"Please complete all fields.";
 
+    // -------------------------------
+    // BASIC INFORMATION
+    // -------------------------------
 
-message.style.color="red";
+    if (
+        firstName.value.trim() === "" ||
+        lastName.value.trim() === "" ||
+        phone.value.trim() === "" ||
+        email.value.trim() === ""
+    ) {
 
+        event.preventDefault();
 
-return;
+        message.textContent =
+            "Please complete all required personal information.";
 
+        message.style.color = "red";
 
-}
+        return;
+    }
 
 
+    // -------------------------------
+    // LOCATION
+    // -------------------------------
 
+    if (
+        country.value === "" ||
+        state.value === "" ||
+        lga.value === "" ||
+        community.value.trim() === ""
+    ) {
 
+        event.preventDefault();
 
+        message.textContent =
+            "Please complete your location information.";
 
-// FARM TYPE CHECK
+        message.style.color = "red";
 
+        return;
+    }
 
-const farmTypes =
-document.querySelectorAll(
-'input[name="farm_type"]:checked'
-);
 
+    // -------------------------------
+    // PASSWORD
+    // -------------------------------
 
+    if (password.value !== confirmPassword.value) {
 
+        event.preventDefault();
 
+        message.textContent =
+            "Passwords do not match.";
 
-if(
-role==="farmer" &&
-farmTypes.length===0
-){
+        message.style.color = "red";
 
+        return;
+    }
 
-event.preventDefault();
 
+    if (password.value.length < 8) {
 
-message.textContent=
-"Please select at least one farming type.";
+        event.preventDefault();
 
+        message.textContent =
+            "Password must be at least 8 characters.";
 
-message.style.color="red";
+        message.style.color = "red";
 
+        return;
+    }
 
-return;
 
+    // -------------------------------
+    // FARMING TYPES
+    // -------------------------------
 
-}
+    const selectedFarms =
+        Array.from(farmTypes)
+            .map(item => item.value);
 
+    console.log(
+        "Selected farming types:",
+        selectedFarms
+    );
 
 
+    // -------------------------------
+    // SUBMIT
+    // -------------------------------
 
+    button.disabled = true;
 
-
-
-// PASSWORD MATCH
-
-
-if(password.value !== confirmPassword.value){
-
-
-event.preventDefault();
-
-
-message.textContent=
-"Passwords do not match.";
-
-
-message.style.color="red";
-
-
-return;
-
-
-}
-
-
-
-
-
-
-
-if(password.value.length < 8){
-
-
-event.preventDefault();
-
-
-message.textContent=
-"Password must be at least 8 characters.";
-
-
-message.style.color="red";
-
-
-return;
-
-
-}
-
-
-
-
-
-
-
-// ===============================
-// PREPARE FARM DATA
-// ===============================
-
-
-if(role==="farmer"){
-
-
-const selectedFarms =
-Array.from(farmTypes)
-.map(item=>item.value);
-
-
-
-console.log(
-"Selected farming types:",
-selectedFarms
-);
-
-
-/*
-Example output:
-
-[
- "crop",
- "poultry",
- "fishery"
-]
-
-Later backend will save this.
-*/
-
-
-}
-
-
-
-
-
-
-// SUCCESS
-
-button.disabled=true;
-
-button.textContent=
-"Creating Account...";
-
+    button.textContent =
+        "Creating Account...";
 
 });
-
-
-
-
-
-
 
 
 // ===============================
 // BACKGROUND IMAGE ROTATION
 // ===============================
 
-
 const registerImages = [
 
-"/static/assets/images/login-image6.jpeg",
+    "/static/assets/images/login-image6.jpeg",
 
-"/static/assets/images/login-image7.jpeg",
+    "/static/assets/images/login-image7.jpeg",
 
-"/static/assets/images/login-image8.jpeg",
+    "/static/assets/images/login-image8.jpeg",
 
-"/static/assets/images/un.jpeg"
+    "/static/assets/images/un.jpeg"
 
 ];
 
 
-
 const leftPanel =
-document.querySelector(".auth-left");
+    document.querySelector(".auth-left");
+
+let current = 0;
 
 
+function changeBackground() {
 
-let current=0;
+    current++;
 
+    if (current >= registerImages.length) {
+        current = 0;
+    }
 
+    leftPanel.style.backgroundImage = `
 
-function changeBackground(){
+        linear-gradient(
+            rgba(0,100,0,.82),
+            rgba(0,100,0,.82)
+        ),
 
+        url('${registerImages[current]}')
 
-current++;
-
-
-if(current >= registerImages.length){
-
-current=0;
-
+    `;
 }
-
-
-
-leftPanel.style.backgroundImage=`
-
-linear-gradient(
-rgba(0,100,0,.82),
-rgba(0,100,0,.82)
-),
-
-url('${registerImages[current]}')
-
-`;
-
-}
-
 
 
 changeBackground();
 
-
 setInterval(
-changeBackground,
-4000
+    changeBackground,
+    4000
 );

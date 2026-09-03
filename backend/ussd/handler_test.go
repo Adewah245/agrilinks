@@ -9,9 +9,9 @@ import (
 	"backend/internal/services"
 )
 
-type fakeFarmers struct{ farmer *models.Farmer }
+type fakeFarmers struct{ farmer *models.User }
 
-func (f fakeFarmers) GetByPhone(string) (*models.Farmer, error) { return f.farmer, nil }
+func (f fakeFarmers) GetByPhone(string) (*models.User, error) { return f.farmer, nil }
 
 type fakeCrops struct{ crops []models.Crop }
 
@@ -25,7 +25,7 @@ func (fakeWeather) Current(context.Context, string) (services.Weather, error) {
 }
 
 func testHandler() *Handler {
-	return &Handler{farmers: fakeFarmers{&models.Farmer{FullName: "Amina", Phone: "+2341", Location: "Makurdi"}}, crops: fakeCrops{[]models.Crop{{Name: "Maize", PricePerUnit: 500, Unit: "kg"}}}, weather: fakeWeather{}}
+	return &Handler{farmers: fakeFarmers{&models.User{FullName: "Amina", Phone: "+2341", Location: "Makurdi"}}, crops: fakeCrops{[]models.Crop{{Name: "Maize", PricePerUnit: 500, Unit: "kg"}}}, weather: fakeWeather{}}
 }
 
 func TestMainMenuContinuesSession(t *testing.T) {

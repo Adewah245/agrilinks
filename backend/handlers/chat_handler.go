@@ -45,7 +45,7 @@ import (
 
 type ChatHandler struct {
 	service *services.ChatService
-	farmers *repository.FarmerRepository
+	farmers *repository.UserRepository
 }
 
 // ============================================================
@@ -54,7 +54,7 @@ type ChatHandler struct {
 
 func NewChatHandler(
 	service *services.ChatService,
-	farmers *repository.FarmerRepository,
+	farmers *repository.UserRepository,
 ) *ChatHandler {
 
 	return &ChatHandler{
@@ -77,7 +77,7 @@ type ChatListPageData struct {
 	Farmer        interface{}
 	Conversations []models.Conversation
 	UnreadCount   int
-	Users         []models.Farmer
+	Users         []models.User
 	Query         string
 	Error         string
 }

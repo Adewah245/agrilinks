@@ -13,7 +13,7 @@ import (
 )
 
 type farmerFinder interface {
-	GetByPhone(string) (*models.Farmer, error)
+	GetByPhone(string) (*models.User, error)
 }
 type cropLister interface {
 	AvailableCrops() ([]models.Crop, error)
@@ -33,7 +33,7 @@ type Handler struct {
 	notifications *services.NotificationService
 }
 
-func NewHandler(farmers *repository.FarmerRepository, crops *services.CropService, weather *services.WeatherService, orders *services.OrderService, notifications *services.NotificationService) *Handler {
+func NewHandler(farmers *repository.UserRepository, crops *services.CropService, weather *services.WeatherService, orders *services.OrderService, notifications *services.NotificationService) *Handler {
 	return &Handler{farmers: farmers, crops: crops, weather: weather, orders: orders, notifications: notifications}
 }
 

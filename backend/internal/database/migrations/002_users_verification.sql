@@ -6,14 +6,23 @@ CREATE TABLE IF NOT EXISTS user_verifications (
 
     nin TEXT,
 
-    nin_verified BOOLEAN DEFAULT FALSE,
+    nin_verified BOOLEAN NOT NULL DEFAULT FALSE,
 
-    verification_level TEXT DEFAULT 'unverified',
+    verification_level TEXT NOT NULL DEFAULT 'unverified',
+
+    nin_verification_reference TEXT,
 
     verified_at TIMESTAMP,
 
-    FOREIGN KEY(user_id)
-    REFERENCES users(id)
-    ON DELETE CASCADE
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_user_verifications_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
 
 );
+
+
+CREATE INDEX IF NOT EXISTS idx_user_verifications_user_id
+ON user_verifications(user_id);

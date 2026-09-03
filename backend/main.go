@@ -101,7 +101,7 @@ func main() {
 	// Handles farmer/buyer account database operations.
 	// ------------------------------------------------------------
 
-	farmerRepo := repository.NewFarmerRepository(db)
+	farmerRepo := repository.NewUserRepository(db)
 	locationRepo := repository.NewLocationRepository(db)
 	// ------------------------------------------------------------
 	// CROP REPOSITORY
