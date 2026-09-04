@@ -8,42 +8,65 @@ import (
 )
 
 type OrderService struct {
-	orderRepo *repository.OrderRepository
-	cropRepo  *repository.CropRepository
+	orderRepo   *repository.OrderRepository
+	productRepo *repository.ProductRepository
 }
 
-func NewOrderService(orderRepo *repository.OrderRepository, cropRepo *repository.CropRepository) *OrderService {
-	return &OrderService{orderRepo: orderRepo, cropRepo: cropRepo}
+func NewOrderService(
+	orderRepo *repository.OrderRepository,
+	productRepo *repository.ProductRepository,
+) *OrderService {
+	return &OrderService{
+		orderRepo:   orderRepo,
+		productRepo: productRepo,
+	}
 }
 
-// PlaceOrder lets a buyer purchase a quantity of a listed crop. This executes
-// immediately (no accept/reject step from the farmer) to keep the first
-// version simple — see the README for how to extend this into a
-// request/approve flow later if you want farmers to confirm orders first.
-func (s *OrderService) PlaceOrder(buyerID, cropID int, quantity float64) error {
+// PlaceOrder lets a buyer purchase a quantity of an available product.
+//
+// The purchase is completed immediately in the current version.
+func (s *OrderService) PlaceOrder(
+	buyerID int,
+	productID int,
+	quantity float64,
+) error {
+	if buyerID <= 0 {
+		return errors.New("invalid buyer")
+	}
+
+	if productID <= 0 {
+		return errors.New("invalid product")
+	}
+
 	if quantity <= 0 {
 		return errors.New("quantity must be greater than zero")
 	}
 
-	crop, err := s.cropRepo.GetByID(cropID)
+	product, err := s.productRepo.GetByID(productID)
 	if err != nil {
 		return err
 	}
-	if crop == nil || !crop.ListedForSale {
-		return errors.New("this produce is not available for purchase")
+
+	if product == nil || !product.IsAvailable() {
+		return errors.New("this product is not available for purchase")
 	}
-	if crop.FarmerID == buyerID {
-		return errors.New("you can't buy your own produce")
+
+	// A user cannot purchase their own product.
+	// Organization-owned products are allowed because the buyer
+	// is represented by a user account.
+	if product.OwnerType == "user" && product.OwnerID == buyerID {
+		return errors.New("you can't buy your own product")
 	}
-	if quantity > crop.Quantity {
+
+	if quantity > product.Quantity {
 		return errors.New("not enough quantity available")
 	}
 
 	order := &models.Order{
 		BuyerID:    buyerID,
-		CropID:     cropID,
+		ProductID:  productID,
 		Quantity:   quantity,
-		TotalPrice: quantity * crop.PricePerUnit,
+		TotalPrice: quantity * product.Price,
 		Status:     "completed",
 	}
 
@@ -51,13 +74,34 @@ func (s *OrderService) PlaceOrder(buyerID, cropID int, quantity float64) error {
 		return err
 	}
 
-	return s.cropRepo.ReduceQuantity(cropID, quantity)
+	if err := s.productRepo.ReduceQuantity(productID, quantity); err != nil {
+		return err
+	}
+
+	return nil
 }
 
+// MyPurchases returns all orders placed by a buyer.
 func (s *OrderService) MyPurchases(buyerID int) ([]models.Order, error) {
+	if buyerID <= 0 {
+		return nil, errors.New("invalid buyer")
+	}
+
 	return s.orderRepo.ListByBuyer(buyerID)
 }
 
-func (s *OrderService) MySales(farmerID int) ([]models.Order, error) {
-	return s.orderRepo.ListSalesByFarmer(farmerID)
+// MySales returns all orders made from a seller's products.
+func (s *OrderService) MySales(
+	sellerType string,
+	sellerID int,
+) ([]models.Order, error) {
+	if sellerType != "user" && sellerType != "organization" {
+		return nil, errors.New("invalid seller type")
+	}
+
+	if sellerID <= 0 {
+		return nil, errors.New("invalid seller")
+	}
+
+	return s.orderRepo.ListSalesBySeller(sellerType, sellerID)
 }

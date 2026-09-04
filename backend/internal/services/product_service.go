@@ -8,74 +8,97 @@ import (
 	"backend/internal/repository"
 )
 
-// CropService contains the business logic for crops/products.
-type CropService struct {
-	repo *repository.CropRepository
+// ProductService contains the business logic for products.
+type ProductService struct {
+	repo *repository.ProductRepository
 }
 
-// NewCropService creates a new CropService.
-//
-// Responsibility:
-// - Connect the service to the CropRepository.
-func NewCropService(repo *repository.CropRepository) *CropService {
-	return &CropService{
+// NewProductService creates a new ProductService.
+func NewProductService(repo *repository.ProductRepository) *ProductService {
+	return &ProductService{
 		repo: repo,
 	}
 }
 
-// AddCrop creates a new crop/product listing.
+// ============================================================
+// CREATE PRODUCT
+// ============================================================
+
+// AddProduct creates a new product listing.
 //
-// Responsibility:
-// - Validate the product information.
-// - Require at least one product picture.
-// - Allow multiple product pictures.
-// - Create the product through the repository.
-func (s *CropService) AddCrop(
-	farmerID int,
+// ownerType identifies who owns the product.
+// ownerID identifies the owner.
+//
+// Example:
+// ownerType = "user"
+// ownerID   = logged-in user's ID
+func (s *ProductService) AddProduct(
+	ownerType string,
+	ownerID int,
 	name string,
+	description string,
+	category string,
 	unit string,
-	location string,
 	quantity float64,
 	price float64,
-	listForSale bool,
+	stateID *int,
+	lgaID *int,
+	community string,
 	imageURLs []string,
-	latitude, longitude, accuracy float64,
+	latitude float64,
+	longitude float64,
+	accuracy float64,
+	listForSale bool,
 ) error {
 
+	ownerType = strings.TrimSpace(ownerType)
 	name = strings.TrimSpace(name)
+	description = strings.TrimSpace(description)
+	category = strings.TrimSpace(category)
 	unit = strings.TrimSpace(unit)
-	location = strings.TrimSpace(location)
+	community = strings.TrimSpace(community)
 
-	if farmerID <= 0 {
-		return errors.New("invalid farmer")
+	if ownerType == "" {
+		return errors.New("owner type is required")
+	}
+
+	if ownerType != "user" && ownerType != "organization" {
+		return errors.New("invalid owner type")
+	}
+
+	if ownerID <= 0 {
+		return errors.New("invalid product owner")
 	}
 
 	if name == "" {
-		return errors.New("crop name is required")
+		return errors.New("product name is required")
+	}
+
+	if category == "" {
+		return errors.New("product category is required")
 	}
 
 	if unit == "" {
 		return errors.New("unit is required")
 	}
 
-	if location == "" {
-		return errors.New("location is required")
+	if quantity <= 0 {
+		return errors.New("quantity must be greater than zero")
+	}
+
+	if price < 0 {
+		return errors.New("price cannot be negative")
+	}
+
+	if listForSale && price <= 0 {
+		return errors.New("price must be greater than zero to list for sale")
 	}
 
 	// A product must have at least one picture.
-	// More pictures are allowed.
-	var validImages []string
-
-	for _, imageURL := range imageURLs {
-		imageURL = strings.TrimSpace(imageURL)
-
-		if imageURL != "" {
-			validImages = append(validImages, imageURL)
-		}
-	}
+	validImages := cleanImageURLs(imageURLs)
 
 	if len(validImages) == 0 {
-		return errors.New("at least one crop picture is required")
+		return errors.New("at least one product picture is required")
 	}
 
 	// Validate GPS location.
@@ -85,197 +108,232 @@ func (s *CropService) AddCrop(
 		longitude > 180 ||
 		(latitude == 0 && longitude == 0) ||
 		accuracy <= 0 {
-		return errors.New("valid farm GPS location is required")
+		return errors.New("valid product GPS location is required")
 	}
 
-	if quantity <= 0 {
-		return errors.New("quantity must be greater than zero")
+	status := "inactive"
+
+	if listForSale {
+		status = "active"
 	}
 
-	if listForSale && price <= 0 {
-		return errors.New("price must be greater than zero to list for sale")
+	product := &models.Product{
+		OwnerType:         ownerType,
+		OwnerID:           ownerID,
+		Name:              name,
+		Description:       description,
+		Category:          category,
+		Quantity:          quantity,
+		Unit:              unit,
+		Price:             price,
+		StateID:           stateID,
+		LGAID:             lgaID,
+		Community:         community,
+		Latitude:          latitude,
+		Longitude:         longitude,
+		LocationAccuracy:  accuracy,
+		Status:            status,
 	}
 
-	// Create the crop record.
-	crop := &models.Crop{
-		FarmerID:         farmerID,
-		Name:             name,
-		Quantity:         quantity,
-		Unit:             unit,
-		Location:         location,
-		PricePerUnit:     price,
-		ListedForSale:    listForSale,
-		ImageURL:         validImages[0],
-		Latitude:         latitude,
-		Longitude:        longitude,
-		LocationAccuracy: accuracy,
-	}
-
-	if err := s.repo.Create(crop); err != nil {
+	if err := s.repo.Create(product); err != nil {
 		return err
 	}
 
 	// Save all product pictures.
-	if err := s.repo.AddImages(crop.ID, validImages); err != nil {
+	if err := s.repo.AddImages(product.ID, validImages); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// MyCrops returns all products belonging to a farmer.
+// ============================================================
+// LIST OWNER PRODUCTS
+// ============================================================
+
+// MyProducts returns all products belonging to an owner.
 //
-// Responsibility:
-// - Return both listed and unlisted products.
-func (s *CropService) MyCrops(farmerID int) ([]models.Crop, error) {
-	if farmerID <= 0 {
-		return nil, errors.New("invalid farmer")
+// Both active and inactive products are returned.
+func (s *ProductService) MyProducts(
+	ownerType string,
+	ownerID int,
+) ([]models.Product, error) {
+
+	ownerType = strings.TrimSpace(ownerType)
+
+	if ownerType == "" {
+		return nil, errors.New("owner type is required")
 	}
 
-	return s.repo.ListByFarmer(farmerID)
+	if ownerID <= 0 {
+		return nil, errors.New("invalid product owner")
+	}
+
+	return s.repo.ListByOwner(ownerType, ownerID)
 }
 
-// AvailableCrops returns products currently available
+// ============================================================
+// MARKETPLACE
+// ============================================================
+
+// AvailableProducts returns products currently available
 // for buyers in the marketplace.
-func (s *CropService) AvailableCrops() ([]models.Crop, error) {
+func (s *ProductService) AvailableProducts() ([]models.Product, error) {
 	return s.repo.ListAvailable()
 }
 
-// GetCrop retrieves one product by ID.
-func (s *CropService) GetCrop(cropID int) (*models.Crop, error) {
-	if cropID <= 0 {
-		return nil, errors.New("invalid crop ID")
+// ============================================================
+// GET PRODUCT
+// ============================================================
+
+// GetProduct retrieves one product by ID.
+func (s *ProductService) GetProduct(productID int) (*models.Product, error) {
+
+	if productID <= 0 {
+		return nil, errors.New("invalid product ID")
 	}
 
-	return s.repo.GetByID(cropID)
+	return s.repo.GetByID(productID)
 }
 
-// GetCropImages retrieves all images belonging to a product.
-//
-// Responsibility:
-// - Return all product pictures.
-// - Keep image retrieval inside the service layer.
-func (s *CropService) GetCropImages(cropID int) ([]models.CropImage, error) {
-	if cropID <= 0 {
-		return nil, errors.New("invalid crop ID")
+// ============================================================
+// PRODUCT IMAGES
+// ============================================================
+
+// GetProductImages retrieves all images belonging to a product.
+func (s *ProductService) GetProductImages(
+	productID int,
+) ([]models.ProductImage, error) {
+
+	if productID <= 0 {
+		return nil, errors.New("invalid product ID")
 	}
 
-	return s.repo.ListImages(cropID)
+	return s.repo.ListImages(productID)
 }
 
-// UpdateCrop updates a farmer's own product.
+// ============================================================
+// UPDATE PRODUCT
+// ============================================================
+
+// UpdateProduct updates an owner's product.
 //
-// Responsibility:
-// - Verify the farmer owns the product.
-// - Validate the new product information.
-// - Allow multiple product pictures.
-// - Keep existing pictures when no new pictures are supplied.
-func (s *CropService) UpdateCrop(
-	farmerID int,
-	cropID int,
+// Existing pictures are preserved when no new pictures are supplied.
+func (s *ProductService) UpdateProduct(
+	ownerType string,
+	ownerID int,
+	productID int,
 	name string,
+	description string,
+	category string,
 	unit string,
-	location string,
 	quantity float64,
 	price float64,
-	listForSale bool,
+	stateID *int,
+	lgaID *int,
+	community string,
 	imageURLs []string,
-	latitude, longitude, accuracy float64,
+	latitude float64,
+	longitude float64,
+	accuracy float64,
+	listForSale bool,
 ) error {
 
-	if farmerID <= 0 {
-		return errors.New("invalid farmer")
-	}
-
-	if cropID <= 0 {
-		return errors.New("invalid crop ID")
-	}
-
+	ownerType = strings.TrimSpace(ownerType)
 	name = strings.TrimSpace(name)
+	description = strings.TrimSpace(description)
+	category = strings.TrimSpace(category)
 	unit = strings.TrimSpace(unit)
-	location = strings.TrimSpace(location)
+	community = strings.TrimSpace(community)
+
+	if ownerType != "user" && ownerType != "organization" {
+		return errors.New("invalid owner type")
+	}
+
+	if ownerID <= 0 {
+		return errors.New("invalid product owner")
+	}
+
+	if productID <= 0 {
+		return errors.New("invalid product ID")
+	}
 
 	if name == "" {
-		return errors.New("crop name is required")
+		return errors.New("product name is required")
+	}
+
+	if category == "" {
+		return errors.New("product category is required")
 	}
 
 	if unit == "" {
 		return errors.New("unit is required")
 	}
 
-	if location == "" {
-		return errors.New("location is required")
-	}
-
-	// Validate GPS location.
-	if latitude < -90 ||
-		latitude > 90 ||
-		longitude < -180 ||
-		longitude > 180 ||
-		(latitude == 0 && longitude == 0) ||
-		accuracy <= 0 {
-		return errors.New("valid farm GPS location is required")
-	}
-
 	if quantity <= 0 {
 		return errors.New("quantity must be greater than zero")
+	}
+
+	if price < 0 {
+		return errors.New("price cannot be negative")
 	}
 
 	if listForSale && price <= 0 {
 		return errors.New("price must be greater than zero to list for sale")
 	}
 
-	// Find the existing product.
-	crop, err := s.repo.GetByID(cropID)
+	if latitude < -90 ||
+		latitude > 90 ||
+		longitude < -180 ||
+		longitude > 180 ||
+		(latitude == 0 && longitude == 0) ||
+		accuracy <= 0 {
+		return errors.New("valid product GPS location is required")
+	}
+
+	product, err := s.repo.GetByID(productID)
 	if err != nil {
 		return err
 	}
 
-	if crop == nil {
-		return errors.New("crop not found")
+	if product == nil {
+		return errors.New("product not found")
 	}
 
-	// Make sure the logged-in farmer owns the product.
-	if crop.FarmerID != farmerID {
+	if product.OwnerType != ownerType ||
+		product.OwnerID != ownerID {
 		return errors.New("you are not allowed to modify this product")
 	}
 
-	// Update product information.
-	crop.Name = name
-	crop.Unit = unit
-	crop.Location = location
-	crop.Quantity = quantity
-	crop.PricePerUnit = price
-	crop.ListedForSale = listForSale
-	crop.Latitude = latitude
-	crop.Longitude = longitude
-	crop.LocationAccuracy = accuracy
+	status := "inactive"
 
-	// Process new pictures.
-	var validImages []string
-
-	for _, imageURL := range imageURLs {
-		imageURL = strings.TrimSpace(imageURL)
-
-		if imageURL != "" {
-			validImages = append(validImages, imageURL)
-		}
+	if listForSale {
+		status = "active"
 	}
 
-	// If new pictures were supplied,
-	// make the first one the main product picture.
-	if len(validImages) > 0 {
-		crop.ImageURL = validImages[0]
-	}
+	product.Name = name
+	product.Description = description
+	product.Category = category
+	product.Unit = unit
+	product.Quantity = quantity
+	product.Price = price
+	product.StateID = stateID
+	product.LGAID = lgaID
+	product.Community = community
+	product.Latitude = latitude
+	product.Longitude = longitude
+	product.LocationAccuracy = accuracy
+	product.Status = status
 
-	// Update the main crop record.
-	if err := s.repo.Update(crop); err != nil {
+	if err := s.repo.Update(product); err != nil {
 		return err
 	}
 
-	// Save any new pictures.
+	// Add new pictures only when the caller supplied them.
+	validImages := cleanImageURLs(imageURLs)
+
 	if len(validImages) > 0 {
-		if err := s.repo.AddImages(crop.ID, validImages); err != nil {
+		if err := s.repo.AddImages(product.ID, validImages); err != nil {
 			return err
 		}
 	}
@@ -283,127 +341,167 @@ func (s *CropService) UpdateCrop(
 	return nil
 }
 
-// UnlistCrop removes a farmer's product from the marketplace.
-//
-// Responsibility:
-// - Verify ownership.
-// - Hide the product from buyers.
-// - Keep the product in the farmer's storage.
-func (s *CropService) UnlistCrop(
-	farmerID int,
-	cropID int,
+// ============================================================
+// UNLIST PRODUCT
+// ============================================================
+
+// UnlistProduct removes an owner's product from the marketplace
+// while keeping it in storage.
+func (s *ProductService) UnlistProduct(
+	ownerType string,
+	ownerID int,
+	productID int,
 ) error {
 
-	if farmerID <= 0 {
-		return errors.New("invalid farmer")
+	if ownerType != "user" && ownerType != "organization" {
+		return errors.New("invalid owner type")
 	}
 
-	if cropID <= 0 {
-		return errors.New("invalid crop ID")
+	if ownerID <= 0 {
+		return errors.New("invalid product owner")
 	}
 
-	crop, err := s.repo.GetByID(cropID)
+	if productID <= 0 {
+		return errors.New("invalid product ID")
+	}
+
+	product, err := s.repo.GetByID(productID)
 	if err != nil {
 		return err
 	}
 
-	if crop == nil {
-		return errors.New("crop not found")
+	if product == nil {
+		return errors.New("product not found")
 	}
 
-	if crop.FarmerID != farmerID {
+	if product.OwnerType != ownerType ||
+		product.OwnerID != ownerID {
 		return errors.New("you are not allowed to modify this product")
 	}
 
-	if !crop.ListedForSale {
+	if product.Status != "active" {
 		return errors.New("product is already unlisted")
 	}
 
-	return s.repo.Unlist(cropID, farmerID)
+	return s.repo.Unlist(
+		productID,
+		ownerType,
+		ownerID,
+	)
 }
 
-// RelistCrop puts an existing product back on the marketplace.
-//
-// Responsibility:
-// - Verify ownership.
-// - Make sure quantity is still available.
-// - Put the product back on the marketplace.
-func (s *CropService) RelistCrop(
-	farmerID int,
-	cropID int,
+// ============================================================
+// RELIST PRODUCT
+// ============================================================
+
+// RelistProduct puts an existing product back on the marketplace.
+func (s *ProductService) RelistProduct(
+	ownerType string,
+	ownerID int,
+	productID int,
 ) error {
 
-	if farmerID <= 0 {
-		return errors.New("invalid farmer")
+	if ownerType != "user" && ownerType != "organization" {
+		return errors.New("invalid owner type")
 	}
 
-	if cropID <= 0 {
-		return errors.New("invalid crop ID")
+	if ownerID <= 0 {
+		return errors.New("invalid product owner")
 	}
 
-	crop, err := s.repo.GetByID(cropID)
+	if productID <= 0 {
+		return errors.New("invalid product ID")
+	}
+
+	product, err := s.repo.GetByID(productID)
 	if err != nil {
 		return err
 	}
 
-	if crop == nil {
-		return errors.New("crop not found")
+	if product == nil {
+		return errors.New("product not found")
 	}
 
-	if crop.FarmerID != farmerID {
+	if product.OwnerType != ownerType ||
+		product.OwnerID != ownerID {
 		return errors.New("you are not allowed to modify this product")
 	}
 
-	if crop.Quantity <= 0 {
+	if product.Quantity <= 0 {
 		return errors.New("cannot relist a product with no quantity available")
 	}
 
-	if crop.ListedForSale {
+	if product.Status == "active" {
 		return errors.New("product is already listed")
 	}
 
-	return s.repo.Relist(cropID, farmerID)
+	return s.repo.Relist(
+		productID,
+		ownerType,
+		ownerID,
+	)
 }
 
-// DeleteCrop permanently deletes a farmer's product.
-//
-// Responsibility:
-// - Verify ownership.
-// - Delete the product through the repository.
-func (s *CropService) DeleteCrop(
-	farmerID int,
-	cropID int,
+// ============================================================
+// DELETE PRODUCT
+// ============================================================
+
+// DeleteProduct permanently deletes an owner's product.
+func (s *ProductService) DeleteProduct(
+	ownerType string,
+	ownerID int,
+	productID int,
 ) error {
 
-	if farmerID <= 0 {
-		return errors.New("invalid farmer")
+	if ownerType != "user" && ownerType != "organization" {
+		return errors.New("invalid owner type")
 	}
 
-	if cropID <= 0 {
-		return errors.New("invalid crop ID")
+	if ownerID <= 0 {
+		return errors.New("invalid product owner")
 	}
 
-	crop, err := s.repo.GetByID(cropID)
+	if productID <= 0 {
+		return errors.New("invalid product ID")
+	}
+
+	product, err := s.repo.GetByID(productID)
 	if err != nil {
 		return err
 	}
 
-	if crop == nil {
-		return errors.New("crop not found")
+	if product == nil {
+		return errors.New("product not found")
 	}
 
-	if crop.FarmerID != farmerID {
+	if product.OwnerType != ownerType ||
+		product.OwnerID != ownerID {
 		return errors.New("you are not allowed to delete this product")
 	}
 
-	return s.repo.Delete(cropID, farmerID)
+	return s.repo.Delete(
+		productID,
+		ownerType,
+		ownerID,
+	)
 }
 
-// ListImages retrieves all images belonging to a crop.
-func (s *CropService) ListImages(cropID int) ([]models.CropImage, error) {
-	if cropID <= 0 {
-		return nil, errors.New("invalid crop ID")
+// ============================================================
+// IMAGE VALIDATION
+// ============================================================
+
+// cleanImageURLs removes empty image URLs and trims whitespace.
+func cleanImageURLs(imageURLs []string) []string {
+
+	validImages := make([]string, 0, len(imageURLs))
+
+	for _, imageURL := range imageURLs {
+		imageURL = strings.TrimSpace(imageURL)
+
+		if imageURL != "" {
+			validImages = append(validImages, imageURL)
+		}
 	}
 
-	return s.repo.ListImages(cropID)
+	return validImages
 }

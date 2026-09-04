@@ -12,38 +12,38 @@ import (
 	"backend/render"
 )
 
-// Storage handles farmer product/storage operations.
+// Storage handles user product/storage operations.
 type Storage struct {
-	crop *services.CropService
+	product *services.ProductService
 }
 
 // NewStorageHandler creates a new Storage handler.
-func NewStorageHandler(crop *services.CropService) *Storage {
+func NewStorageHandler(product *services.ProductService) *Storage {
 	return &Storage{
-		crop: crop,
+		product: product,
 	}
 }
 
 // StoragePageData contains the information needed
-// to render the farmer's storage page.
+// to render the user's storage page.
 type StoragePageData struct {
 	FullName string
-	Crops    []models.Crop
-	EditCrop *models.Crop
+	Products []models.Product
+	EditProduct *models.Product
 	Error    string
 }
 
-// StorageHandler handles all farmer storage requests.
+// StorageHandler handles all user storage requests.
 func (h *Storage) StorageHandler(w http.ResponseWriter, r *http.Request) {
-	farmer, ok := middleware.FarmerFromContext(r)
+	user, ok := middleware.FarmerFromContext(r)
 
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
 	// Buyers don't have produce storage.
-	if farmer.IsBuyer() {
+	if user.IsBuyer() {
 		http.Redirect(w, r, "/marketplace", http.StatusSeeOther)
 		return
 	}
@@ -53,29 +53,30 @@ func (h *Storage) StorageHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		log.Println("User visited storage")
 
-		var editCrop *models.Crop
+		var editProduct *models.Product
 
 		if editID := strings.TrimSpace(r.URL.Query().Get("edit")); editID != "" {
-			cropID, err := strconv.Atoi(editID)
+			productID, err := strconv.Atoi(editID)
 
-			if err == nil && cropID > 0 {
-				candidate, getErr := h.crop.GetCrop(cropID)
+			if err == nil && productID > 0 {
+				candidate, getErr := h.product.GetProduct(productID)
 
 				if getErr == nil &&
 					candidate != nil &&
-					candidate.FarmerID == farmer.ID {
+					candidate.OwnerType == "user" &&
+					candidate.OwnerID == user.ID {
 
-					editCrop = candidate
+					editProduct = candidate
 				}
 			}
 		}
 
 		h.renderPage(
 			w,
-			farmer.ID,
-			farmer.FullName,
+			user.ID,
+			user.FullName,
 			"",
-			editCrop,
+			editProduct,
 		)
 
 	case http.MethodPost:
@@ -87,8 +88,8 @@ func (h *Storage) StorageHandler(w http.ResponseWriter, r *http.Request) {
 			if err := r.ParseMultipartForm(10 << 20); err != nil {
 				h.render(
 					w,
-					farmer.ID,
-					farmer.FullName,
+					user.ID,
+					user.FullName,
 					"Couldn't process the form",
 				)
 				return
@@ -97,8 +98,8 @@ func (h *Storage) StorageHandler(w http.ResponseWriter, r *http.Request) {
 			if err := r.ParseForm(); err != nil {
 				h.render(
 					w,
-					farmer.ID,
-					farmer.FullName,
+					user.ID,
+					user.FullName,
 					"Couldn't process the form",
 				)
 				return
@@ -110,50 +111,50 @@ func (h *Storage) StorageHandler(w http.ResponseWriter, r *http.Request) {
 		switch action {
 
 		case "create":
-			h.createCrop(
+			h.createProduct(
 				w,
 				r,
-				farmer.ID,
-				farmer.FullName,
+				user.ID,
+				user.FullName,
 			)
 
 		case "update":
-			h.updateCrop(
+			h.updateProduct(
 				w,
 				r,
-				farmer.ID,
-				farmer.FullName,
+				user.ID,
+				user.FullName,
 			)
 
 		case "unlist":
-			h.unlistCrop(
+			h.unlistProduct(
 				w,
 				r,
-				farmer.ID,
-				farmer.FullName,
+				user.ID,
+				user.FullName,
 			)
 
 		case "relist":
-			h.relistCrop(
+			h.relistProduct(
 				w,
 				r,
-				farmer.ID,
-				farmer.FullName,
+				user.ID,
+				user.FullName,
 			)
 
 		case "delete":
-			h.deleteCrop(
+			h.deleteProduct(
 				w,
 				r,
-				farmer.ID,
-				farmer.FullName,
+				user.ID,
+				user.FullName,
 			)
 
 		default:
 			h.render(
 				w,
-				farmer.ID,
-				farmer.FullName,
+				user.ID,
+				user.FullName,
 				"Invalid product action",
 			)
 		}
@@ -167,16 +168,22 @@ func (h *Storage) StorageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// createCrop handles creation of a new product.
-func (h *Storage) createCrop(
+// createProduct handles creation of a new product.
+func (h *Storage) createProduct(
 	w http.ResponseWriter,
 	r *http.Request,
-	farmerID int,
+	userID int,
 	fullName string,
 ) {
 	name := strings.TrimSpace(r.FormValue("produce"))
+	description := strings.TrimSpace(r.FormValue("description"))
+	category := strings.TrimSpace(r.FormValue("category"))
 	unit := strings.TrimSpace(r.FormValue("unit"))
-	location := strings.TrimSpace(r.FormValue("location"))
+	community := strings.TrimSpace(r.FormValue("community"))
+
+	// Keep the existing location field available for the UI.
+	// GPS remains separate and unchanged.
+	_ = strings.TrimSpace(r.FormValue("location"))
 
 	latitude, _ := strconv.ParseFloat(
 		r.FormValue("latitude"),
@@ -201,7 +208,7 @@ func (h *Storage) createCrop(
 	if err != nil {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			"Invalid quantity",
 		)
@@ -216,7 +223,7 @@ func (h *Storage) createCrop(
 	if err != nil {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			"Invalid price",
 		)
@@ -225,8 +232,8 @@ func (h *Storage) createCrop(
 
 	listForSale := r.FormValue("list_for_sale") == "on"
 
-	// Product image is compulsory.
-	imageURL, err := saveUploadedFile(
+	// Product pictures are compulsory.
+	imageURLs, err := saveUploadedFiles(
 		r,
 		"produce_image",
 		"crops",
@@ -234,53 +241,53 @@ func (h *Storage) createCrop(
 
 	if err != nil {
 		log.Println(
-			"produce image upload failed:",
+			"product image upload failed:",
 			err,
 		)
 
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			"Failed to upload product picture",
 		)
 		return
 	}
 
-	imageURL = strings.TrimSpace(imageURL)
-
-	if imageURL == "" {
+	if len(imageURLs) == 0 {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
-			"At least one crop picture is required",
+			"At least one product picture is required",
 		)
 		return
 	}
 
-	// CropService expects []string.
-	imageURLs := []string{
-		imageURL,
-	}
-
-	if err := h.crop.AddCrop(
-		farmerID,
+	// ProductService currently accepts GPS after imageURLs.
+	// GPS values themselves are unchanged.
+	if err := h.product.AddProduct(
+		"user",
+		userID,
 		name,
+		description,
+		category,
 		unit,
-		location,
 		quantity,
 		price,
-		listForSale,
+		nil,
+		nil,
+		community,
 		imageURLs,
 		latitude,
 		longitude,
 		accuracy,
+		listForSale,
 	); err != nil {
 
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			err.Error(),
 		)
@@ -295,21 +302,28 @@ func (h *Storage) createCrop(
 	)
 }
 
-// updateCrop handles editing an existing product.
-func (h *Storage) updateCrop(
+// updateProduct handles editing an existing product.
+func (h *Storage) updateProduct(
 	w http.ResponseWriter,
 	r *http.Request,
-	farmerID int,
+	userID int,
 	fullName string,
 ) {
-	cropID, err := strconv.Atoi(
-		strings.TrimSpace(r.FormValue("crop_id")),
+	productID, err := strconv.Atoi(
+		strings.TrimSpace(r.FormValue("product_id")),
 	)
 
-	if err != nil || cropID <= 0 {
+	// Temporary compatibility with the old form.
+	if err != nil || productID <= 0 {
+		productID, err = strconv.Atoi(
+			strings.TrimSpace(r.FormValue("crop_id")),
+		)
+	}
+
+	if err != nil || productID <= 0 {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			"Invalid product ID",
 		)
@@ -317,8 +331,13 @@ func (h *Storage) updateCrop(
 	}
 
 	name := strings.TrimSpace(r.FormValue("produce"))
+	description := strings.TrimSpace(r.FormValue("description"))
+	category := strings.TrimSpace(r.FormValue("category"))
 	unit := strings.TrimSpace(r.FormValue("unit"))
-	location := strings.TrimSpace(r.FormValue("location"))
+	community := strings.TrimSpace(r.FormValue("community"))
+
+	// Keep the existing location field available for the UI.
+	_ = strings.TrimSpace(r.FormValue("location"))
 
 	latitude, _ := strconv.ParseFloat(
 		r.FormValue("latitude"),
@@ -343,7 +362,7 @@ func (h *Storage) updateCrop(
 	if err != nil {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			"Invalid quantity",
 		)
@@ -358,7 +377,7 @@ func (h *Storage) updateCrop(
 	if err != nil {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			"Invalid price",
 		)
@@ -367,26 +386,11 @@ func (h *Storage) updateCrop(
 
 	listForSale := r.FormValue("list_for_sale") == "on"
 
-	// --------------------------------------------------------
-	// PRODUCT IMAGES
-	// --------------------------------------------------------
-
-	var imageURLs []string
-
-	// Keep the existing image if one exists.
-	existingImageURL := strings.TrimSpace(
-		r.FormValue("image_url"),
-	)
-
-	if existingImageURL != "" {
-		imageURLs = append(
-			imageURLs,
-			existingImageURL,
-		)
-	}
-
-	// A new image is optional during update.
-	uploadedURL, uploadErr := saveUploadedFile(
+	// New pictures are optional during an update.
+	//
+	// ProductService automatically preserves the existing
+	// pictures when imageURLs is empty.
+	imageURLs, uploadErr := saveUploadedFiles(
 		r,
 		"produce_image",
 		"crops",
@@ -394,49 +398,44 @@ func (h *Storage) updateCrop(
 
 	if uploadErr != nil {
 		log.Println(
-			"updated produce image upload failed:",
+			"updated product image upload failed:",
 			uploadErr,
 		)
-	} else {
-		uploadedURL = strings.TrimSpace(uploadedURL)
 
-		if uploadedURL != "" {
-			imageURLs = append(
-				imageURLs,
-				uploadedURL,
-			)
-		}
-	}
-
-	// Make sure there is still at least one image.
-	if len(imageURLs) == 0 {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
-			"At least one crop picture is required",
+			"Failed to upload product picture",
 		)
 		return
 	}
 
-	if err := h.crop.UpdateCrop(
-		farmerID,
-		cropID,
+	// ProductService currently accepts GPS after imageURLs.
+	// GPS values themselves are unchanged.
+	if err := h.product.UpdateProduct(
+		"user",
+		userID,
+		productID,
 		name,
+		description,
+		category,
 		unit,
-		location,
 		quantity,
 		price,
-		listForSale,
+		nil,
+		nil,
+		community,
 		imageURLs,
 		latitude,
 		longitude,
 		accuracy,
+		listForSale,
 	); err != nil {
 
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			err.Error(),
 		)
@@ -451,35 +450,42 @@ func (h *Storage) updateCrop(
 	)
 }
 
-// unlistCrop removes a product from the marketplace.
-func (h *Storage) unlistCrop(
+// unlistProduct removes a product from the marketplace.
+func (h *Storage) unlistProduct(
 	w http.ResponseWriter,
 	r *http.Request,
-	farmerID int,
+	userID int,
 	fullName string,
 ) {
-	cropID, err := strconv.Atoi(
-		strings.TrimSpace(r.FormValue("crop_id")),
+	productID, err := strconv.Atoi(
+		strings.TrimSpace(r.FormValue("product_id")),
 	)
 
-	if err != nil || cropID <= 0 {
+	if err != nil || productID <= 0 {
+		productID, err = strconv.Atoi(
+			strings.TrimSpace(r.FormValue("crop_id")),
+		)
+	}
+
+	if err != nil || productID <= 0 {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			"Invalid product ID",
 		)
 		return
 	}
 
-	if err := h.crop.UnlistCrop(
-		farmerID,
-		cropID,
+	if err := h.product.UnlistProduct(
+		"user",
+		userID,
+		productID,
 	); err != nil {
 
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			err.Error(),
 		)
@@ -494,35 +500,42 @@ func (h *Storage) unlistCrop(
 	)
 }
 
-// relistCrop puts a product back on the marketplace.
-func (h *Storage) relistCrop(
+// relistProduct puts a product back on the marketplace.
+func (h *Storage) relistProduct(
 	w http.ResponseWriter,
 	r *http.Request,
-	farmerID int,
+	userID int,
 	fullName string,
 ) {
-	cropID, err := strconv.Atoi(
-		strings.TrimSpace(r.FormValue("crop_id")),
+	productID, err := strconv.Atoi(
+		strings.TrimSpace(r.FormValue("product_id")),
 	)
 
-	if err != nil || cropID <= 0 {
+	if err != nil || productID <= 0 {
+		productID, err = strconv.Atoi(
+			strings.TrimSpace(r.FormValue("crop_id")),
+		)
+	}
+
+	if err != nil || productID <= 0 {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			"Invalid product ID",
 		)
 		return
 	}
 
-	if err := h.crop.RelistCrop(
-		farmerID,
-		cropID,
+	if err := h.product.RelistProduct(
+		"user",
+		userID,
+		productID,
 	); err != nil {
 
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			err.Error(),
 		)
@@ -537,35 +550,42 @@ func (h *Storage) relistCrop(
 	)
 }
 
-// deleteCrop permanently removes a product.
-func (h *Storage) deleteCrop(
+// deleteProduct permanently removes a product.
+func (h *Storage) deleteProduct(
 	w http.ResponseWriter,
 	r *http.Request,
-	farmerID int,
+	userID int,
 	fullName string,
 ) {
-	cropID, err := strconv.Atoi(
-		strings.TrimSpace(r.FormValue("crop_id")),
+	productID, err := strconv.Atoi(
+		strings.TrimSpace(r.FormValue("product_id")),
 	)
 
-	if err != nil || cropID <= 0 {
+	if err != nil || productID <= 0 {
+		productID, err = strconv.Atoi(
+			strings.TrimSpace(r.FormValue("crop_id")),
+		)
+	}
+
+	if err != nil || productID <= 0 {
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			"Invalid product ID",
 		)
 		return
 	}
 
-	if err := h.crop.DeleteCrop(
-		farmerID,
-		cropID,
+	if err := h.product.DeleteProduct(
+		"user",
+		userID,
+		productID,
 	); err != nil {
 
 		h.render(
 			w,
-			farmerID,
+			userID,
 			fullName,
 			err.Error(),
 		)
@@ -580,16 +600,16 @@ func (h *Storage) deleteCrop(
 	)
 }
 
-// render loads the farmer's products and renders the storage page.
+// render loads the user's products and renders the storage page.
 func (h *Storage) render(
 	w http.ResponseWriter,
-	farmerID int,
+	userID int,
 	fullName string,
 	errMsg string,
 ) {
 	h.renderPage(
 		w,
-		farmerID,
+		userID,
 		fullName,
 		errMsg,
 		nil,
@@ -599,16 +619,19 @@ func (h *Storage) render(
 // renderPage loads products and renders storage.html.
 func (h *Storage) renderPage(
 	w http.ResponseWriter,
-	farmerID int,
+	userID int,
 	fullName string,
 	errMsg string,
-	editCrop *models.Crop,
+	editProduct *models.Product,
 ) {
-	crops, err := h.crop.MyCrops(farmerID)
+	products, err := h.product.MyProducts(
+		"user",
+		userID,
+	)
 
 	if err != nil {
 		log.Println(
-			"failed to load crops:",
+			"failed to load products:",
 			err,
 		)
 
@@ -621,11 +644,45 @@ func (h *Storage) renderPage(
 		return
 	}
 
+	// Load images for every product so the storage page
+	// can display the primary/product pictures.
+	for i := range products {
+		images, imageErr := h.product.GetProductImages(
+			products[i].ID,
+		)
+
+		if imageErr != nil {
+			log.Println(
+				"failed to load product images:",
+				imageErr,
+			)
+			continue
+		}
+
+		products[i].Images = images
+	}
+
+	// Also load images for the product being edited.
+	if editProduct != nil {
+		images, imageErr := h.product.GetProductImages(
+			editProduct.ID,
+		)
+
+		if imageErr != nil {
+			log.Println(
+				"failed to load edit product images:",
+				imageErr,
+			)
+		} else {
+			editProduct.Images = images
+		}
+	}
+
 	data := StoragePageData{
-		FullName: fullName,
-		Crops:    crops,
-		EditCrop: editCrop,
-		Error:    errMsg,
+		FullName:    fullName,
+		Products:    products,
+		EditProduct: editProduct,
+		Error:       errMsg,
 	}
 
 	if err := render.RenderTemplates(

@@ -12,20 +12,20 @@ import (
 //
 // Dependency flow:
 //
-// Repository
-//     ↓
-// Service
-//     ↓
-// Container
-//     ↓
-// Handler
-//     ↓
-// Route
+//	Repository
+//	    ↓
+//	Service
+//	    ↓
+//	Container
+//	    ↓
+//	Handler
+//	    ↓
+//	Route
 // ============================================================
 
 type Container struct {
 	Auth         *services.AuthService
-	Crop         *services.CropService
+	Product      *services.ProductService
 	Order        *services.OrderService
 	Cart         *services.CartService
 	AI           *services.AIService
@@ -35,7 +35,7 @@ type Container struct {
 	MarketEvents *repository.MarketEventRepository
 
 	// Used by authentication middleware.
-	UserRepo   *repository.UserRepository
+	UserRepo     *repository.UserRepository
 	LocationRepo *repository.LocationRepository
 }
 
@@ -44,9 +44,9 @@ type Container struct {
 // ============================================================
 
 func NewContainer(
-	UserRepo *repository.UserRepository,
+	userRepo *repository.UserRepository,
 	locationRepo *repository.LocationRepository,
-	cropRepo *repository.CropRepository,
+	productRepo *repository.ProductRepository,
 	orderRepo *repository.OrderRepository,
 	cartRepo *repository.CartRepository,
 	diagnosisRepo *repository.DiagnosisRepository,
@@ -72,7 +72,7 @@ func NewContainer(
 
 	cartService := services.NewCartService(
 		cartRepo,
-		cropRepo,
+		productRepo,
 		marketEventRepo,
 	)
 
@@ -91,7 +91,7 @@ func NewContainer(
 	negotiationService := services.NewNegotiationService(
 		negotiationRepo,
 		negotiationMsgRepo,
-		cropRepo,
+		productRepo,
 		cartService,
 		notificationService,
 		marketEventRepo,
@@ -138,15 +138,15 @@ func NewContainer(
 		// ----------------------------------------------------
 
 		Auth: services.NewAuthService(
-			UserRepo,
+			userRepo,
 		),
 
 		// ----------------------------------------------------
-		// CROPS
+		// PRODUCTS
 		// ----------------------------------------------------
 
-		Crop: services.NewCropService(
-			cropRepo,
+		Product: services.NewProductService(
+			productRepo,
 		),
 
 		// ----------------------------------------------------
@@ -155,7 +155,7 @@ func NewContainer(
 
 		Order: services.NewOrderService(
 			orderRepo,
-			cropRepo,
+			productRepo,
 		),
 
 		// ----------------------------------------------------
@@ -193,10 +193,10 @@ func NewContainer(
 		MarketEvents: marketEventRepo,
 
 		// ----------------------------------------------------
-		// FARMER REPOSITORY
+		// USER REPOSITORY
 		// ----------------------------------------------------
 
-		UserRepo:   UserRepo,
+		UserRepo:     userRepo,
 		LocationRepo: locationRepo,
 	}
 }

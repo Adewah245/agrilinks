@@ -14,88 +14,262 @@ import (
 )
 
 type Marketplace struct {
-	crop   *services.CropService
-	order  *services.OrderService
-	events *repository.MarketEventRepository
+	product *services.ProductService
+	order   *services.OrderService
+	events  *repository.MarketEventRepository
 }
 
-func NewMarketplaceHandler(crop *services.CropService, order *services.OrderService, events *repository.MarketEventRepository) *Marketplace {
-	return &Marketplace{crop: crop, order: order, events: events}
+func NewMarketplaceHandler(
+	product *services.ProductService,
+	order *services.OrderService,
+	events *repository.MarketEventRepository,
+) *Marketplace {
+	return &Marketplace{
+		product: product,
+		order:   order,
+		events:  events,
+	}
 }
 
 type MarketplacePageData struct {
-	Crops         []models.Crop
+	Products      []models.Product
 	IsBuyer       bool
 	CurrentUserID int
 	Message       string
 	Error         string
 }
 
-func (h *Marketplace) MarketplaceHandler(w http.ResponseWriter, r *http.Request) {
-	farmer, ok := middleware.FarmerFromContext(r)
-	if !ok || farmer == nil {
+func (h *Marketplace) MarketplaceHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	user, ok := middleware.FarmerFromContext(r)
+	if !ok || user == nil {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
 
 	switch r.Method {
+
 	case http.MethodGet:
 		log.Println("User Visited Marketplace")
-		h.record("marketplace_view", nil, farmer.ID, r)
-		h.render(w, farmer.IsBuyer(), farmer.ID, "", "")
+
+		h.record(
+			"marketplace_view",
+			nil,
+			user.ID,
+			r,
+		)
+
+		h.render(
+			w,
+			user.IsBuyer(),
+			user.ID,
+			"",
+			"",
+		)
+
 	case http.MethodPost:
+
+		// Marketplace search.
 		if r.FormValue("action") == "search" {
-			uid := farmer.ID
+			uid := user.ID
+
 			if h.events != nil {
-				_ = h.events.RecordSearch(r.FormValue("search_term"), r.FormValue("normalized_produce"), farmer.Location, &uid, r.FormValue("session_id"))
+				_ = h.events.RecordSearch(
+					r.FormValue("search_term"),
+					r.FormValue("normalized_produce"),
+					user.Location,
+					&uid,
+					r.FormValue("session_id"),
+				)
 			}
-			h.render(w, farmer.IsBuyer(), farmer.ID, "", "")
+
+			h.render(
+				w,
+				user.IsBuyer(),
+				user.ID,
+				"",
+				"",
+			)
+
 			return
 		}
-		if !farmer.IsBuyer() {
-			h.render(w, farmer.IsBuyer(), farmer.ID, "", "Only buyer accounts can place orders")
+
+		// Only buyers can purchase products.
+		if !user.IsBuyer() {
+			h.render(
+				w,
+				user.IsBuyer(),
+				user.ID,
+				"",
+				"Only buyer accounts can place orders",
+			)
+
 			return
 		}
-		cropID, _ := strconv.Atoi(r.FormValue("crop_id"))
-		quantity, _ := strconv.ParseFloat(r.FormValue("quantity"), 64)
-		if err := h.order.PlaceOrder(farmer.ID, cropID, quantity); err != nil {
-			h.render(w, farmer.IsBuyer(), farmer.ID, "", err.Error())
+
+		productID, err := strconv.Atoi(
+			r.FormValue("product_id"),
+		)
+
+		if err != nil || productID <= 0 {
+			// Backward compatibility with existing marketplace forms
+			// that may still submit crop_id.
+			productID, err = strconv.Atoi(
+				r.FormValue("crop_id"),
+			)
+
+			if err != nil || productID <= 0 {
+				h.render(
+					w,
+					user.IsBuyer(),
+					user.ID,
+					"",
+					"Invalid product",
+				)
+
+				return
+			}
+		}
+
+		quantity, err := strconv.ParseFloat(
+			r.FormValue("quantity"),
+			64,
+		)
+
+		if err != nil || quantity <= 0 {
+			h.render(
+				w,
+				user.IsBuyer(),
+				user.ID,
+				"",
+				"Invalid quantity",
+			)
+
 			return
 		}
-		h.record("checkout_completed", &cropID, farmer.ID, r, fmt.Sprintf(`{"quantity":%g}`, quantity))
-		h.render(w, farmer.IsBuyer(), farmer.ID, "Order placed successfully!", "")
+
+		if err := h.order.PlaceOrder(
+			user.ID,
+			productID,
+			quantity,
+		); err != nil {
+			h.render(
+				w,
+				user.IsBuyer(),
+				user.ID,
+				"",
+				err.Error(),
+			)
+
+			return
+		}
+
+		// The event schema still calls the product identifier crop_id.
+		h.record(
+			"checkout_completed",
+			&productID,
+			user.ID,
+			r,
+			fmt.Sprintf(`{"quantity":%g}`, quantity),
+		)
+
+		h.render(
+			w,
+			user.IsBuyer(),
+			user.ID,
+			"Order placed successfully!",
+			"",
+		)
+
 	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		http.Error(
+			w,
+			"Method Not Allowed",
+			http.StatusMethodNotAllowed,
+		)
 	}
 }
 
-func (h *Marketplace) record(eventType string, cropID *int, userID int, r *http.Request, metadata ...string) {
+func (h *Marketplace) record(
+	eventType string,
+	productID *int,
+	userID int,
+	r *http.Request,
+	metadata ...string,
+) {
 	if h.events == nil {
 		return
 	}
+
 	uid := userID
-	sessionID, _ := r.Context().Value("session_id").(string)
+
+	sessionID, _ := r.Context().
+		Value("session_id").
+		(string)
+
 	meta := "{}"
+
 	if len(metadata) > 0 {
 		meta = metadata[0]
 	}
-	_ = h.events.Record(&models.MarketEvent{EventType: eventType, CropID: cropID, UserID: &uid, SessionID: sessionID, Metadata: meta})
+
+	_ = h.events.Record(
+		&models.MarketEvent{
+			EventType: eventType,
+			CropID:    productID,
+			UserID:    &uid,
+			SessionID: sessionID,
+			Metadata:  meta,
+		},
+	)
 }
 
-func (h *Marketplace) render(w http.ResponseWriter, isBuyer bool, currentUserID int, message, errMsg string) {
-	crops, err := h.crop.AvailableCrops()
-	if err != nil {
-		log.Println("failed to load crops:", err)
+func (h *Marketplace) render(
+	w http.ResponseWriter,
+	isBuyer bool,
+	currentUserID int,
+	message string,
+	errMsg string,
+) {
+	var products []models.Product
+
+	if h.product != nil {
+		var err error
+
+		products, err = h.product.AvailableProducts()
+
+		if err != nil {
+			log.Println(
+				"failed to load products:",
+				err,
+			)
+		}
 	}
+
 	data := MarketplacePageData{
-		Crops:         crops,
+		Products:      products,
 		IsBuyer:       isBuyer,
 		CurrentUserID: currentUserID,
 		Message:       message,
 		Error:         errMsg,
 	}
-	if err := render.RenderTemplates(w, "marketplace.html", data); err != nil {
-		log.Println("render error", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+
+	if err := render.RenderTemplates(
+		w,
+		"marketplace.html",
+		data,
+	); err != nil {
+		log.Println(
+			"render error",
+			err,
+		)
+
+		http.Error(
+			w,
+			"Internal Server Error",
+			http.StatusInternalServerError,
+		)
 	}
 }

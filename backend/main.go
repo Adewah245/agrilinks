@@ -17,9 +17,7 @@ func main() {
 	// ============================================================
 	// 1. CONNECT TO DATABASE
 	//
-	// Connects Agro-Shield to the PostgreSQL database.
-	//
-	// The DATABASE_URL is loaded from the environment.
+	// Connects Agro-Shield to PostgreSQL.
 	//
 	// Flow:
 	//
@@ -35,30 +33,32 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Make sure the database connection is closed when
-	// the application stops.
 	defer db.Close()
 
 	// ============================================================
 	// 2. RUN DATABASE MIGRATIONS
 	//
-	// Creates all required database tables if they do not
-	// already exist.
+	// Creates the database structure required by Agro-Shield.
 	//
-	// This includes:
+	// Migration files are responsible for defining:
 	//
-	// - Farmers
-	// - Crops
-	// - Diagnoses
-	// - Diagnosis media
+	// - Users
+	// - User verification
+	// - Locations
+	// - Farming
+	// - Products
+	// - Marketplace
 	// - Orders
 	// - Negotiations
-	// - Negotiation messages
-	// - Cart items
+	// - Cart
+	// - Chat
+	// - Organisations
+	// - Events and news
+	// - Logistics and delivery
+	// - Training
 	// - Notifications
-	// - Conversations
-	// - Conversation members
-	// - Chat messages
+	// - Payments
+	// - Reviews
 	//
 	// Flow:
 	//
@@ -66,7 +66,9 @@ func main() {
 	//     ↓
 	// RunMigration()
 	//     ↓
-	// PostgreSQL tables
+	// Migration files
+	//     ↓
+	// PostgreSQL
 	// ============================================================
 
 	if err := database.RunMigration(db); err != nil {
@@ -76,17 +78,7 @@ func main() {
 	// ============================================================
 	// 3. CREATE REPOSITORIES
 	//
-	// Repositories are responsible for communicating directly
-	// with PostgreSQL.
-	//
-	// They contain database operations such as:
-	//
-	// INSERT
-	// SELECT
-	// UPDATE
-	// DELETE
-	//
-	// Flow:
+	// Repositories communicate directly with PostgreSQL.
 	//
 	// Service
 	//    ↓
@@ -96,25 +88,54 @@ func main() {
 	// ============================================================
 
 	// ------------------------------------------------------------
-	// FARMER REPOSITORY
+	// USER REPOSITORY
 	//
-	// Handles farmer/buyer account database operations.
+	// Handles user account database operations.
+	//
+	// Users may have different roles such as:
+	//
+	// - Farmer
+	// - Buyer
+	// - Ministry
+	// - Organisation
 	// ------------------------------------------------------------
 
-	farmerRepo := repository.NewUserRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	// ------------------------------------------------------------
+	// LOCATION REPOSITORY
+	//
+	// Handles:
+	//
+	// - States
+	// - LGAs
+	// - Communities
+	// ------------------------------------------------------------
+
 	locationRepo := repository.NewLocationRepository(db)
+
 	// ------------------------------------------------------------
-	// CROP REPOSITORY
+	// PRODUCT REPOSITORY
 	//
-	// Handles crop and marketplace product database operations.
+	// Handles agricultural product listings.
+	//
+	// Product ownership is represented by:
+	//
+	// owner_type
+	// owner_id
+	//
+	// Products can therefore belong to:
+	//
+	// User
+	// Organisation
 	// ------------------------------------------------------------
 
-	cropRepo := repository.NewCropRepository(db)
+	productRepo := repository.NewProductRepository(db)
 
 	// ------------------------------------------------------------
 	// ORDER REPOSITORY
 	//
-	// Handles marketplace order database operations.
+	// Handles marketplace orders.
 	// ------------------------------------------------------------
 
 	orderRepo := repository.NewOrderRepository(db)
@@ -122,7 +143,7 @@ func main() {
 	// ------------------------------------------------------------
 	// DIAGNOSIS REPOSITORY
 	//
-	// Handles AI diagnosis history stored in PostgreSQL.
+	// Handles AI diagnosis history.
 	// ------------------------------------------------------------
 
 	diagnosisRepo := repository.NewDiagnosisRepository(db)
@@ -130,7 +151,7 @@ func main() {
 	// ------------------------------------------------------------
 	// NEGOTIATION REPOSITORY
 	//
-	// Handles negotiation records between buyers and sellers.
+	// Handles negotiations between buyers and sellers.
 	// ------------------------------------------------------------
 
 	negotiationRepo := repository.NewNegotiationRepository(db)
@@ -147,13 +168,13 @@ func main() {
 	// ------------------------------------------------------------
 	// CART REPOSITORY
 	//
-	// Handles products that have entered the buyer's cart.
+	// Handles products added to the buyer's cart.
 	//
 	// Example:
 	//
 	// Negotiation accepted
 	//        ↓
-	// Cart item created
+	// Product added to cart
 	//        ↓
 	// Buyer sees product in cart
 	// ------------------------------------------------------------
@@ -175,7 +196,9 @@ func main() {
 
 	notificationRepo :=
 		repository.NewNotificationRepository(db)
-	marketEventRepo := repository.NewMarketEventRepository(db)
+
+	marketEventRepo :=
+		repository.NewMarketEventRepository(db)
 
 	// ============================================================
 	// CHAT REPOSITORIES
@@ -199,12 +222,6 @@ func main() {
 	// CONVERSATION REPOSITORY
 	//
 	// Handles chat conversations.
-	//
-	// Examples:
-	//
-	// - Private conversation
-	// - Maize Farmers Association
-	// - Farm Tools Sellers
 	// ------------------------------------------------------------
 
 	conversationRepo :=
@@ -214,16 +231,6 @@ func main() {
 	// CONVERSATION MEMBER REPOSITORY
 	//
 	// Handles users who belong to conversations.
-	//
-	// Example:
-	//
-	// Maize Farmers Association
-	//
-	// Members:
-	// - Farmer A
-	// - Farmer B
-	// - Farmer C
-	// - Farmer D
 	// ------------------------------------------------------------
 
 	conversationMemberRepo :=
@@ -233,14 +240,6 @@ func main() {
 	// CHAT MESSAGE REPOSITORY
 	//
 	// Handles normal chat messages.
-	//
-	// Example:
-	//
-	// "Good morning everyone."
-	//
-	// "The meeting is tomorrow."
-	//
-	// "Who has maize seeds available?"
 	// ------------------------------------------------------------
 
 	chatMessageRepo :=
@@ -252,11 +251,9 @@ func main() {
 	// GeminiProvider handles communication between Agro-Shield
 	// and the Gemini AI service.
 	//
-	// The API key is loaded from:
+	// API key:
 	//
 	// GEMINI_API_KEY
-	//
-	// The AI provider is later given to AIService.
 	// ============================================================
 
 	aiProvider, err := services.NewGeminiProvider(
@@ -270,9 +267,6 @@ func main() {
 	// ============================================================
 	// 5. CREATE APPLICATION CONTAINER
 	//
-	// The application container connects all repositories
-	// and services together.
-	//
 	// Dependency flow:
 	//
 	// PostgreSQL
@@ -284,15 +278,12 @@ func main() {
 	// Container
 	//     ↓
 	// Routes / Handlers
-	//
-	// The Chat repositories are passed here so that
-	// NewContainer() can create ChatService.
 	// ============================================================
 
 	container := app.NewContainer(
-		farmerRepo,
+		userRepo,
 		locationRepo,
-		cropRepo,
+		productRepo,
 		orderRepo,
 		cartRepo,
 		diagnosisRepo,
@@ -320,20 +311,6 @@ func main() {
 	// 6. REGISTER ROUTES
 	//
 	// Connects URLs to their handlers.
-	//
-	// Examples:
-	//
-	// /login
-	// /dashboard
-	// /storage
-	// /marketplace
-	// /cart
-	// /negotiations
-	// /ai-assistant
-	// /chat
-	//
-	// The container gives the routes access to the required
-	// services.
 	// ============================================================
 
 	routes.RegisterRoutes(container)
@@ -341,11 +318,7 @@ func main() {
 	// ============================================================
 	// 7. START HTTP SERVER
 	//
-	// Starts Agro-Shield on port 8080.
-	//
-	// Open:
-	//
-	// http://localhost:8080
+	// Starts Agro-Shield on port 8080 by default.
 	// ============================================================
 
 	port := os.Getenv("PORT")

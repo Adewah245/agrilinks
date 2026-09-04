@@ -7,32 +7,57 @@ import (
 	"strings"
 )
 
-// CropRepository handles all database operations related to crops/products.
-type CropRepository struct {
+// ProductRepository handles all database operations related to products.
+type ProductRepository struct {
 	db *sql.DB
 }
 
-// NewCropRepository creates a new CropRepository.
-func NewCropRepository(db *sql.DB) *CropRepository {
-	return &CropRepository{
+// NewProductRepository creates a new ProductRepository.
+func NewProductRepository(db *sql.DB) *ProductRepository {
+	return &ProductRepository{
 		db: db,
 	}
 }
 
 // ============================================================
-// CREATE CROP
-// ============================================================
-//
-// All required crop fields are inserted directly.
-// No COALESCE is used for required fields.
-//
-// The first image is stored in crops.image_url.
-// Additional images are stored in crop_images.
+// CREATE PRODUCT
 // ============================================================
 
-func (r *CropRepository) Create(crop *models.Crop) error {
-	if crop == nil {
-		return fmt.Errorf("crop cannot be nil")
+func (r *ProductRepository) Create(product *models.Product) error {
+	if product == nil {
+		return fmt.Errorf("product cannot be nil")
+	}
+
+	if product.OwnerID <= 0 {
+		return fmt.Errorf("invalid product owner")
+	}
+
+	if strings.TrimSpace(product.OwnerType) == "" {
+		return fmt.Errorf("product owner type is required")
+	}
+
+	if strings.TrimSpace(product.Name) == "" {
+		return fmt.Errorf("product name is required")
+	}
+
+	if product.Quantity < 0 {
+		return fmt.Errorf("product quantity cannot be negative")
+	}
+
+	if product.Price < 0 {
+		return fmt.Errorf("product price cannot be negative")
+	}
+
+	if strings.TrimSpace(product.Unit) == "" {
+		return fmt.Errorf("product unit is required")
+	}
+
+	if strings.TrimSpace(product.Category) == "" {
+		return fmt.Errorf("product category is required")
+	}
+
+	if product.Status == "" {
+		product.Status = "inactive"
 	}
 
 	tx, err := r.db.Begin()
@@ -42,48 +67,50 @@ func (r *CropRepository) Create(crop *models.Crop) error {
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO crops (
-			farmer_id,
+		INSERT INTO products (
+			owner_type,
+			owner_id,
 			name,
+			description,
+			category,
 			quantity,
 			unit,
-			location,
-			price_per_unit,
-			listed_for_sale,
-			image_url,
-			lga,
-			state,
-			country,
+			price,
+			state_id,
+			lga_id,
+			community,
 			latitude,
 			longitude,
 			location_accuracy,
+			status,
 			initial_listed_quantity,
 			first_listed_at
 		)
 		VALUES (
-			$1::integer,
-			$2::text,
-			$3::double precision,
-			$4::text,
-			$5::text,
-			$6::double precision,
-			$7::boolean,
-			$8::text,
-			$5::text,
-			'Benue'::text,
-			'Nigeria'::text,
-			$9::double precision,
-			$10::double precision,
-			$11::double precision,
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10,
+			$11,
+			$12,
+			$13,
+			$14,
+			$15,
 			CASE
-				WHEN $7::boolean = TRUE
-				THEN $3::double precision
-				ELSE NULL::double precision
+				WHEN $15 = 'active'
+				THEN $6
+				ELSE NULL
 			END,
 			CASE
-				WHEN $7::boolean = TRUE
+				WHEN $15 = 'active'
 				THEN CURRENT_TIMESTAMP
-				ELSE NULL::timestamp
+				ELSE NULL
 			END
 		)
 		RETURNING id
@@ -91,155 +118,187 @@ func (r *CropRepository) Create(crop *models.Crop) error {
 
 	err = tx.QueryRow(
 		query,
-		crop.FarmerID,
-		crop.Name,
-		crop.Quantity,
-		crop.Unit,
-		crop.Location,
-		crop.PricePerUnit,
-		crop.ListedForSale,
-		crop.ImageURL,
-		crop.Latitude,
-		crop.Longitude,
-		crop.LocationAccuracy,
-	).Scan(&crop.ID)
+		product.OwnerType,
+		product.OwnerID,
+		product.Name,
+		product.Description,
+		product.Category,
+		product.Quantity,
+		product.Unit,
+		product.Price,
+		product.StateID,
+		product.LGAID,
+		product.Community,
+		product.Latitude,
+		product.Longitude,
+		product.LocationAccuracy,
+		product.Status,
+	).Scan(&product.ID)
 
 	if err != nil {
-		return fmt.Errorf("failed to create crop: %w", err)
+		return fmt.Errorf("failed to create product: %w", err)
 	}
 
-	// Save initial price history.
-	if crop.PricePerUnit > 0 {
+	// Save initial price history when a price exists.
+	if product.Price > 0 {
 		_, err = tx.Exec(`
-			INSERT INTO produce_price_history (
-				crop_id,
-				price_per_unit,
+			INSERT INTO product_price_history (
+				product_id,
+				price,
 				unit,
 				source
 			)
 			VALUES ($1, $2, $3, $4)
 		`,
-			crop.ID,
-			crop.PricePerUnit,
-			crop.Unit,
+			product.ID,
+			product.Price,
+			product.Unit,
 			"Agro-Shield",
 		)
 
 		if err != nil {
-			return fmt.Errorf("failed to save price history: %w", err)
+			return fmt.Errorf("failed to save product price history: %w", err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit crop creation: %w", err)
+		return fmt.Errorf("failed to commit product creation: %w", err)
 	}
 
 	return nil
 }
 
 // ============================================================
-// LIST FARMER CROPS
+// LIST PRODUCTS BY OWNER
 // ============================================================
 
-func (r *CropRepository) ListByFarmer(
-	farmerID int,
-) ([]models.Crop, error) {
+func (r *ProductRepository) ListByOwner(
+	ownerType string,
+	ownerID int,
+) ([]models.Product, error) {
 
 	query := `
 		SELECT
 			id,
-			farmer_id,
+			owner_type,
+			owner_id,
 			name,
+			description,
+			category,
 			quantity,
 			unit,
-			location,
-			price_per_unit,
-			listed_for_sale,
-			image_url,
+			price,
+			state_id,
+			lga_id,
+			community,
+			latitude,
+			longitude,
+			location_accuracy,
+			status,
 			COALESCE(initial_listed_quantity, 0),
 			first_listed_at,
 			first_order_at,
 			sold_out_at,
 			COALESCE(created_at, CURRENT_TIMESTAMP),
 			COALESCE(updated_at, CURRENT_TIMESTAMP)
-		FROM crops
-		WHERE farmer_id = $1
+		FROM products
+		WHERE owner_type = $1
+		AND owner_id = $2
 		ORDER BY created_at DESC
 	`
 
-	rows, err := r.db.Query(query, farmerID)
+	rows, err := r.db.Query(query, ownerType, ownerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var crops []models.Crop
+	var products []models.Product
 
 	for rows.Next() {
-		var crop models.Crop
+		var product models.Product
 
 		err := rows.Scan(
-			&crop.ID,
-			&crop.FarmerID,
-			&crop.Name,
-			&crop.Quantity,
-			&crop.Unit,
-			&crop.Location,
-			&crop.PricePerUnit,
-			&crop.ListedForSale,
-			&crop.ImageURL,
-			&crop.InitialListedQuantity,
-			&crop.FirstListedAt,
-			&crop.FirstOrderAt,
-			&crop.SoldOutAt,
-			&crop.CreatedAt,
-			&crop.UpdatedAt,
+			&product.ID,
+			&product.OwnerType,
+			&product.OwnerID,
+			&product.Name,
+			&product.Description,
+			&product.Category,
+			&product.Quantity,
+			&product.Unit,
+			&product.Price,
+			&product.StateID,
+			&product.LGAID,
+			&product.Community,
+			&product.Latitude,
+			&product.Longitude,
+			&product.LocationAccuracy,
+			&product.Status,
+			&product.InitialListedQuantity,
+			&product.FirstListedAt,
+			&product.FirstOrderAt,
+			&product.SoldOutAt,
+			&product.CreatedAt,
+			&product.UpdatedAt,
 		)
 
 		if err != nil {
 			return nil, err
 		}
 
-		crops = append(crops, crop)
+		products = append(products, product)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return crops, nil
+	return products, nil
 }
 
 // ============================================================
-// LIST AVAILABLE CROPS
+// LIST AVAILABLE PRODUCTS
 // ============================================================
 
-func (r *CropRepository) ListAvailable() ([]models.Crop, error) {
+func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 
 	query := `
 		SELECT
-			crops.id,
-			crops.farmer_id,
-			crops.name,
-			crops.quantity,
-			crops.unit,
-			crops.location,
-			COALESCE(crops.latitude, 0),
-			COALESCE(crops.longitude, 0),
-			COALESCE(crops.location_accuracy, 0),
-			crops.price_per_unit,
-			crops.listed_for_sale,
-			crops.image_url,
-			COALESCE(crops.created_at, CURRENT_TIMESTAMP),
-			COALESCE(crops.updated_at, CURRENT_TIMESTAMP),
-			COALESCE(farmers.full_name, ''),
-			COALESCE(farmers.photo_url, '')
-		FROM crops
-		INNER JOIN farmers
-			ON farmers.id = crops.farmer_id
-		WHERE crops.listed_for_sale = TRUE
-		AND crops.quantity > 0
-		ORDER BY crops.created_at DESC
+			p.id,
+			p.owner_type,
+			p.owner_id,
+			p.name,
+			p.description,
+			p.category,
+			p.quantity,
+			p.unit,
+			p.price,
+			p.state_id,
+			p.lga_id,
+			p.community,
+			COALESCE(p.latitude, 0),
+			COALESCE(p.longitude, 0),
+			COALESCE(p.location_accuracy, 0),
+			p.status,
+			COALESCE(p.initial_listed_quantity, 0),
+			p.first_listed_at,
+			p.first_order_at,
+			p.sold_out_at,
+			COALESCE(p.created_at, CURRENT_TIMESTAMP),
+			COALESCE(p.updated_at, CURRENT_TIMESTAMP),
+			COALESCE(u.full_name, o.name, ''),
+			COALESCE(u.photo_url, '')
+		FROM products p
+		LEFT JOIN users u
+			ON p.owner_type = 'user'
+			AND u.id = p.owner_id
+		LEFT JOIN organizations o
+			ON p.owner_type = 'organization'
+			AND o.id = p.owner_id
+		WHERE p.status = 'active'
+		AND p.quantity > 0
+		ORDER BY p.created_at DESC
 	`
 
 	rows, err := r.db.Query(query)
@@ -248,97 +307,113 @@ func (r *CropRepository) ListAvailable() ([]models.Crop, error) {
 	}
 	defer rows.Close()
 
-	var crops []models.Crop
+	var products []models.Product
 
 	for rows.Next() {
-		var crop models.Crop
+		var product models.Product
 
 		err := rows.Scan(
-			&crop.ID,
-			&crop.FarmerID,
-			&crop.Name,
-			&crop.Quantity,
-			&crop.Unit,
-			&crop.Location,
-			&crop.Latitude,
-			&crop.Longitude,
-			&crop.LocationAccuracy,
-			&crop.PricePerUnit,
-			&crop.ListedForSale,
-			&crop.ImageURL,
-			&crop.CreatedAt,
-			&crop.UpdatedAt,
-			&crop.SellerName,
-			&crop.SellerPhotoURL,
+			&product.ID,
+			&product.OwnerType,
+			&product.OwnerID,
+			&product.Name,
+			&product.Description,
+			&product.Category,
+			&product.Quantity,
+			&product.Unit,
+			&product.Price,
+			&product.StateID,
+			&product.LGAID,
+			&product.Community,
+			&product.Latitude,
+			&product.Longitude,
+			&product.LocationAccuracy,
+			&product.Status,
+			&product.InitialListedQuantity,
+			&product.FirstListedAt,
+			&product.FirstOrderAt,
+			&product.SoldOutAt,
+			&product.CreatedAt,
+			&product.UpdatedAt,
+			&product.SellerName,
+			&product.SellerPhotoURL,
 		)
 
 		if err != nil {
 			return nil, err
 		}
 
-		crops = append(crops, crop)
+		products = append(products, product)
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return crops, nil
+	return products, nil
 }
 
 // ============================================================
-// GET CROP BY ID
+// GET PRODUCT BY ID
 // ============================================================
 
-func (r *CropRepository) GetByID(
+func (r *ProductRepository) GetByID(
 	id int,
-) (*models.Crop, error) {
+) (*models.Product, error) {
 
 	query := `
 		SELECT
 			id,
-			farmer_id,
+			owner_type,
+			owner_id,
 			name,
+			description,
+			category,
 			quantity,
 			unit,
-			location,
+			price,
+			state_id,
+			lga_id,
+			community,
 			COALESCE(latitude, 0),
 			COALESCE(longitude, 0),
 			COALESCE(location_accuracy, 0),
-			price_per_unit,
-			listed_for_sale,
-			image_url,
+			status,
 			COALESCE(initial_listed_quantity, 0),
 			first_listed_at,
 			first_order_at,
 			sold_out_at,
 			COALESCE(created_at, CURRENT_TIMESTAMP),
 			COALESCE(updated_at, CURRENT_TIMESTAMP)
-		FROM crops
+		FROM products
 		WHERE id = $1
 	`
 
-	var crop models.Crop
+	var product models.Product
 
 	err := r.db.QueryRow(query, id).Scan(
-		&crop.ID,
-		&crop.FarmerID,
-		&crop.Name,
-		&crop.Quantity,
-		&crop.Unit,
-		&crop.Location,
-		&crop.Latitude,
-		&crop.Longitude,
-		&crop.LocationAccuracy,
-		&crop.PricePerUnit,
-		&crop.ListedForSale,
-		&crop.ImageURL,
-		&crop.InitialListedQuantity,
-		&crop.FirstListedAt,
-		&crop.FirstOrderAt,
-		&crop.SoldOutAt,
-		&crop.CreatedAt,
-		&crop.UpdatedAt,
+		&product.ID,
+		&product.OwnerType,
+		&product.OwnerID,
+		&product.Name,
+		&product.Description,
+		&product.Category,
+		&product.Quantity,
+		&product.Unit,
+		&product.Price,
+		&product.StateID,
+		&product.LGAID,
+		&product.Community,
+		&product.Latitude,
+		&product.Longitude,
+		&product.LocationAccuracy,
+		&product.Status,
+		&product.InitialListedQuantity,
+		&product.FirstListedAt,
+		&product.FirstOrderAt,
+		&product.SoldOutAt,
+		&product.CreatedAt,
+		&product.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -349,19 +424,19 @@ func (r *CropRepository) GetByID(
 		return nil, err
 	}
 
-	return &crop, nil
+	return &product, nil
 }
 
 // ============================================================
-// UPDATE CROP
+// UPDATE PRODUCT
 // ============================================================
 
-func (r *CropRepository) Update(
-	crop *models.Crop,
+func (r *ProductRepository) Update(
+	product *models.Product,
 ) error {
 
-	if crop == nil {
-		return fmt.Errorf("crop cannot be nil")
+	if product == nil {
+		return fmt.Errorf("product cannot be nil")
 	}
 
 	tx, err := r.db.Begin()
@@ -371,44 +446,49 @@ func (r *CropRepository) Update(
 	defer tx.Rollback()
 
 	query := `
-		UPDATE crops
+		UPDATE products
 		SET
-			name = $1::text,
-			quantity = $2::double precision,
-			unit = $3::text,
-			location = $4::text,
-			price_per_unit = $5::double precision,
-			listed_for_sale = $6::boolean,
-			image_url = $7::text,
-			lga = $4::text,
-			state = 'Benue'::text,
-			country = 'Nigeria'::text,
-			latitude = $10::double precision,
-			longitude = $11::double precision,
-			location_accuracy = $12::double precision,
+			name = $1,
+			description = $2,
+			category = $3,
+			quantity = $4,
+			unit = $5,
+			price = $6,
+			state_id = $7,
+			lga_id = $8,
+			community = $9,
+			latitude = $10,
+			longitude = $11,
+			location_accuracy = $12,
+			status = $13,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE id = $8::integer
-		AND farmer_id = $9::integer
+		WHERE id = $14
+		AND owner_type = $15
+		AND owner_id = $16
 	`
 
 	result, err := tx.Exec(
 		query,
-		crop.Name,
-		crop.Quantity,
-		crop.Unit,
-		crop.Location,
-		crop.PricePerUnit,
-		crop.ListedForSale,
-		crop.ImageURL,
-		crop.ID,
-		crop.FarmerID,
-		crop.Latitude,
-		crop.Longitude,
-		crop.LocationAccuracy,
+		product.Name,
+		product.Description,
+		product.Category,
+		product.Quantity,
+		product.Unit,
+		product.Price,
+		product.StateID,
+		product.LGAID,
+		product.Community,
+		product.Latitude,
+		product.Longitude,
+		product.LocationAccuracy,
+		product.Status,
+		product.ID,
+		product.OwnerType,
+		product.OwnerID,
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to update crop: %w", err)
+		return fmt.Errorf("failed to update product: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()
@@ -420,25 +500,24 @@ func (r *CropRepository) Update(
 		return sql.ErrNoRows
 	}
 
-	// Save new price history.
-	if crop.PricePerUnit > 0 {
+	if product.Price > 0 {
 		_, err = tx.Exec(`
-			INSERT INTO produce_price_history (
-				crop_id,
-				price_per_unit,
+			INSERT INTO product_price_history (
+				product_id,
+				price,
 				unit,
 				source
 			)
 			VALUES ($1, $2, $3, $4)
 		`,
-			crop.ID,
-			crop.PricePerUnit,
-			crop.Unit,
+			product.ID,
+			product.Price,
+			product.Unit,
 			"Agro-Shield",
 		)
 
 		if err != nil {
-			return fmt.Errorf("failed to save price history: %w", err)
+			return fmt.Errorf("failed to save product price history: %w", err)
 		}
 	}
 
@@ -446,24 +525,27 @@ func (r *CropRepository) Update(
 }
 
 // ============================================================
-// UNLIST CROP
+// UNLIST PRODUCT
 // ============================================================
 
-func (r *CropRepository) Unlist(
-	cropID int,
-	farmerID int,
+func (r *ProductRepository) Unlist(
+	productID int,
+	ownerType string,
+	ownerID int,
 ) error {
 
 	result, err := r.db.Exec(`
-		UPDATE crops
+		UPDATE products
 		SET
-			listed_for_sale = FALSE,
+			status = 'inactive',
 			updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1
-		AND farmer_id = $2
+		AND owner_type = $2
+		AND owner_id = $3
 	`,
-		cropID,
-		farmerID,
+		productID,
+		ownerType,
+		ownerID,
 	)
 
 	if err != nil {
@@ -483,22 +565,28 @@ func (r *CropRepository) Unlist(
 }
 
 // ============================================================
-// RELIST CROP
+// RELIST PRODUCT
 // ============================================================
 
-func (r *CropRepository) Relist(
-	cropID int,
-	farmerID int,
+func (r *ProductRepository) Relist(
+	productID int,
+	ownerType string,
+	ownerID int,
 ) error {
 
 	result, err := r.db.Exec(`
-		UPDATE crops
+		UPDATE products
 		SET
-			listed_for_sale = TRUE,
+			status = CASE
+				WHEN quantity > 0 THEN 'active'
+				ELSE 'sold_out'
+			END,
+
 			first_listed_at = COALESCE(
 				first_listed_at,
 				CURRENT_TIMESTAMP
 			),
+
 			initial_listed_quantity =
 				CASE
 					WHEN initial_listed_quantity IS NULL
@@ -506,14 +594,22 @@ func (r *CropRepository) Relist(
 					THEN quantity
 					ELSE initial_listed_quantity
 				END,
-			sold_out_at = NULL,
+
+			sold_out_at = CASE
+				WHEN quantity > 0 THEN NULL
+				ELSE COALESCE(sold_out_at, CURRENT_TIMESTAMP)
+			END,
+
 			updated_at = CURRENT_TIMESTAMP
+
 		WHERE id = $1
-		AND farmer_id = $2
+		AND owner_type = $2
+		AND owner_id = $3
 		AND quantity > 0
 	`,
-		cropID,
-		farmerID,
+		productID,
+		ownerType,
+		ownerID,
 	)
 
 	if err != nil {
@@ -533,21 +629,24 @@ func (r *CropRepository) Relist(
 }
 
 // ============================================================
-// DELETE CROP
+// DELETE PRODUCT
 // ============================================================
 
-func (r *CropRepository) Delete(
-	cropID int,
-	farmerID int,
+func (r *ProductRepository) Delete(
+	productID int,
+	ownerType string,
+	ownerID int,
 ) error {
 
 	result, err := r.db.Exec(`
-		DELETE FROM crops
+		DELETE FROM products
 		WHERE id = $1
-		AND farmer_id = $2
+		AND owner_type = $2
+		AND owner_id = $3
 	`,
-		cropID,
-		farmerID,
+		productID,
+		ownerType,
+		ownerID,
 	)
 
 	if err != nil {
@@ -567,16 +666,16 @@ func (r *CropRepository) Delete(
 }
 
 // ============================================================
-// REDUCE QUANTITY
+// REDUCE PRODUCT QUANTITY
 // ============================================================
 
-func (r *CropRepository) ReduceQuantity(
-	cropID int,
+func (r *ProductRepository) ReduceQuantity(
+	productID int,
 	amount float64,
 ) error {
 
-	if cropID <= 0 {
-		return fmt.Errorf("invalid crop ID")
+	if productID <= 0 {
+		return fmt.Errorf("invalid product ID")
 	}
 
 	if amount <= 0 {
@@ -593,11 +692,11 @@ func (r *CropRepository) ReduceQuantity(
 
 	err = tx.QueryRow(`
 		SELECT quantity
-		FROM crops
+		FROM products
 		WHERE id = $1
 		FOR UPDATE
 	`,
-		cropID,
+		productID,
 	).Scan(&before)
 
 	if err != nil {
@@ -605,31 +704,34 @@ func (r *CropRepository) ReduceQuantity(
 	}
 
 	result, err := tx.Exec(`
-		UPDATE crops
+		UPDATE products
 		SET
 			quantity = quantity - $1,
+
 			first_order_at = COALESCE(
 				first_order_at,
 				CURRENT_TIMESTAMP
 			),
-			sold_out_at =
-				CASE
-					WHEN quantity - $1 <= 0
-					THEN CURRENT_TIMESTAMP
-					ELSE sold_out_at
-				END,
-			listed_for_sale =
-				CASE
-					WHEN quantity - $1 <= 0
-					THEN FALSE
-					ELSE listed_for_sale
-				END,
+
+			sold_out_at = CASE
+				WHEN quantity - $1 <= 0
+				THEN CURRENT_TIMESTAMP
+				ELSE sold_out_at
+			END,
+
+			status = CASE
+				WHEN quantity - $1 <= 0
+				THEN 'sold_out'
+				ELSE status
+			END,
+
 			updated_at = CURRENT_TIMESTAMP
+
 		WHERE id = $2
 		AND quantity >= $1
 	`,
 		amount,
-		cropID,
+		productID,
 	)
 
 	if err != nil {
@@ -645,83 +747,46 @@ func (r *CropRepository) ReduceQuantity(
 		return sql.ErrNoRows
 	}
 
+	// Record inventory movement.
 	_, err = tx.Exec(`
 		INSERT INTO inventory_history (
-			crop_id,
+			product_id,
 			quantity_before,
 			quantity_change,
 			quantity_after,
 			reason
 		)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			$order_reason
-		)
+		VALUES ($1, $2, $3, $4, $5)
 	`,
-		cropID,
+		productID,
 		before,
 		-amount,
 		before-amount,
+		"order",
 	)
 
-	// PostgreSQL does not support named parameters such as
-	// $order_reason through database/sql.
-	// Therefore this block should never be reached.
 	if err != nil {
-		// Retry using the correct positional parameter.
-		_, err = tx.Exec(`
-			INSERT INTO inventory_history (
-				crop_id,
-				quantity_before,
-				quantity_change,
-				quantity_after,
-				reason
-			)
-			VALUES (
-				$1,
-				$2,
-				$3,
-				$4,
-				$5
-			)
-		`,
-			cropID,
-			before,
-			-amount,
-			before-amount,
-			"order",
-		)
-
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("failed to save inventory history: %w", err)
 	}
 
 	return tx.Commit()
 }
 
 // ============================================================
-// ADD CROP IMAGES
-// ============================================================
-//
-// At least one valid image is required.
-// The first valid image becomes the primary image.
+// ADD PRODUCT IMAGES
 // ============================================================
 
-func (r *CropRepository) AddImages(
-	cropID int,
+func (r *ProductRepository) AddImages(
+	productID int,
 	imageURLs []string,
 ) error {
 
-	if cropID <= 0 {
-		return fmt.Errorf("invalid crop ID")
+	if productID <= 0 {
+		return fmt.Errorf("invalid product ID")
 	}
 
 	if len(imageURLs) == 0 {
-		return fmt.Errorf("at least one crop image is required")
+		return fmt.Errorf("at least one product image is required")
 	}
 
 	tx, err := r.db.Begin()
@@ -733,7 +798,6 @@ func (r *CropRepository) AddImages(
 	validCount := 0
 
 	for _, imageURL := range imageURLs {
-
 		imageURL = strings.TrimSpace(imageURL)
 
 		if imageURL == "" {
@@ -743,20 +807,15 @@ func (r *CropRepository) AddImages(
 		isPrimary := validCount == 0
 
 		_, err := tx.Exec(`
-			INSERT INTO crop_images (
-				crop_id,
+			INSERT INTO product_images (
+				product_id,
 				image_url,
 				is_primary,
 				sort_order
 			)
-			VALUES (
-				$1,
-				$2,
-				$3,
-				$4
-			)
+			VALUES ($1, $2, $3, $4)
 		`,
-			cropID,
+			productID,
 			imageURL,
 			isPrimary,
 			validCount,
@@ -770,37 +829,37 @@ func (r *CropRepository) AddImages(
 	}
 
 	if validCount == 0 {
-		return fmt.Errorf("at least one valid crop image is required")
+		return fmt.Errorf("at least one valid product image is required")
 	}
 
 	return tx.Commit()
 }
 
 // ============================================================
-// LIST CROP IMAGES
+// LIST PRODUCT IMAGES
 // ============================================================
 
-func (r *CropRepository) ListImages(
-	cropID int,
-) ([]models.CropImage, error) {
+func (r *ProductRepository) ListImages(
+	productID int,
+) ([]models.ProductImage, error) {
 
-	if cropID <= 0 {
-		return nil, fmt.Errorf("invalid crop ID")
+	if productID <= 0 {
+		return nil, fmt.Errorf("invalid product ID")
 	}
 
 	rows, err := r.db.Query(`
 		SELECT
 			id,
-			crop_id,
+			product_id,
 			image_url,
 			is_primary,
 			sort_order,
 			created_at
-		FROM crop_images
-		WHERE crop_id = $1
+		FROM product_images
+		WHERE product_id = $1
 		ORDER BY sort_order ASC, id ASC
 	`,
-		cropID,
+		productID,
 	)
 
 	if err != nil {
@@ -808,15 +867,14 @@ func (r *CropRepository) ListImages(
 	}
 	defer rows.Close()
 
-	var images []models.CropImage
+	var images []models.ProductImage
 
 	for rows.Next() {
-
-		var image models.CropImage
+		var image models.ProductImage
 
 		err := rows.Scan(
 			&image.ID,
-			&image.CropID,
+			&image.ProductID,
 			&image.ImageURL,
 			&image.IsPrimary,
 			&image.SortOrder,

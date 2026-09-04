@@ -2,57 +2,73 @@ package models
 
 import "time"
 
-// Crop represents a farmer's agricultural product listing.
-type Crop struct {
+// Product represents an agricultural product listing.
+type Product struct {
 	ID int
 
-	// FarmerID identifies the farmer who owns this listing.
-	FarmerID int
+	// Ownership.
+	OwnerType string
+	OwnerID   int
 
 	// Product information.
-	Name     string
-	Quantity float64
-	Unit     string
+	Name        string
+	Description string
+	Category    string
+	Quantity    float64
+	Unit        string
 
-	// Location where the product is available.
-	Location            string
-	Latitude, Longitude float64
-	LocationAccuracy    float64
-	LGA, State, Country string
+	// Pricing.
+	Price float64
 
-	// Price charged per unit of the product.
-	PricePerUnit float64
+	// Location.
+	Location         string
+	StateID          *int
+	LGAID            *int
+	Community        string
+	Latitude         float64
+	Longitude        float64
+	LocationAccuracy float64
 
-	// Indicates whether the product is currently available
-	// as a marketplace listing.
-	ListedForSale bool
+	// Listing lifecycle.
+	Status                string
+	InitialListedQuantity float64
+	FirstListedAt         *time.Time
+	FirstOrderAt          *time.Time
+	SoldOutAt             *time.Time
 
-	// Product images.
-//
-// ImageURL is kept temporarily for backward compatibility
-// with the existing crops.image_url column.
-//
-// Images contains all product pictures.
-// A product must have at least one image when created.
-ImageURL string
-Images   []CropImage
+	// Images.
+	Images []ProductImage
 
-
-	// Timestamps for tracking the listing lifecycle.
-	CreatedAt                              time.Time
-	UpdatedAt                              time.Time
-	InitialListedQuantity                  float64
-	FirstListedAt, FirstOrderAt, SoldOutAt *time.Time
-
-	// SellerName is populated when retrieving marketplace
-	// results. It is not stored directly on the crops table.
+	// Marketplace information.
 	SellerName     string
 	SellerPhotoURL string
+
+	// Timestamps.
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
-// CropImage represents one picture belonging to a crop/product.
-type CropImage struct {
+
+// IsAvailable reports whether the product can currently
+// be purchased from the marketplace.
+func (p *Product) IsAvailable() bool {
+	return p.Status == "active" && p.Quantity > 0
+}
+
+// IsSoldOut reports whether the product has no remaining quantity
+// or has been explicitly marked as sold out.
+func (p *Product) IsSoldOut() bool {
+	return p.Status == "sold_out" || p.Quantity <= 0
+}
+
+// IsInactive reports whether the product is not currently listed.
+func (p *Product) IsInactive() bool {
+	return p.Status == "inactive"
+}
+
+// ProductImage represents one picture belonging to a product.
+type ProductImage struct {
 	ID        int
-	CropID    int
+	ProductID int
 	ImageURL  string
 	IsPrimary bool
 	SortOrder int

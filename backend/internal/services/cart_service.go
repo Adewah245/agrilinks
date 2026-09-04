@@ -10,25 +10,26 @@ import (
 
 // CartService handles all business logic related to the buyer's cart.
 type CartService struct {
-	cartRepo  *repository.CartRepository
-	cropRepo  *repository.CropRepository
-	eventRepo *repository.MarketEventRepository
+	cartRepo   *repository.CartRepository
+	productRepo *repository.ProductRepository
+	eventRepo  *repository.MarketEventRepository
 }
 
 // NewCartService creates and returns a new CartService.
 //
 // Responsibility:
 // - Connect the cart service to the cart repository.
-// - Connect the cart service to the crop repository.
+// - Connect the cart service to the product repository.
+// - Connect the cart service to the market event repository.
 func NewCartService(
 	cartRepo *repository.CartRepository,
-	cropRepo *repository.CropRepository,
+	productRepo *repository.ProductRepository,
 	eventRepo *repository.MarketEventRepository,
 ) *CartService {
 	return &CartService{
-		cartRepo:  cartRepo,
-		cropRepo:  cropRepo,
-		eventRepo: eventRepo,
+		cartRepo:    cartRepo,
+		productRepo: productRepo,
+		eventRepo:   eventRepo,
 	}
 }
 
@@ -38,7 +39,7 @@ func NewCartService(
 // - Make sure the negotiation exists.
 // - Make sure the negotiation was accepted.
 // - Make sure the agreed quantity is valid.
-// - Make sure the crop still exists.
+// - Make sure the product still exists.
 // - Make sure enough quantity is still available.
 // - Preserve the negotiated price.
 func (s *CartService) AddFromNegotiation(
@@ -62,18 +63,18 @@ func (s *CartService) AddFromNegotiation(
 		return errors.New("agreed price must be greater than zero")
 	}
 
-	// Check that the crop still exists.
-	crop, err := s.cropRepo.GetByID(negotiation.CropID)
+	// Check that the product still exists.
+	product, err := s.productRepo.GetByID(negotiation.CropID)
 	if err != nil {
 		return err
 	}
 
-	if crop == nil {
+	if product == nil {
 		return errors.New("product no longer exists")
 	}
 
 	// Check that the agreed quantity is still available.
-	if negotiation.Quantity > crop.Quantity {
+	if negotiation.Quantity > product.Quantity {
 		return errors.New("the requested quantity is no longer available")
 	}
 
@@ -90,11 +91,21 @@ func (s *CartService) AddFromNegotiation(
 	if err := s.cartRepo.Create(item); err != nil {
 		return err
 	}
+
 	if s.eventRepo != nil {
 		uid := item.BuyerID
 		cid := item.CropID
-		_ = s.eventRepo.Record(&models.MarketEvent{EventType: "cart_item_added", CropID: &cid, UserID: &uid, Metadata: fmt.Sprintf(`{"quantity":%g}`, item.Quantity)})
+
+		_ = s.eventRepo.Record(
+			&models.MarketEvent{
+				EventType: "cart_item_added",
+				CropID:    &cid,
+				UserID:    &uid,
+				Metadata:  fmt.Sprintf(`{"quantity":%g}`, item.Quantity),
+			},
+		)
 	}
+
 	return nil
 }
 
@@ -102,7 +113,10 @@ func (s *CartService) AddFromNegotiation(
 //
 // Responsibility:
 // - Load the buyer's current cart.
-func (s *CartService) MyCart(buyerID int) ([]models.CartItem, error) {
+func (s *CartService) MyCart(
+	buyerID int,
+) ([]models.CartItem, error) {
+
 	if buyerID <= 0 {
 		return nil, errors.New("invalid buyer")
 	}
