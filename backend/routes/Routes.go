@@ -11,7 +11,7 @@ import (
 
 func RegisterRoutes(container *app.Container) {
 	// USSD gateways post menu selections to this provider-neutral endpoint.
-	ussdHandler := ussd.NewHandler(container.UserRepo, container.Crop, services.NewWeatherService(), container.Order, container.Notification)
+	ussdHandler := ussd.NewHandler(container.UserRepo, container.Product, services.NewWeatherService(), container.Order, container.Notification)
 	http.Handle("/ussd", ussdHandler)
 
 	// ========================================================
@@ -111,7 +111,7 @@ func RegisterRoutes(container *app.Container) {
 	// ========================================================
 
 	dashboardHandler := handlers.NewDashboardHandler(
-		container.Crop,
+		container.Product,
 		container.Order,
 		container.Cart,
 		container.AI,
@@ -147,7 +147,7 @@ func RegisterRoutes(container *app.Container) {
 	// ========================================================
 
 	profileHandler := handlers.NewProfileHandler(
-		container.Crop,
+		container.Product,
 		container.Order,
 		container.UserRepo,
 	)
@@ -185,7 +185,7 @@ func RegisterRoutes(container *app.Container) {
 	// ========================================================
 
 	storageHandler := handlers.NewStorageHandler(
-		container.Crop,
+		container.Product,
 	)
 	salesHandler := handlers.NewSalesHandler(container.Order)
 	http.HandleFunc("/sales", middleware.OnlyPath("/sales", middleware.RequireAuth(container.UserRepo, salesHandler.Handler)))
@@ -206,7 +206,7 @@ func RegisterRoutes(container *app.Container) {
 	// ========================================================
 
 	marketplaceHandler := handlers.NewMarketplaceHandler(
-		container.Crop,
+		container.Product,
 		container.Order,
 		container.MarketEvents,
 	)
@@ -227,7 +227,7 @@ func RegisterRoutes(container *app.Container) {
 	// ========================================================
 
 	productHandler := handlers.NewProductHandler(
-		container.Crop,
+		container.Product,
 		container.MarketEvents,
 	)
 

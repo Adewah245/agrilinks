@@ -1,28 +1,32 @@
 package handlers
 
 import (
-	"backend/render"
 	"log"
 	"net/http"
+
+	"backend/render"
 )
 
-type AgroDash struct {
-	Name string
-}
-type HomePage struct {
-	Register string
-	Login    string
-	Home     string
-}
-
+// IndexHandler renders the Agro-Shield home page.
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		log.Println("User Visited Home Page")
-		if err := render.RenderTemplates(w, "index.html", nil); err != nil {
-			log.Println("render error")
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		log.Println("User visited home page")
+
+		if err := render.RenderTemplates(
+			w,
+			"index.html",
+			nil,
+		); err != nil {
+			log.Println("home page render error:", err)
 			return
 		}
+
+	default:
+		http.Error(
+			w,
+			"Method Not Allowed",
+			http.StatusMethodNotAllowed,
+		)
 	}
 }

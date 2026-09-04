@@ -13,7 +13,7 @@ type CartItem struct {
 
 	// IDs used to connect the cart item with other records.
 	BuyerID       int
-	CropID        int
+	ProductID     int
 	NegotiationID int
 
 	// Purchase information.
@@ -29,13 +29,13 @@ type CartItem struct {
 	// Not stored directly in cart_items.
 	// ========================================================
 
-	CropName string
-	Unit     string
-	ImageURL string
+	ProductName string
+	Unit        string
+	ImageURL    string
 
 	// ========================================================
 	// SELLER INFORMATION
-	// Populated from the farmer who owns the crop.
+	// Populated from the owner of the product.
 	// Not stored directly in cart_items.
 	// ========================================================
 
@@ -48,7 +48,7 @@ type CartItem struct {
 
 	// ========================================================
 	// BUYER INFORMATION
-	// Populated from the farmer/buyer account.
+	// Populated from the buyer account.
 	// Not stored directly in cart_items.
 	// ========================================================
 

@@ -13,8 +13,8 @@ import "time"
 //
 // UserID comes from conversation_members.
 //
-// FullName and PhotoURL come from the farmers table when
-// ConversationMember is loaded with a JOIN.
+// FullName and PhotoURL come from the users table
+// // ConversationMember is loaded with a JOIN.
 //
 // Example:
 //
@@ -29,6 +29,7 @@ import "time"
 // Every row still represents ONE member.
 // ============================================================
 
+// ConversationMember represents a user who belongs to a conversation.
 type ConversationMember struct {
 	ID int `json:"id"`
 
@@ -36,7 +37,7 @@ type ConversationMember struct {
 
 	UserID int `json:"user_id"`
 
-	// User information loaded from the farmers table.
+	// FullName and PhotoURL are retrieved from the users table.
 	FullName string `json:"full_name"`
 
 	PhotoURL string `json:"photo_url"`

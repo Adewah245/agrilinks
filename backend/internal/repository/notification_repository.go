@@ -20,8 +20,22 @@ import (
 // Business decisions belong to the NotificationService.
 // ============================================================
 
+// NotificationRepository handles database operations
+// for user notifications.
 type NotificationRepository struct {
 	db *sql.DB
+}
+
+// ============================================================
+// CREATE REPOSITORY
+// ============================================================
+
+// NewNotificationRepository creates a new NotificationRepository
+// using the provided database connection.
+func NewNotificationRepository(db *sql.DB) *NotificationRepository {
+	return &NotificationRepository{
+		db: db,
+	}
 }
 
 // ============================================================
@@ -30,16 +44,19 @@ type NotificationRepository struct {
 // Saves a new notification in PostgreSQL.
 // ============================================================
 
-func NewNotificationRepository(db *sql.DB) *NotificationRepository {
-	return &NotificationRepository{
-		db: db,
-	}
-}
+// Create stores a new notification for a user.
+func (r *NotificationRepository) Create(
+	notification *models.Notification,
+) error {
 
-func (r *NotificationRepository) Create(notification *models.Notification) error {
 	query := `
-		INSERT INTO notifications
-		(user_id, title, message, type, is_read)
+		INSERT INTO notifications (
+			user_id,
+			title,
+			message,
+			type,
+			is_read
+		)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
 	`
@@ -62,6 +79,8 @@ func (r *NotificationRepository) Create(notification *models.Notification) error
 // Newest notifications are returned first.
 // ============================================================
 
+// GetUserNotifications retrieves all notifications belonging
+// to the specified user, with the newest notifications first.
 func (r *NotificationRepository) GetUserNotifications(
 	userID int,
 ) ([]models.Notification, error) {
@@ -77,7 +96,7 @@ func (r *NotificationRepository) GetUserNotifications(
 			created_at
 		FROM notifications
 		WHERE user_id = $1
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC, id DESC
 	`
 
 	rows, err := r.db.Query(query, userID)
@@ -123,6 +142,8 @@ func (r *NotificationRepository) GetUserNotifications(
 // This will later be useful for the 🔔 notification badge.
 // ============================================================
 
+// GetUnreadCount returns the number of unread notifications
+// belonging to the specified user.
 func (r *NotificationRepository) GetUnreadCount(userID int) (int, error) {
 
 	query := `
@@ -151,6 +172,8 @@ func (r *NotificationRepository) GetUnreadCount(userID int) (int, error) {
 // be able to mark another user's notification as read.
 // ============================================================
 
+// MarkAsRead marks one notification as read, provided that
+// the notification belongs to the specified user.
 func (r *NotificationRepository) MarkAsRead(
 	notificationID int,
 	userID int,
@@ -179,6 +202,8 @@ func (r *NotificationRepository) MarkAsRead(
 // as read.
 // ============================================================
 
+// MarkAllAsRead marks all unread notifications belonging
+// to the specified user as read.
 func (r *NotificationRepository) MarkAllAsRead(userID int) error {
 
 	query := `

@@ -43,23 +43,25 @@ import (
 //     Normal communication
 // ============================================================
 
+// ChatHandler handles general Agro-Shield chat functionality.
 type ChatHandler struct {
 	service *services.ChatService
-	farmers *repository.UserRepository
+	users   *repository.UserRepository
 }
 
 // ============================================================
 // CREATE CHAT HANDLER
 // ============================================================
 
+// NewChatHandler creates a new ChatHandler using the provided
+// chat service and user repository.
 func NewChatHandler(
 	service *services.ChatService,
-	farmers *repository.UserRepository,
+	users *repository.UserRepository,
 ) *ChatHandler {
-
 	return &ChatHandler{
 		service: service,
-		farmers: farmers,
+		users:   users,
 	}
 }
 
@@ -73,8 +75,9 @@ func NewChatHandler(
 // Shows all conversations belonging to the logged-in user.
 // ============================================================
 
+// ChatListPageData contains the data rendered on the main chat page.
 type ChatListPageData struct {
-	Farmer        interface{}
+	User          interface{}
 	Conversations []models.Conversation
 	UnreadCount   int
 	Users         []models.User
@@ -82,36 +85,79 @@ type ChatListPageData struct {
 	Error         string
 }
 
+// chatPresenceResponse contains recently active users for the
+// client-side chat presence indicator.
 type chatPresenceResponse struct {
 	OnlineUserIDs []int `json:"online_user_ids"`
 }
 
-// PresenceHandler returns recently active chat users for client-side updates.
-func (h *ChatHandler) PresenceHandler(w http.ResponseWriter, r *http.Request) {
-	farmer, ok := middleware.FarmerFromContext(r)
-	if !ok || farmer == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+// ============================================================
+// CHAT PRESENCE
+// ============================================================
+
+// PresenceHandler returns recently active chat users for client-side
+// presence updates.
+func (h *ChatHandler) PresenceHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	user, ok := middleware.UserFromContext(r)
+
+	if !ok || user == nil {
+		http.Error(
+			w,
+			"Unauthorized",
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
-	middleware.MarkFarmerOnline(farmer.ID)
-	users, err := h.farmers.ListForChat(farmer.ID, "")
+	middleware.MarkUserOnline(user.ID)
+
+	users, err := h.users.ListForChat(
+		user.ID,
+		"",
+	)
+
 	if err != nil {
-		http.Error(w, "Could not load presence", http.StatusInternalServerError)
+		http.Error(
+			w,
+			"Could not load presence",
+			http.StatusInternalServerError,
+		)
 		return
 	}
 
 	onlineIDs := make([]int, 0)
-	for _, user := range users {
-		if middleware.IsFarmerOnline(user.ID) {
-			onlineIDs = append(onlineIDs, user.ID)
+
+	for _, chatUser := range users {
+		if middleware.IsUserOnline(chatUser.ID) {
+			onlineIDs = append(
+				onlineIDs,
+				chatUser.ID,
+			)
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	if err := json.NewEncoder(w).Encode(chatPresenceResponse{OnlineUserIDs: onlineIDs}); err != nil {
-		log.Println("presence response error:", err)
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	w.Header().Set(
+		"Cache-Control",
+		"no-store",
+	)
+
+	if err := json.NewEncoder(w).Encode(
+		chatPresenceResponse{
+			OnlineUserIDs: onlineIDs,
+		},
+	); err != nil {
+		log.Println(
+			"presence response error:",
+			err,
+		)
 	}
 }
 
@@ -125,8 +171,10 @@ func (h *ChatHandler) PresenceHandler(w http.ResponseWriter, r *http.Request) {
 // Contains the conversation and its messages.
 // ============================================================
 
+// ChatThreadPageData contains the data rendered on a conversation
+// thread page.
 type ChatThreadPageData struct {
-	Farmer       interface{}
+	User         interface{}
 	Conversation *models.Conversation
 	Messages     []models.ChatMessage
 	Members      []models.ConversationMember
@@ -139,24 +187,17 @@ type ChatThreadPageData struct {
 // GET /chat
 //
 // Shows the user's conversations.
-//
-// Example:
-//
-// My Chats
-//
-// 🌽 Maize Farmers Association
-// 🛠️ Farm Tools Sellers
-// 👤 John
 // ============================================================
 
+// ListHandler displays the authenticated user's conversations
+// and available users for starting a new chat.
 func (h *ChatHandler) ListHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -167,7 +208,7 @@ func (h *ChatHandler) ListHandler(
 	}
 
 	conversations, err := h.service.MyConversations(
-		farmer.ID,
+		user.ID,
 	)
 
 	if err != nil {
@@ -178,24 +219,39 @@ func (h *ChatHandler) ListHandler(
 
 		h.renderList(
 			w,
-			farmer,
+			user,
 			nil,
 			err.Error(),
 		)
 		return
 	}
-	users, usersErr := h.farmers.ListForChat(farmer.ID, r.URL.Query().Get("q"))
+
+	query := strings.TrimSpace(
+		r.URL.Query().Get("q"),
+	)
+
+	users, usersErr := h.users.ListForChat(
+		user.ID,
+		query,
+	)
+
 	if usersErr != nil {
-		h.renderList(w, farmer, conversations, usersErr.Error())
+		h.renderList(
+			w,
+			user,
+			conversations,
+			usersErr.Error(),
+		)
 		return
 	}
 
 	data := ChatListPageData{
-		Farmer:        farmer,
+		User:          user,
 		Conversations: conversations,
 		Users:         users,
-		Query:         r.URL.Query().Get("q"),
+		Query:         query,
 	}
+
 	for _, conversation := range conversations {
 		data.UnreadCount += conversation.UnreadCount
 	}
@@ -205,17 +261,14 @@ func (h *ChatHandler) ListHandler(
 		"chat.html",
 		data,
 	); err != nil {
-
 		log.Println(
 			"chat render error:",
 			err,
 		)
 
-		http.Error(
-			w,
-			"Internal Server Error",
-			http.StatusInternalServerError,
-		)
+		// Do not attempt another HTTP response here because the
+		// template renderer may already have written the response.
+		return
 	}
 }
 
@@ -233,14 +286,14 @@ func (h *ChatHandler) ListHandler(
 // The service checks that the user belongs to the conversation.
 // ============================================================
 
+// ViewHandler displays a conversation, its messages, and its members.
 func (h *ChatHandler) ViewHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -255,19 +308,17 @@ func (h *ChatHandler) ViewHandler(
 	)
 
 	if err != nil || conversationID <= 0 {
-
 		http.Error(
 			w,
 			"Invalid conversation ID",
 			http.StatusBadRequest,
 		)
-
 		return
 	}
 
 	conversation, err := h.service.GetConversation(
 		conversationID,
-		farmer.ID,
+		user.ID,
 	)
 
 	if err != nil {
@@ -281,7 +332,7 @@ func (h *ChatHandler) ViewHandler(
 
 	messages, err := h.service.GetMessages(
 		conversationID,
-		farmer.ID,
+		user.ID,
 	)
 
 	if err != nil {
@@ -295,13 +346,12 @@ func (h *ChatHandler) ViewHandler(
 			"Failed to load messages",
 			http.StatusInternalServerError,
 		)
-
 		return
 	}
 
 	members, err := h.service.GetMembers(
 		conversationID,
-		farmer.ID,
+		user.ID,
 	)
 
 	if err != nil {
@@ -315,12 +365,11 @@ func (h *ChatHandler) ViewHandler(
 			"Failed to load members",
 			http.StatusInternalServerError,
 		)
-
 		return
 	}
 
 	data := ChatThreadPageData{
-		Farmer:       farmer,
+		User:         user,
 		Conversation: conversation,
 		Messages:     messages,
 		Members:      members,
@@ -331,17 +380,14 @@ func (h *ChatHandler) ViewHandler(
 		"chat_thread.html",
 		data,
 	); err != nil {
-
 		log.Println(
 			"chat thread render error:",
 			err,
 		)
 
-		http.Error(
-			w,
-			"Internal Server Error",
-			http.StatusInternalServerError,
-		)
+		// Avoid a second response after template rendering has
+		// potentially already written to the response.
+		return
 	}
 }
 
@@ -356,14 +402,14 @@ func (h *ChatHandler) ViewHandler(
 // message
 // ============================================================
 
+// SendMessageHandler sends a normal chat message to a conversation.
 func (h *ChatHandler) SendMessageHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -387,13 +433,11 @@ func (h *ChatHandler) SendMessageHandler(
 	)
 
 	if err != nil || conversationID <= 0 {
-
 		http.Error(
 			w,
 			"Invalid conversation ID",
 			http.StatusBadRequest,
 		)
-
 		return
 	}
 
@@ -413,12 +457,11 @@ func (h *ChatHandler) SendMessageHandler(
 
 	_, err = h.service.SendMessage(
 		conversationID,
-		farmer.ID,
+		user.ID,
 		message,
 	)
 
 	if err != nil {
-
 		log.Println(
 			"failed to send chat message:",
 			err,
@@ -432,7 +475,6 @@ func (h *ChatHandler) SendMessageHandler(
 				err.Error(),
 			http.StatusSeeOther,
 		)
-
 		return
 	}
 
@@ -452,20 +494,17 @@ func (h *ChatHandler) SendMessageHandler(
 // Form:
 //
 // name
-//
-// Example:
-//
-// "Maize Farmers Association"
 // ============================================================
 
+// CreateGroupHandler creates a new group conversation with the
+// authenticated user as the creator.
 func (h *ChatHandler) CreateGroupHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -489,12 +528,11 @@ func (h *ChatHandler) CreateGroupHandler(
 	)
 
 	conversation, err := h.service.CreateGroup(
-		farmer.ID,
+		user.ID,
 		name,
 	)
 
 	if err != nil {
-
 		log.Println(
 			"failed to create group:",
 			err,
@@ -502,11 +540,10 @@ func (h *ChatHandler) CreateGroupHandler(
 
 		h.renderList(
 			w,
-			farmer,
+			user,
 			nil,
 			err.Error(),
 		)
-
 		return
 	}
 
@@ -528,27 +565,17 @@ func (h *ChatHandler) CreateGroupHandler(
 // Form:
 //
 // user_id
-//
-// Example:
-//
-// James clicks:
-//
-// "Chat with John"
-//
-// The handler creates:
-//
-// James
-// John
 // ============================================================
 
+// CreatePrivateChatHandler creates or opens a private conversation
+// between the authenticated user and another user.
 func (h *ChatHandler) CreatePrivateChatHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -572,23 +599,20 @@ func (h *ChatHandler) CreatePrivateChatHandler(
 	)
 
 	if err != nil || otherUserID <= 0 {
-
 		http.Error(
 			w,
 			"Invalid user ID",
 			http.StatusBadRequest,
 		)
-
 		return
 	}
 
 	conversation, err := h.service.CreatePrivateChat(
-		farmer.ID,
+		user.ID,
 		otherUserID,
 	)
 
 	if err != nil {
-
 		log.Println(
 			"failed to create private chat:",
 			err,
@@ -599,7 +623,6 @@ func (h *ChatHandler) CreatePrivateChatHandler(
 			err.Error(),
 			http.StatusBadRequest,
 		)
-
 		return
 	}
 
@@ -623,24 +646,18 @@ func (h *ChatHandler) CreatePrivateChatHandler(
 // conversation_id
 // user_id
 //
-// IMPORTANT:
-//
-// The service checks that:
-//
-// 1. Conversation exists.
-// 2. Conversation is a group.
-// 3. Requester is already a member.
-// 4. New user isn't already a member.
+// The service is responsible for verifying membership and
+// conversation permissions.
 // ============================================================
 
+// AddMemberHandler adds a user to a group conversation.
 func (h *ChatHandler) AddMemberHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -687,12 +704,11 @@ func (h *ChatHandler) AddMemberHandler(
 
 	err = h.service.AddMember(
 		conversationID,
-		farmer.ID,
+		user.ID,
 		userID,
 	)
 
 	if err != nil {
-
 		log.Println(
 			"failed to add member:",
 			err,
@@ -703,7 +719,6 @@ func (h *ChatHandler) AddMemberHandler(
 			err.Error(),
 			http.StatusBadRequest,
 		)
-
 		return
 	}
 
@@ -723,14 +738,14 @@ func (h *ChatHandler) AddMemberHandler(
 // Only the group creator can remove another member.
 // ============================================================
 
+// RemoveMemberHandler removes a user from a group conversation.
 func (h *ChatHandler) RemoveMemberHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -777,12 +792,11 @@ func (h *ChatHandler) RemoveMemberHandler(
 
 	err = h.service.RemoveMember(
 		conversationID,
-		farmer.ID,
+		user.ID,
 		userID,
 	)
 
 	if err != nil {
-
 		log.Println(
 			"failed to remove member:",
 			err,
@@ -793,7 +807,6 @@ func (h *ChatHandler) RemoveMemberHandler(
 			err.Error(),
 			http.StatusBadRequest,
 		)
-
 		return
 	}
 
@@ -815,14 +828,14 @@ func (h *ChatHandler) RemoveMemberHandler(
 // The creator cannot leave until ownership transfer is added.
 // ============================================================
 
+// LeaveGroupHandler allows the authenticated user to leave a group.
 func (h *ChatHandler) LeaveGroupHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -856,11 +869,10 @@ func (h *ChatHandler) LeaveGroupHandler(
 
 	err = h.service.LeaveGroup(
 		conversationID,
-		farmer.ID,
+		user.ID,
 	)
 
 	if err != nil {
-
 		log.Println(
 			"failed to leave group:",
 			err,
@@ -871,7 +883,6 @@ func (h *ChatHandler) LeaveGroupHandler(
 			err.Error(),
 			http.StatusBadRequest,
 		)
-
 		return
 	}
 
@@ -891,14 +902,15 @@ func (h *ChatHandler) LeaveGroupHandler(
 // Only the sender can delete their own message.
 // ============================================================
 
+// DeleteMessageHandler deletes a chat message belonging to the
+// authenticated user.
 func (h *ChatHandler) DeleteMessageHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -932,11 +944,10 @@ func (h *ChatHandler) DeleteMessageHandler(
 
 	err = h.service.DeleteMessage(
 		messageID,
-		farmer.ID,
+		user.ID,
 	)
 
 	if err != nil {
-
 		log.Println(
 			"failed to delete message:",
 			err,
@@ -947,7 +958,6 @@ func (h *ChatHandler) DeleteMessageHandler(
 			err.Error(),
 			http.StatusBadRequest,
 		)
-
 		return
 	}
 
@@ -977,18 +987,19 @@ func (h *ChatHandler) DeleteMessageHandler(
 // RENDER CHAT LIST
 // ============================================================
 
+// renderList renders the main chat list page.
 func (h *ChatHandler) renderList(
 	w http.ResponseWriter,
-	farmer interface{},
+	user interface{},
 	conversations []models.Conversation,
 	errorMessage string,
 ) {
-
 	data := ChatListPageData{
-		Farmer:        farmer,
+		User:          user,
 		Conversations: conversations,
 		Error:         errorMessage,
 	}
+
 	for _, conversation := range conversations {
 		data.UnreadCount += conversation.UnreadCount
 	}
@@ -998,17 +1009,14 @@ func (h *ChatHandler) renderList(
 		"chat.html",
 		data,
 	); err != nil {
-
 		log.Println(
 			"chat list render error:",
 			err,
 		)
 
-		http.Error(
-			w,
-			"Internal Server Error",
-			http.StatusInternalServerError,
-		)
+		// Avoid writing a second HTTP response if the template
+		// renderer has already written the response.
+		return
 	}
 }
 
@@ -1021,12 +1029,12 @@ func (h *ChatHandler) renderList(
 // ../frontend/pages/
 // ============================================================
 
+// renderTemplate parses and executes an Agro-Shield HTML template.
 func (h *ChatHandler) renderTemplate(
 	w http.ResponseWriter,
 	templateName string,
 	data interface{},
 ) error {
-
 	tmpl, err := template.ParseFiles(
 		"../frontend/pages/" + templateName,
 	)

@@ -14,6 +14,8 @@ import (
 // - Removes users from conversations.
 // - Checks whether a user belongs to a conversation.
 // - Gets members of a conversation.
+// - Counts members in a conversation.
+// - Tracks when a user last read a conversation.
 //
 // IMPORTANT:
 //
@@ -43,6 +45,8 @@ type ConversationMemberRepository struct {
 // CREATE REPOSITORY
 // ============================================================
 
+// NewConversationMemberRepository creates a new repository for
+// managing conversation membership records.
 func NewConversationMemberRepository(
 	db *sql.DB,
 ) *ConversationMemberRepository {
@@ -67,6 +71,8 @@ func NewConversationMemberRepository(
 // User 12 belongs to Conversation 5.
 // ============================================================
 
+// AddMember adds a user to a conversation and stores the
+// generated membership ID and join time in the model.
 func (r *ConversationMemberRepository) AddMember(
 	member *models.ConversationMember,
 ) error {
@@ -104,6 +110,7 @@ func (r *ConversationMemberRepository) AddMember(
 // His membership record is deleted.
 // ============================================================
 
+// RemoveMember removes a user from a conversation.
 func (r *ConversationMemberRepository) RemoveMember(
 	conversationID,
 	userID int,
@@ -162,6 +169,7 @@ func (r *ConversationMemberRepository) RemoveMember(
 // If NO → access denied.
 // ============================================================
 
+// IsMember checks whether a user belongs to a conversation.
 func (r *ConversationMemberRepository) IsMember(
 	conversationID,
 	userID int,
@@ -207,10 +215,10 @@ func (r *ConversationMemberRepository) IsMember(
 // Peter
 // Sarah
 //
-// We use a JOIN with farmers because user information is stored
-// in the farmers table.
+// User information is stored in the users table.
 // ============================================================
 
+// ListMembers retrieves all users belonging to a conversation.
 func (r *ConversationMemberRepository) ListMembers(
 	conversationID int,
 ) ([]models.ConversationMember, error) {
@@ -220,11 +228,12 @@ func (r *ConversationMemberRepository) ListMembers(
 			cm.id,
 			cm.conversation_id,
 			cm.user_id,
-			f.full_name,
-			COALESCE(f.photo_url, ''),
+			u.full_name,
+			COALESCE(u.photo_url, ''),
 			cm.joined_at
 		FROM conversation_members cm
-		JOIN farmers f ON f.id = cm.user_id
+		JOIN users u
+			ON u.id = cm.user_id
 		WHERE cm.conversation_id = $1
 		ORDER BY cm.joined_at ASC
 	`
@@ -285,6 +294,7 @@ func (r *ConversationMemberRepository) ListMembers(
 // This can later be displayed on the group page.
 // ============================================================
 
+// CountMembers returns the number of users belonging to a conversation.
 func (r *ConversationMemberRepository) CountMembers(
 	conversationID int,
 ) (int, error) {
@@ -309,7 +319,36 @@ func (r *ConversationMemberRepository) CountMembers(
 	return count, nil
 }
 
-func (r *ConversationMemberRepository) MarkRead(conversationID, userID int) error {
-	_, err := r.db.Exec(`UPDATE conversation_members SET last_read_at = CURRENT_TIMESTAMP WHERE conversation_id = $1 AND user_id = $2`, conversationID, userID)
+// ============================================================
+// MARK READ
+//
+// Records the last time a user read a conversation.
+//
+// This is used for:
+//
+// - Unread message counts
+// - Read status
+// - Conversation notifications
+//
+// Example:
+//
+// James opens Conversation 10.
+//
+// last_read_at becomes the current time.
+// ============================================================
+
+// MarkRead records the time when a user last read a conversation.
+func (r *ConversationMemberRepository) MarkRead(
+	conversationID,
+	userID int,
+) error {
+
+	_, err := r.db.Exec(`
+		UPDATE conversation_members
+		SET last_read_at = CURRENT_TIMESTAMP
+		WHERE conversation_id = $1
+		AND user_id = $2
+	`, conversationID, userID)
+
 	return err
 }

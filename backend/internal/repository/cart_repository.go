@@ -11,24 +11,19 @@ type CartRepository struct {
 }
 
 // NewCartRepository creates and returns a new CartRepository.
-//
-// Responsibility:
-// - Connect the cart repository to the application's database.
 func NewCartRepository(db *sql.DB) *CartRepository {
 	return &CartRepository{db: db}
 }
 
 // Create adds an accepted negotiation to the buyer's cart.
 //
-// Responsibility:
-// - Store the agreed product, quantity, and negotiated price.
-// - Preserve the negotiated price.
-// - Connect the cart item to the buyer, crop, and negotiation.
+// The negotiated product price is preserved so that later marketplace
+// price changes do not alter the agreed deal.
 func (r *CartRepository) Create(item *models.CartItem) error {
 	query := `
 		INSERT INTO cart_items (
 			buyer_id,
-			crop_id,
+			product_id,
 			negotiation_id,
 			quantity,
 			price_per_unit,
@@ -41,7 +36,7 @@ func (r *CartRepository) Create(item *models.CartItem) error {
 	return r.db.QueryRow(
 		query,
 		item.BuyerID,
-		item.CropID,
+		item.ProductID,
 		item.NegotiationID,
 		item.Quantity,
 		item.PricePerUnit,
@@ -54,50 +49,62 @@ func (r *CartRepository) Create(item *models.CartItem) error {
 
 // ListByBuyer retrieves all cart items belonging to a buyer.
 //
-// Responsibility:
-// - Show everything currently waiting in the buyer's cart.
-// - Include product information.
-// - Include seller information.
-// - Include buyer information.
-// - Use JOINs so account information is always current.
+// Product, seller, and buyer information are loaded through JOINs
+// so the cart displays current account and product information.
 func (r *CartRepository) ListByBuyer(buyerID int) ([]models.CartItem, error) {
 	query := `
 		SELECT
 			cart_items.id,
 			cart_items.buyer_id,
-			cart_items.crop_id,
+			cart_items.product_id,
 			cart_items.negotiation_id,
 			cart_items.quantity,
 			cart_items.price_per_unit,
 			cart_items.total_price,
 			cart_items.created_at,
 
-			crops.name,
-			crops.unit,
-			crops.image_url,
+			products.name,
+			products.unit,
 
-			seller.id,
-			seller.full_name,
-			seller.email,
-			seller.phone,
-			seller.location,
-			seller.photo_url,
+			COALESCE(
+				(
+					SELECT pi.image_url
+					FROM product_images pi
+					WHERE pi.product_id = products.id
+					  AND pi.is_primary = TRUE
+					ORDER BY pi.sort_order ASC
+					LIMIT 1
+				),
+				''
+			),
+
+			COALESCE(seller.id, organization.id),
+			COALESCE(seller.full_name, organization.name, ''),
+			COALESCE(seller.email, ''),
+			COALESCE(seller.phone, ''),
+			COALESCE(seller.location, ''),
+			COALESCE(seller.photo_url, organization.logo_url, ''),
 
 			buyer.full_name,
-			buyer.email,
+			COALESCE(buyer.email, ''),
 			buyer.phone,
-			buyer.location,
-			buyer.photo_url
+			COALESCE(buyer.location, ''),
+			COALESCE(buyer.photo_url, '')
 
 		FROM cart_items
 
-		JOIN crops
-			ON crops.id = cart_items.crop_id
+		JOIN products
+			ON products.id = cart_items.product_id
 
-		JOIN farmers AS seller
-			ON seller.id = crops.farmer_id
+		LEFT JOIN users AS seller
+			ON products.owner_type = 'user'
+			AND seller.id = products.owner_id
 
-		JOIN farmers AS buyer
+		LEFT JOIN organizations AS organization
+			ON products.owner_type = 'organization'
+			AND organization.id = products.owner_id
+
+		JOIN users AS buyer
 			ON buyer.id = cart_items.buyer_id
 
 		WHERE cart_items.buyer_id = $1
@@ -116,17 +123,17 @@ func (r *CartRepository) ListByBuyer(buyerID int) ([]models.CartItem, error) {
 	for rows.Next() {
 		var item models.CartItem
 
-		err := rows.Scan(
+		if err := rows.Scan(
 			&item.ID,
 			&item.BuyerID,
-			&item.CropID,
+			&item.ProductID,
 			&item.NegotiationID,
 			&item.Quantity,
 			&item.PricePerUnit,
 			&item.TotalPrice,
 			&item.CreatedAt,
 
-			&item.CropName,
+			&item.ProductName,
 			&item.Unit,
 			&item.ImageURL,
 
@@ -142,66 +149,77 @@ func (r *CartRepository) ListByBuyer(buyerID int) ([]models.CartItem, error) {
 			&item.BuyerPhone,
 			&item.BuyerLocation,
 			&item.BuyerPhotoURL,
-		)
-
-		if err != nil {
+		); err != nil {
 			return nil, err
 		}
 
 		items = append(items, item)
 	}
 
-	return items, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return items, nil
 }
 
-// GetByID retrieves one cart item.
+// GetByID retrieves one cart item belonging to the specified buyer.
 //
-// Responsibility:
-// - Find a specific cart item.
-// - Make sure it belongs to the requested buyer.
-// - Include complete product, seller, and buyer information.
-func (r *CartRepository) GetByID(
-	cartID,
-	buyerID int,
-) (*models.CartItem, error) {
-
+// Product, seller, and buyer information are loaded through JOINs.
+func (r *CartRepository) GetByID(cartID, buyerID int) (*models.CartItem, error) {
 	query := `
 		SELECT
 			cart_items.id,
 			cart_items.buyer_id,
-			cart_items.crop_id,
+			cart_items.product_id,
 			cart_items.negotiation_id,
 			cart_items.quantity,
 			cart_items.price_per_unit,
 			cart_items.total_price,
 			cart_items.created_at,
 
-			crops.name,
-			crops.unit,
-			crops.image_url,
+			products.name,
+			products.unit,
 
-			seller.id,
-			seller.full_name,
-			seller.email,
-			seller.phone,
-			seller.location,
-			seller.photo_url,
+			COALESCE(
+				(
+					SELECT pi.image_url
+					FROM product_images pi
+					WHERE pi.product_id = products.id
+					  AND pi.is_primary = TRUE
+					ORDER BY pi.sort_order ASC
+					LIMIT 1
+				),
+				''
+			),
+
+			COALESCE(seller.id, organization.id),
+			COALESCE(seller.full_name, organization.name, ''),
+			COALESCE(seller.email, ''),
+			COALESCE(seller.phone, ''),
+			COALESCE(seller.location, ''),
+			COALESCE(seller.photo_url, organization.logo_url, ''),
 
 			buyer.full_name,
-			buyer.email,
+			COALESCE(buyer.email, ''),
 			buyer.phone,
-			buyer.location,
-			buyer.photo_url
+			COALESCE(buyer.location, ''),
+			COALESCE(buyer.photo_url, '')
 
 		FROM cart_items
 
-		JOIN crops
-			ON crops.id = cart_items.crop_id
+		JOIN products
+			ON products.id = cart_items.product_id
 
-		JOIN farmers AS seller
-			ON seller.id = crops.farmer_id
+		LEFT JOIN users AS seller
+			ON products.owner_type = 'user'
+			AND seller.id = products.owner_id
 
-		JOIN farmers AS buyer
+		LEFT JOIN organizations AS organization
+			ON products.owner_type = 'organization'
+			AND organization.id = products.owner_id
+
+		JOIN users AS buyer
 			ON buyer.id = cart_items.buyer_id
 
 		WHERE cart_items.id = $1
@@ -210,21 +228,17 @@ func (r *CartRepository) GetByID(
 
 	var item models.CartItem
 
-	err := r.db.QueryRow(
-		query,
-		cartID,
-		buyerID,
-	).Scan(
+	err := r.db.QueryRow(query, cartID, buyerID).Scan(
 		&item.ID,
 		&item.BuyerID,
-		&item.CropID,
+		&item.ProductID,
 		&item.NegotiationID,
 		&item.Quantity,
 		&item.PricePerUnit,
 		&item.TotalPrice,
 		&item.CreatedAt,
 
-		&item.CropName,
+		&item.ProductName,
 		&item.Unit,
 		&item.ImageURL,
 
@@ -253,27 +267,15 @@ func (r *CartRepository) GetByID(
 	return &item, nil
 }
 
-// Delete removes an item from the buyer's cart.
-//
-// Responsibility:
-// - Remove a cart item the buyer no longer wants.
-// - Make sure the item belongs to that buyer.
-func (r *CartRepository) Delete(
-	cartID,
-	buyerID int,
-) error {
-
+// Delete removes a cart item belonging to the specified buyer.
+func (r *CartRepository) Delete(cartID, buyerID int) error {
 	query := `
 		DELETE FROM cart_items
 		WHERE id = $1
 		  AND buyer_id = $2
 	`
 
-	_, err := r.db.Exec(
-		query,
-		cartID,
-		buyerID,
-	)
+	_, err := r.db.Exec(query, cartID, buyerID)
 
 	return err
 }

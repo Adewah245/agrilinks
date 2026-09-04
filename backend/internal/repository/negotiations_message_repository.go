@@ -10,9 +10,9 @@ import (
 //
 // Responsibility:
 // - Communicates directly with negotiation_messages table.
-// - Stores normal chat messages.
+// - Stores normal negotiation messages.
 // - Stores price offers.
-// - Retrieves the complete conversation.
+// - Retrieves the complete negotiation conversation.
 // - Retrieves individual messages/offers.
 // - Updates the status of individual offers.
 //
@@ -22,13 +22,15 @@ import (
 //
 // A negotiation message can be:
 //
-//   💬 normal chat
+//   💬 normal message
 //   💰 price offer
 //
 // Accepting/rejecting an offer changes ONLY that offer.
 // It does not delete or close the conversation history.
 // ============================================================
 
+// NegotiationMessageRepository handles database operations
+// for messages and price offers inside negotiations.
 type NegotiationMessageRepository struct {
 	db *sql.DB
 }
@@ -37,6 +39,8 @@ type NegotiationMessageRepository struct {
 // CREATE REPOSITORY
 // ============================================================
 
+// NewNegotiationMessageRepository creates a new
+// NegotiationMessageRepository using the provided database connection.
 func NewNegotiationMessageRepository(
 	db *sql.DB,
 ) *NegotiationMessageRepository {
@@ -51,12 +55,12 @@ func NewNegotiationMessageRepository(
 //
 // Stores either:
 //
-//   1. Normal chat message
+//   1. Normal negotiation message
 //   2. Price offer
 //
-// Example chat:
+// Example normal message:
 //
-// MessageType = "chat"
+// MessageType = "message"
 // OfferPrice = 0
 // OfferStatus = "none"
 //
@@ -67,6 +71,8 @@ func NewNegotiationMessageRepository(
 // OfferStatus = "pending"
 // ============================================================
 
+// Create stores a new negotiation message or price offer
+// in the negotiation_messages table.
 func (r *NegotiationMessageRepository) Create(
 	m *models.NegotiationMessage,
 ) error {
@@ -107,7 +113,7 @@ func (r *NegotiationMessageRepository) Create(
 //
 // Includes:
 //
-// 💬 chat messages
+// 💬 normal messages
 // 💰 pending offers
 // ❌ rejected offers
 // ✅ accepted offers
@@ -115,6 +121,8 @@ func (r *NegotiationMessageRepository) Create(
 // Nothing is removed from the conversation history.
 // ============================================================
 
+// ListByNegotiation returns all messages belonging to a negotiation
+// in chronological order.
 func (r *NegotiationMessageRepository) ListByNegotiation(
 	negotiationID int,
 ) ([]models.NegotiationMessage, error) {
@@ -183,13 +191,14 @@ func (r *NegotiationMessageRepository) ListByNegotiation(
 //
 // This can be:
 //
-// 💬 chat
-// 💰 offer
+// 💬 normal message
+// 💰 price offer
 //
 // The service layer decides whether the message can be
 // accepted or rejected.
 // ============================================================
 
+// GetByID retrieves a single negotiation message by its ID.
 func (r *NegotiationMessageRepository) GetByID(
 	messageID int,
 ) (*models.NegotiationMessage, error) {
@@ -255,6 +264,11 @@ func (r *NegotiationMessageRepository) GetByID(
 // This does NOT change the negotiation itself.
 // ============================================================
 
+// UpdateOfferStatus changes the status of one price offer.
+//
+// The update is restricted to messages whose message_type is
+// "offer", preventing normal negotiation messages from being
+// accidentally modified as offers.
 func (r *NegotiationMessageRepository) UpdateOfferStatus(
 	offerID int,
 	status string,

@@ -1,69 +1,51 @@
 package handlers
 
 import (
-	"backend/internal/services"
-	"backend/middleware"
 	"html/template"
 	"net/http"
 	"strconv"
+
+	"backend/internal/services"
+	"backend/middleware"
 )
 
-// ============================================================
-// NOTIFICATION HANDLER
+// NotificationHandler handles notification-related HTTP requests.
 //
-// Responsibility:
-// - Receives notification-related HTTP requests.
-// - Gets the currently logged-in farmer/buyer.
-// - Calls NotificationService.
-// - Sends notification data to the frontend.
-//
-// The handler does NOT communicate directly with PostgreSQL.
-// ============================================================
-
+// The handler receives requests, identifies the authenticated user,
+// calls NotificationService, and sends notification data to the
+// frontend. It does not communicate directly with PostgreSQL.
 type NotificationHandler struct {
 	notificationService *services.NotificationService
 }
 
-// ============================================================
-// CREATE NOTIFICATION HANDLER
-// ============================================================
-//
-// Connects the NotificationService to the handler.
-//
-
+// NewNotificationHandler creates a new NotificationHandler.
 func NewNotificationHandler(
 	notificationService *services.NotificationService,
 ) *NotificationHandler {
-
 	return &NotificationHandler{
 		notificationService: notificationService,
 	}
 }
 
-// ============================================================
-// NOTIFICATIONS PAGE
+// NotificationsHandler displays all notifications belonging to
+// the currently authenticated user.
 //
 // GET /notifications
-//
-// Displays all notifications belonging to the currently
-// logged-in user.
-// ============================================================
-
 func (h *NotificationHandler) NotificationsHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	if r.Method != http.MethodGet {
+		http.Error(
+			w,
+			"Method Not Allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
 
-	// --------------------------------------------------------
-	// Get the logged-in farmer/buyer.
-	//
-	// RequireAuth middleware attaches the authenticated farmer
-	// to the request context.
-	// --------------------------------------------------------
-
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil {
 		http.Error(
 			w,
 			"Unauthorized",
@@ -72,14 +54,9 @@ func (h *NotificationHandler) NotificationsHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Get all notifications belonging to this user.
-	// --------------------------------------------------------
-
 	notifications, err := h.notificationService.GetUserNotifications(
-		farmer.ID,
+		user.ID,
 	)
-
 	if err != nil {
 		http.Error(
 			w,
@@ -89,16 +66,9 @@ func (h *NotificationHandler) NotificationsHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Get the number of unread notifications.
-	//
-	// This will later be displayed as the 🔔 badge.
-	// --------------------------------------------------------
-
 	unreadCount, err := h.notificationService.GetUnreadCount(
-		farmer.ID,
+		user.ID,
 	)
-
 	if err != nil {
 		http.Error(
 			w,
@@ -108,28 +78,19 @@ func (h *NotificationHandler) NotificationsHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Data sent to the notifications HTML template.
-	// --------------------------------------------------------
-
 	data := struct {
-		Farmer        interface{}
+		User          interface{}
 		Notifications interface{}
 		UnreadCount   int
 	}{
-		Farmer:        farmer,
+		User:          user,
 		Notifications: notifications,
 		UnreadCount:   unreadCount,
 	}
 
-	// --------------------------------------------------------
-	// Load notification page.
-	// --------------------------------------------------------
-
 	tmpl, err := template.ParseFiles(
 		"../frontend/pages/notification.html",
 	)
-
 	if err != nil {
 		http.Error(
 			w,
@@ -139,42 +100,35 @@ func (h *NotificationHandler) NotificationsHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Render notification page.
-	// --------------------------------------------------------
-
-	err = tmpl.Execute(w, data)
-
-	if err != nil {
-		http.Error(
-			w,
-			"Failed to render notifications page",
-			http.StatusInternalServerError,
-		)
+	if err := tmpl.Execute(w, data); err != nil {
+		// The response may already have been partially written,
+		// so we do not attempt another http.Error response here.
 		return
 	}
 }
 
-// ============================================================
-// MARK ONE NOTIFICATION AS READ
+// MarkAsReadHandler marks one notification as read.
 //
 // POST /notifications/read?id=123
 //
-// Only the owner of the notification can mark it as read.
-// ============================================================
-
+// The notification service receives the authenticated user's ID,
+// ensuring that a user cannot mark another user's notification
+// as read.
 func (h *NotificationHandler) MarkAsReadHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	if r.Method != http.MethodPost {
+		http.Error(
+			w,
+			"Method Not Allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
 
-	// --------------------------------------------------------
-	// Get logged-in user.
-	// --------------------------------------------------------
-
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil {
 		http.Error(
 			w,
 			"Unauthorized",
@@ -183,19 +137,12 @@ func (h *NotificationHandler) MarkAsReadHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Get notification ID from URL.
-	//
-	// Example:
-	//
-	// /notifications/read?id=15
-	// --------------------------------------------------------
-
 	notificationIDString := r.URL.Query().Get("id")
 
-	notificationID, err := strconv.Atoi(notificationIDString)
-
-	if err != nil {
+	notificationID, err := strconv.Atoi(
+		notificationIDString,
+	)
+	if err != nil || notificationID <= 0 {
 		http.Error(
 			w,
 			"Invalid notification ID",
@@ -204,16 +151,10 @@ func (h *NotificationHandler) MarkAsReadHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Mark notification as read.
-	// --------------------------------------------------------
-
-	err = h.notificationService.MarkAsRead(
+	if err := h.notificationService.MarkAsRead(
 		notificationID,
-		farmer.ID,
-	)
-
-	if err != nil {
+		user.ID,
+	); err != nil {
 		http.Error(
 			w,
 			"Failed to mark notification as read",
@@ -221,10 +162,6 @@ func (h *NotificationHandler) MarkAsReadHandler(
 		)
 		return
 	}
-
-	// --------------------------------------------------------
-	// Return to notifications page.
-	// --------------------------------------------------------
 
 	http.Redirect(
 		w,
@@ -234,24 +171,25 @@ func (h *NotificationHandler) MarkAsReadHandler(
 	)
 }
 
-// ============================================================
-// MARK ALL NOTIFICATIONS AS READ
+// MarkAllAsReadHandler marks all notifications belonging to the
+// authenticated user as read.
 //
 // POST /notifications/read-all
-// ============================================================
-
 func (h *NotificationHandler) MarkAllAsReadHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	if r.Method != http.MethodPost {
+		http.Error(
+			w,
+			"Method Not Allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
 
-	// --------------------------------------------------------
-	// Get logged-in user.
-	// --------------------------------------------------------
-
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil {
 		http.Error(
 			w,
 			"Unauthorized",
@@ -260,15 +198,9 @@ func (h *NotificationHandler) MarkAllAsReadHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Mark all notifications belonging to this user as read.
-	// --------------------------------------------------------
-
-	err := h.notificationService.MarkAllAsRead(
-		farmer.ID,
-	)
-
-	if err != nil {
+	if err := h.notificationService.MarkAllAsRead(
+		user.ID,
+	); err != nil {
 		http.Error(
 			w,
 			"Failed to mark notifications as read",
@@ -276,10 +208,6 @@ func (h *NotificationHandler) MarkAllAsReadHandler(
 		)
 		return
 	}
-
-	// --------------------------------------------------------
-	// Return to notifications page.
-	// --------------------------------------------------------
 
 	http.Redirect(
 		w,

@@ -11,18 +11,22 @@ import (
 	"time"
 )
 
-// saveUploadedFiles saves one or more uploaded files.
+// saveUploadedFiles saves one or more uploaded image files.
 //
-// Responsibility:
-// - Read multiple files from the same form field.
-// - Save every valid uploaded file.
-// - Return the URLs/paths of the saved files.
-// - Require the caller to decide whether at least one file is required.
+// The function reads all files submitted under the specified form field,
+// validates and saves each file, and returns browser-accessible URLs for
+// the successfully saved files.
+//
+// The caller is responsible for deciding whether at least one uploaded
+// file is required.
 func saveUploadedFiles(
 	r *http.Request,
 	field string,
 	subdir string,
 ) ([]string, error) {
+	if r == nil {
+		return nil, fmt.Errorf("request is nil")
+	}
 
 	if r.MultipartForm == nil {
 		return nil, fmt.Errorf("multipart form is not available")
@@ -43,19 +47,31 @@ func saveUploadedFiles(
 
 		file, err := header.Open()
 		if err != nil {
-			return nil, fmt.Errorf("could not open uploaded file: %w", err)
+			return nil, fmt.Errorf(
+				"could not open uploaded file %q: %w",
+				header.Filename,
+				err,
+			)
 		}
 
-		url, err := saveOneUploadedFile(
+		url, saveErr := saveOneUploadedFile(
 			file,
 			header,
 			subdir,
 		)
 
-		file.Close()
+		closeErr := file.Close()
 
-		if err != nil {
-			return nil, err
+		if saveErr != nil {
+			return nil, saveErr
+		}
+
+		if closeErr != nil {
+			return nil, fmt.Errorf(
+				"could not close uploaded file %q: %w",
+				header.Filename,
+				closeErr,
+			)
 		}
 
 		if strings.TrimSpace(url) != "" {
@@ -66,21 +82,44 @@ func saveUploadedFiles(
 	return uploadedURLs, nil
 }
 
-// saveOneUploadedFile saves one uploaded file.
+// saveOneUploadedFile validates and saves one uploaded image.
 //
-// This is the internal helper used by saveUploadedFiles.
+// The uploaded image must be no larger than 10 MB and must use one of
+// the supported image MIME types: JPEG, PNG, or WEBP.
+//
+// The returned path is relative to the web server's static directory
+// and can therefore be stored as the image URL used by Agro-Shield.
 func saveOneUploadedFile(
 	file multipart.File,
 	header *multipart.FileHeader,
 	subdir string,
 ) (string, error) {
-
 	if file == nil {
 		return "", fmt.Errorf("uploaded file is nil")
 	}
 
 	if header == nil {
 		return "", fmt.Errorf("uploaded file information is missing")
+	}
+
+	// --------------------------------------------------------
+	// Validate upload directory
+	// --------------------------------------------------------
+
+	subdir = strings.TrimSpace(subdir)
+
+	if subdir == "" {
+		return "", fmt.Errorf("upload subdirectory is empty")
+	}
+
+	// Prevent absolute paths and directory traversal.
+	cleanSubdir := filepath.Clean(subdir)
+
+	if cleanSubdir == "." ||
+		cleanSubdir == ".." ||
+		filepath.IsAbs(cleanSubdir) ||
+		strings.HasPrefix(cleanSubdir, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("invalid upload subdirectory")
 	}
 
 	// --------------------------------------------------------
@@ -130,7 +169,7 @@ func saveOneUploadedFile(
 		"frontend",
 		"static",
 		"uploads",
-		subdir,
+		cleanSubdir,
 	)
 
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
@@ -169,6 +208,7 @@ func saveOneUploadedFile(
 		)
 	}
 
+	// Make sure the destination file is closed if an error occurs.
 	defer output.Close()
 
 	// --------------------------------------------------------
@@ -176,6 +216,10 @@ func saveOneUploadedFile(
 	// --------------------------------------------------------
 
 	if _, err := io.Copy(output, file); err != nil {
+		// Remove a partially written file so that incomplete uploads
+		// are not left inside the uploads directory.
+		_ = os.Remove(destination)
+
 		return "", fmt.Errorf(
 			"could not save uploaded file: %w",
 			err,
@@ -186,19 +230,21 @@ func saveOneUploadedFile(
 	// Return browser-accessible path
 	// --------------------------------------------------------
 
-	return "/static/uploads/" + subdir + "/" + filename, nil
+	return "/static/uploads/" +
+		cleanSubdir +
+		"/" +
+		filename, nil
 }
 
-// saveUploadedFile keeps compatibility with existing code
-// that still uploads only one file.
+// saveUploadedFile saves a single uploaded image.
 //
-// It uses saveUploadedFiles internally and returns the first image.
+// This function is retained for handlers that only accept one image.
+// Internally it uses saveUploadedFiles and returns the first saved image.
 func saveUploadedFile(
 	r *http.Request,
 	field string,
 	subdir string,
 ) (string, error) {
-
 	files, err := saveUploadedFiles(
 		r,
 		field,

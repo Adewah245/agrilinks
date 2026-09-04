@@ -10,18 +10,26 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// AuthService handles user registration, authentication,
+// profile updates, and password management.
 type AuthService struct {
 	repo *repository.UserRepository
 }
 
+// NewAuthService creates a new AuthService using the provided
+// user repository.
 func NewAuthService(repo *repository.UserRepository) *AuthService {
 	return &AuthService{
 		repo: repo,
 	}
 }
 
-// Register creates a new user account.
-// role should normally be "farmer" or "buyer".
+// Register creates a new Agro-Shield user account.
+//
+// The role must be one of the roles supported by the users table:
+// farmer, buyer, ministry, or organisation.
+//
+// Farming types are saved after the user account has been created.
 func (s *AuthService) Register(
 	firstName,
 	lastName,
@@ -39,9 +47,22 @@ func (s *AuthService) Register(
 	organisationName string,
 	farmingTypes []string,
 ) error {
+	firstName = strings.TrimSpace(firstName)
+	lastName = strings.TrimSpace(lastName)
+	phone = strings.TrimSpace(phone)
+	email = strings.TrimSpace(email)
+	location = strings.TrimSpace(location)
+	lga = strings.TrimSpace(lga)
+	state = strings.TrimSpace(state)
+	country = strings.TrimSpace(country)
+	role = strings.ToLower(strings.TrimSpace(role))
+	photoURL = strings.TrimSpace(photoURL)
+	accountType = strings.ToLower(strings.TrimSpace(accountType))
+	nin = strings.TrimSpace(nin)
+	organisationName = strings.TrimSpace(organisationName)
 
 	if firstName == "" || lastName == "" {
-		return errors.New("name is required")
+		return errors.New("first name and last name are required")
 	}
 
 	if phone == "" {
@@ -52,12 +73,12 @@ func (s *AuthService) Register(
 		return errors.New("password is required")
 	}
 
-	if photoURL == "" {
-		return errors.New("profile picture is required")
-	}
-
 	if len(password) < 8 {
 		return errors.New("password must be at least 8 characters")
+	}
+
+	if photoURL == "" {
+		return errors.New("profile picture is required")
 	}
 
 	if location == "" {
@@ -76,20 +97,39 @@ func (s *AuthService) Register(
 		return errors.New("country is required")
 	}
 
-	// Default account settings.
 	if accountType == "" {
 		accountType = "individual"
 	}
 
-	verificationStatus := "pending"
-
-	if role == "partner" {
-		verificationStatus = "pending"
+	if accountType != "individual" &&
+		accountType != "organization" {
+		return errors.New("invalid account type")
 	}
 
-	if accountType != "organization" {
+	switch role {
+	case "farmer", "buyer", "ministry", "organisation":
+		// Valid role.
+	default:
+		return errors.New("invalid user role")
+	}
+
+	if accountType == "organization" {
+		if organisationName == "" {
+			return errors.New("organisation name is required")
+		}
+	} else {
 		organisationName = ""
 	}
+
+	if role == "organisation" &&
+		accountType != "organization" {
+		return errors.New(
+			"organisation accounts must use organization account type",
+		)
+	}
+
+	// New accounts begin with pending verification.
+	verificationStatus := "pending"
 
 	existing, err := s.repo.GetByPhone(phone)
 	if err != nil {
@@ -116,27 +156,21 @@ func (s *AuthService) Register(
 
 		PasswordHash: string(hash),
 
-		// Location information.
 		Location: location,
 		LGA:      lga,
 		State:    state,
 		Country:  country,
 
-		// Account information.
 		Role:        role,
 		AccountType: accountType,
 
-		// Verification.
 		NIN:                nin,
 		VerificationStatus: verificationStatus,
 
-		// Organisation / Partner.
 		OrganisationName: organisationName,
 
-		// Profile.
 		PhotoURL: photoURL,
 
-		// Farming types.
 		FarmingTypes: farmingTypes,
 	}
 
@@ -157,12 +191,20 @@ func (s *AuthService) Register(
 	return nil
 }
 
-// Login verifies a phone number + password against the stored hash
-// and returns the matching user on success.
-func (s *AuthService) Login(phone, password string) (*models.User, error) {
+// Login verifies a user's phone number and password.
+//
+// The stored password hash is compared using bcrypt.
+// On success, the complete user record is returned.
+func (s *AuthService) Login(
+	phone,
+	password string,
+) (*models.User, error) {
+	phone = strings.TrimSpace(phone)
 
 	if phone == "" || password == "" {
-		return nil, errors.New("phone and password are required")
+		return nil, errors.New(
+			"phone and password are required",
+		)
 	}
 
 	user, err := s.repo.GetByPhone(phone)
@@ -171,25 +213,35 @@ func (s *AuthService) Login(phone, password string) (*models.User, error) {
 	}
 
 	if user == nil {
-		return nil, errors.New("invalid phone number or password")
+		return nil, errors.New(
+			"invalid phone number or password",
+		)
 	}
 
 	if err := bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash),
 		[]byte(password),
 	); err != nil {
-		return nil, errors.New("invalid phone number or password")
+		return nil, errors.New(
+			"invalid phone number or password",
+		)
 	}
 
 	return user, nil
 }
 
-// GetUserByID loads a user's full details, e.g. for the profile page.
-func (s *AuthService) GetUserByID(id int) (*models.User, error) {
+// GetUserByID retrieves a user's complete profile information.
+func (s *AuthService) GetUserByID(
+	id int,
+) (*models.User, error) {
+	if id <= 0 {
+		return nil, errors.New("invalid user ID")
+	}
+
 	return s.repo.GetByID(id)
 }
 
-// UpdateProfile edits a user's name, phone and location.
+// UpdateProfile updates a user's editable personal information.
 func (s *AuthService) UpdateProfile(
 	id int,
 	fullName,
@@ -197,6 +249,9 @@ func (s *AuthService) UpdateProfile(
 	email,
 	location string,
 ) error {
+	if id <= 0 {
+		return errors.New("invalid user ID")
+	}
 
 	fullName = strings.TrimSpace(fullName)
 	phone = strings.TrimSpace(phone)
@@ -224,20 +279,34 @@ func (s *AuthService) UpdateProfile(
 	)
 }
 
-// UpdatePhoto sets the user's passport photograph.
-func (s *AuthService) UpdatePhoto(id int, photoURL string) error {
+// UpdatePhoto updates the user's profile photograph URL.
+func (s *AuthService) UpdatePhoto(
+	id int,
+	photoURL string,
+) error {
+	if id <= 0 {
+		return errors.New("invalid user ID")
+	}
+
+	photoURL = strings.TrimSpace(photoURL)
+
 	if photoURL == "" {
 		return errors.New("photo URL is required")
 	}
 
-	return s.repo.UpdatePhoto(id, photoURL)
+	return s.repo.UpdatePhoto(
+		id,
+		photoURL,
+	)
 }
 
-// ResetPassword changes a user's password.
+// ResetPassword changes the password associated with a user's
+// phone number.
 func (s *AuthService) ResetPassword(
 	phone,
 	newPassword string,
 ) error {
+	phone = strings.TrimSpace(phone)
 
 	if phone == "" {
 		return errors.New("phone number is required")
@@ -248,7 +317,9 @@ func (s *AuthService) ResetPassword(
 	}
 
 	if len(newPassword) < 8 {
-		return errors.New("password must be at least 8 characters")
+		return errors.New(
+			"password must be at least 8 characters",
+		)
 	}
 
 	user, err := s.repo.GetByPhone(phone)

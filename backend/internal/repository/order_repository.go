@@ -5,10 +5,13 @@ import (
 	"database/sql"
 )
 
+// OrderRepository handles database operations for product orders.
 type OrderRepository struct {
 	db *sql.DB
 }
 
+// NewOrderRepository creates a new OrderRepository using the
+// provided database connection.
 func NewOrderRepository(db *sql.DB) *OrderRepository {
 	return &OrderRepository{db: db}
 }
@@ -39,9 +42,12 @@ func (r *OrderRepository) Create(order *models.Order) error {
 	return err
 }
 
-// ListByBuyer returns everything a buyer has purchased,
+// ListByBuyer returns all orders belonging to a buyer,
 // with the product name and seller name resolved for display.
-func (r *OrderRepository) ListByBuyer(buyerID int) ([]models.Order, error) {
+func (r *OrderRepository) ListByBuyer(
+	buyerID int,
+) ([]models.Order, error) {
+
 	query := `
 		SELECT
 			orders.id,
@@ -52,7 +58,11 @@ func (r *OrderRepository) ListByBuyer(buyerID int) ([]models.Order, error) {
 			orders.status,
 			orders.created_at,
 			products.name,
-			COALESCE(seller_user.full_name, seller_org.name, '') AS seller_name
+			COALESCE(
+				seller_user.full_name,
+				seller_org.name,
+				''
+			) AS seller_name
 		FROM orders
 		JOIN products
 			ON products.id = orders.product_id
@@ -63,7 +73,7 @@ func (r *OrderRepository) ListByBuyer(buyerID int) ([]models.Order, error) {
 			ON products.owner_type = 'organization'
 			AND seller_org.id = products.owner_id
 		WHERE orders.buyer_id = $1
-		ORDER BY orders.created_at DESC
+		ORDER BY orders.created_at DESC, orders.id DESC
 	`
 
 	rows, err := r.db.Query(query, buyerID)
@@ -94,17 +104,22 @@ func (r *OrderRepository) ListByBuyer(buyerID int) ([]models.Order, error) {
 		orders = append(orders, o)
 	}
 
-	return orders, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }
 
-// ListSalesBySeller returns everything sold by a seller,
-// with the product name and buyer name resolved for display.
+// ListSalesBySeller returns all orders for products owned by the
+// specified seller, with the product name and buyer name resolved.
 //
 // sellerType must be either "user" or "organization".
 func (r *OrderRepository) ListSalesBySeller(
 	sellerType string,
 	sellerID int,
 ) ([]models.Order, error) {
+
 	query := `
 		SELECT
 			orders.id,
@@ -123,10 +138,14 @@ func (r *OrderRepository) ListSalesBySeller(
 			ON buyer.id = orders.buyer_id
 		WHERE products.owner_type = $1
 			AND products.owner_id = $2
-		ORDER BY orders.created_at DESC
+		ORDER BY orders.created_at DESC, orders.id DESC
 	`
 
-	rows, err := r.db.Query(query, sellerType, sellerID)
+	rows, err := r.db.Query(
+		query,
+		sellerType,
+		sellerID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -154,5 +173,9 @@ func (r *OrderRepository) ListSalesBySeller(
 		orders = append(orders, o)
 	}
 
-	return orders, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }

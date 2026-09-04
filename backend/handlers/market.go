@@ -13,12 +13,15 @@ import (
 	"backend/render"
 )
 
+// Marketplace handles marketplace product browsing, searching,
+// and product purchase requests.
 type Marketplace struct {
 	product *services.ProductService
 	order   *services.OrderService
 	events  *repository.MarketEventRepository
 }
 
+// NewMarketplaceHandler creates a new Marketplace handler.
 func NewMarketplaceHandler(
 	product *services.ProductService,
 	order *services.OrderService,
@@ -31,6 +34,7 @@ func NewMarketplaceHandler(
 	}
 }
 
+// MarketplacePageData contains the data passed to marketplace.html.
 type MarketplacePageData struct {
 	Products      []models.Product
 	IsBuyer       bool
@@ -39,20 +43,26 @@ type MarketplacePageData struct {
 	Error         string
 }
 
+// MarketplaceHandler renders the marketplace and processes marketplace
+// search and purchase requests.
 func (h *Marketplace) MarketplaceHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	user, ok := middleware.FarmerFromContext(r)
+	user, ok := middleware.UserFromContext(r)
 	if !ok || user == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(
+			w,
+			r,
+			"/login",
+			http.StatusSeeOther,
+		)
 		return
 	}
 
 	switch r.Method {
-
 	case http.MethodGet:
-		log.Println("User Visited Marketplace")
+		log.Println("User visited marketplace")
 
 		h.record(
 			"marketplace_view",
@@ -68,9 +78,9 @@ func (h *Marketplace) MarketplaceHandler(
 			"",
 			"",
 		)
+		return
 
 	case http.MethodPost:
-
 		// Marketplace search.
 		if r.FormValue("action") == "search" {
 			uid := user.ID
@@ -81,7 +91,7 @@ func (h *Marketplace) MarketplaceHandler(
 					r.FormValue("normalized_produce"),
 					user.Location,
 					&uid,
-					r.FormValue("session_id"),
+					"",
 				)
 			}
 
@@ -92,7 +102,6 @@ func (h *Marketplace) MarketplaceHandler(
 				"",
 				"",
 			)
-
 			return
 		}
 
@@ -105,7 +114,6 @@ func (h *Marketplace) MarketplaceHandler(
 				"",
 				"Only buyer accounts can place orders",
 			)
-
 			return
 		}
 
@@ -114,23 +122,14 @@ func (h *Marketplace) MarketplaceHandler(
 		)
 
 		if err != nil || productID <= 0 {
-			// Backward compatibility with existing marketplace forms
-			// that may still submit crop_id.
-			productID, err = strconv.Atoi(
-				r.FormValue("crop_id"),
+			h.render(
+				w,
+				user.IsBuyer(),
+				user.ID,
+				"",
+				"Invalid product",
 			)
-
-			if err != nil || productID <= 0 {
-				h.render(
-					w,
-					user.IsBuyer(),
-					user.ID,
-					"",
-					"Invalid product",
-				)
-
-				return
-			}
+			return
 		}
 
 		quantity, err := strconv.ParseFloat(
@@ -146,7 +145,6 @@ func (h *Marketplace) MarketplaceHandler(
 				"",
 				"Invalid quantity",
 			)
-
 			return
 		}
 
@@ -162,17 +160,20 @@ func (h *Marketplace) MarketplaceHandler(
 				"",
 				err.Error(),
 			)
-
 			return
 		}
 
-		// The event schema still calls the product identifier crop_id.
+		// Record the completed checkout using the new product-based
+		// marketplace architecture.
 		h.record(
 			"checkout_completed",
 			&productID,
 			user.ID,
 			r,
-			fmt.Sprintf(`{"quantity":%g}`, quantity),
+			fmt.Sprintf(
+				`{"quantity":%g}`,
+				quantity,
+			),
 		)
 
 		h.render(
@@ -182,6 +183,7 @@ func (h *Marketplace) MarketplaceHandler(
 			"Order placed successfully!",
 			"",
 		)
+		return
 
 	default:
 		http.Error(
@@ -189,9 +191,11 @@ func (h *Marketplace) MarketplaceHandler(
 			"Method Not Allowed",
 			http.StatusMethodNotAllowed,
 		)
+		return
 	}
 }
 
+// record records a marketplace event when the event repository is available.
 func (h *Marketplace) record(
 	eventType string,
 	productID *int,
@@ -204,28 +208,24 @@ func (h *Marketplace) record(
 	}
 
 	uid := userID
-
-	sessionID, _ := r.Context().
-		Value("session_id").
-		(string)
-
 	meta := "{}"
 
-	if len(metadata) > 0 {
+	if len(metadata) > 0 && metadata[0] != "" {
 		meta = metadata[0]
 	}
 
 	_ = h.events.Record(
 		&models.MarketEvent{
 			EventType: eventType,
-			CropID:    productID,
+			ProductID: productID,
 			UserID:    &uid,
-			SessionID: sessionID,
+			SessionID: "",
 			Metadata:  meta,
 		},
 	)
 }
 
+// render loads available products and renders the marketplace page.
 func (h *Marketplace) render(
 	w http.ResponseWriter,
 	isBuyer bool,
@@ -239,7 +239,6 @@ func (h *Marketplace) render(
 		var err error
 
 		products, err = h.product.AvailableProducts()
-
 		if err != nil {
 			log.Println(
 				"failed to load products:",
@@ -262,14 +261,9 @@ func (h *Marketplace) render(
 		data,
 	); err != nil {
 		log.Println(
-			"render error",
+			"marketplace render error:",
 			err,
 		)
-
-		http.Error(
-			w,
-			"Internal Server Error",
-			http.StatusInternalServerError,
-		)
+		return
 	}
 }

@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"backend/internal/models"
@@ -10,116 +11,96 @@ import (
 )
 
 const (
+	// MaxNegotiationRounds defines the maximum number of offers
+	// that can be exchanged in one negotiation.
 	MaxNegotiationRounds = 15
-	NegotiationWindow    = 24 * time.Hour
+
+	// NegotiationWindow defines how long a negotiation remains
+	// active after it is started.
+	NegotiationWindow = 24 * time.Hour
 )
 
-// ============================================================
-// NEGOTIATION SERVICE
+// NegotiationService handles negotiation business logic.
 //
-// Responsibility:
-// - Start negotiations.
-// - Send normal chat messages.
-// - Send offers/counter-offers.
-// - Accept individual offers.
-// - Reject individual offers.
-// - Keep rejected offers inside the conversation.
-// - Keep chat history.
-// - Move accepted deals into the buyer's cart.
-// - Send negotiation notifications.
+// It is responsible for:
 //
-// IMPORTANT:
+//   - Starting negotiations.
+//   - Sending normal negotiation messages.
+//   - Sending offers and counter-offers.
+//   - Accepting individual offers.
+//   - Rejecting individual offers.
+//   - Keeping negotiation history.
+//   - Moving accepted deals into the buyer's cart.
+//   - Sending negotiation notifications.
+//   - Recording negotiation market events.
 //
-// Negotiation chat and negotiation offers are treated
-// differently.
+// The service sits between HTTP handlers and repositories:
 //
-// CHAT:
-// - Unlimited.
-// - Does not consume rounds.
-// - Not affected by the 24-hour offer window.
+// Handler
 //
-// OFFERS:
-// - Limited to MaxNegotiationRounds.
-// - Affected by NegotiationWindow.
-// - Can be accepted or rejected.
-// ============================================================
-
+//	↓
+//
+// NegotiationService
+//
+//	↓
+//
+// Repositories
+//
+//	↓
+//
+// PostgreSQL
 type NegotiationService struct {
 	repo         *repository.NegotiationRepository
 	msgRepo      *repository.NegotiationMessageRepository
-	cropRepo     *repository.CropRepository
+	productRepo  *repository.ProductRepository
 	cartService  *CartService
 	notification *NotificationService
 	eventRepo    *repository.MarketEventRepository
 }
 
-// ============================================================
-// CREATE NEGOTIATION SERVICE
-// ============================================================
-
+// NewNegotiationService creates a new NegotiationService connected
+// to the negotiation, message, product, cart, notification, and
+// market event dependencies.
 func NewNegotiationService(
 	repo *repository.NegotiationRepository,
 	msgRepo *repository.NegotiationMessageRepository,
-	cropRepo *repository.CropRepository,
+	productRepo *repository.ProductRepository,
 	cartService *CartService,
 	notification *NotificationService,
 	eventRepo *repository.MarketEventRepository,
 ) *NegotiationService {
-
 	return &NegotiationService{
 		repo:         repo,
 		msgRepo:      msgRepo,
-		cropRepo:     cropRepo,
+		productRepo:  productRepo,
 		cartService:  cartService,
 		notification: notification,
 		eventRepo:    eventRepo,
 	}
 }
 
-// ============================================================
-// START NEGOTIATION
+// StartNegotiation creates a new negotiation for an available product.
 //
-// Creates a new negotiation.
-//
-// The first message is stored as an OFFER.
-//
-// The 24-hour negotiation window starts here.
-// ============================================================
-
+// The buyer's first offer is stored as the first negotiation message.
+// The negotiation remains open for NegotiationWindow.
 func (s *NegotiationService) StartNegotiation(
 	buyerID,
-	cropID int,
+	productID int,
 	quantity,
 	offerPrice float64,
 	message string,
 ) (*models.Negotiation, error) {
-
-	crop, err := s.cropRepo.GetByID(cropID)
-	if err != nil {
-		return nil, err
+	if buyerID <= 0 {
+		return nil, errors.New("invalid buyer")
 	}
 
-	if crop == nil || !crop.ListedForSale {
-		return nil, errors.New(
-			"this produce is not available for negotiation",
-		)
-	}
-
-	if crop.FarmerID == buyerID {
-		return nil, errors.New(
-			"you can't negotiate on your own produce",
-		)
+	if productID <= 0 {
+		return nil, errors.New("invalid product")
 	}
 
 	if quantity <= 0 {
 		return nil, errors.New(
 			"quantity must be greater than zero",
-		)
-	}
-
-	if quantity > crop.Quantity {
-		return nil, errors.New(
-			"not enough quantity available",
 		)
 	}
 
@@ -129,10 +110,54 @@ func (s *NegotiationService) StartNegotiation(
 		)
 	}
 
+	message = strings.TrimSpace(message)
+
+	product, err := s.productRepo.GetByID(productID)
+	if err != nil {
+		return nil, err
+	}
+
+	if product == nil {
+		return nil, errors.New("product not found")
+	}
+
+	// Only active products with available quantity can be negotiated.
+	if !product.IsAvailable() {
+		return nil, errors.New(
+			"this product is not available for negotiation",
+		)
+	}
+
+	// A user cannot negotiate on their own product.
+	if product.OwnerType == "user" &&
+		product.OwnerID == buyerID {
+		return nil, errors.New(
+			"you can't negotiate on your own product",
+		)
+	}
+
+	// Organization ownership is supported by the product model,
+	// but organization-member authorization is handled by the
+	// organization layer. We must not treat an organization ID
+	// as if it were a user ID.
+	if product.OwnerType != "user" &&
+		product.OwnerType != "organization" {
+		return nil, errors.New(
+			"product has an invalid owner type",
+		)
+	}
+
+	if quantity > product.Quantity {
+		return nil, errors.New(
+			"not enough quantity available",
+		)
+	}
+
 	negotiation := &models.Negotiation{
-		CropID:    cropID,
+		ProductID: productID,
 		BuyerID:   buyerID,
-		FarmerID:  crop.FarmerID,
+		OwnerType: product.OwnerType,
+		OwnerID:   product.OwnerID,
 		Quantity:  quantity,
 		Status:    "open",
 		MaxRounds: MaxNegotiationRounds,
@@ -143,12 +168,7 @@ func (s *NegotiationService) StartNegotiation(
 		return nil, err
 	}
 
-	// ========================================================
-	// FIRST OFFER
-	//
-	// The first message starts the negotiation.
-	// ========================================================
-
+	// Create the buyer's first offer.
 	firstOffer := &models.NegotiationMessage{
 		NegotiationID: negotiation.ID,
 		SenderID:      buyerID,
@@ -162,20 +182,24 @@ func (s *NegotiationService) StartNegotiation(
 		return nil, err
 	}
 
-	// First offer uses one round.
-	if err := s.repo.IncrementRound(negotiation.ID); err != nil {
+	// The first offer consumes one negotiation round.
+	if err := s.repo.IncrementRound(
+		negotiation.ID,
+	); err != nil {
 		return nil, err
 	}
 
-	// ========================================================
-	// NOTIFICATION
-	// ========================================================
+	// Notify individual product owners.
+	//
+	// Organization notifications will require organization-member
+	// notification routing.
+	if s.notification != nil &&
+		product.OwnerType == "user" {
 
-	if s.notification != nil {
 		_ = s.notification.CreateNotification(
-			crop.FarmerID,
+			product.OwnerID,
 			"New negotiation",
-			"A buyer has started a negotiation for your produce.",
+			"A buyer has started a negotiation for your product.",
 			"negotiation",
 		)
 	}
@@ -183,54 +207,24 @@ func (s *NegotiationService) StartNegotiation(
 	return negotiation, nil
 }
 
-// ============================================================
-// SEND CHAT MESSAGE
+// SendMessage sends a normal negotiation message.
 //
-// Sends a NORMAL conversation message.
-//
-// IMPORTANT:
-//
-// Chat messages:
-// - Do NOT consume negotiation rounds.
-// - Do NOT have a 15-round limit.
-// - Are NOT blocked when the negotiation offer window expires.
-// - Remain visible in the conversation history.
-//
-// The 24-hour timer applies to OFFERS only.
-// ============================================================
-
+// Normal messages do not consume negotiation rounds.
+// They are separate from price offers.
 func (s *NegotiationService) SendMessage(
 	negotiationID,
 	senderID int,
 	message string,
 ) error {
-
-	negotiation, err := s.repo.GetByID(negotiationID)
-	if err != nil {
-		return err
+	if negotiationID <= 0 {
+		return errors.New("invalid negotiation ID")
 	}
 
-	if negotiation == nil {
-		return errors.New(
-			"negotiation not found",
-		)
+	if senderID <= 0 {
+		return errors.New("invalid sender ID")
 	}
 
-	// --------------------------------------------------------
-	// Make sure the sender belongs to this negotiation.
-	// --------------------------------------------------------
-
-	if senderID != negotiation.BuyerID &&
-		senderID != negotiation.FarmerID {
-
-		return errors.New(
-			"you're not part of this negotiation",
-		)
-	}
-
-	// --------------------------------------------------------
-	// Message cannot be empty.
-	// --------------------------------------------------------
+	message = strings.TrimSpace(message)
 
 	if message == "" {
 		return errors.New(
@@ -238,70 +232,15 @@ func (s *NegotiationService) SendMessage(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Create normal chat message.
-	// --------------------------------------------------------
-
-	chatMessage := &models.NegotiationMessage{
-		NegotiationID: negotiationID,
-		SenderID:      senderID,
-		MessageType:   "chat",
-		OfferPrice:    0,
-		Message:       message,
-		OfferStatus:   "none",
-	}
-
-	if err := s.msgRepo.Create(chatMessage); err != nil {
-		return err
-	}
-
-	// ========================================================
-	// NOTIFY THE OTHER PARTICIPANT
-	// ========================================================
-
-	if s.notification != nil {
-
-		recipientID := negotiation.FarmerID
-
-		if senderID == negotiation.FarmerID {
-			recipientID = negotiation.BuyerID
-		}
-
-		_ = s.notification.CreateNotification(
-			recipientID,
-			"New negotiation message",
-			"You received a new message in a negotiation.",
-			"negotiation_message",
+	if len(message) > 5000 {
+		return errors.New(
+			"message is too long",
 		)
 	}
 
-	return nil
-}
-
-// ============================================================
-// SEND OFFER
-//
-// Sends a new offer/counter-offer.
-//
-// IMPORTANT:
-// Only OFFERS increase the negotiation round count.
-//
-// Normal chat messages do NOT use rounds.
-//
-// Offers are affected by:
-// - negotiation status
-// - expiration time
-// - maximum rounds
-// ============================================================
-
-func (s *NegotiationService) SendOffer(
-	negotiationID,
-	senderID int,
-	offerPrice float64,
-	message string,
-) error {
-
-	negotiation, err := s.repo.GetByID(negotiationID)
+	negotiation, err := s.repo.GetByID(
+		negotiationID,
+	)
 	if err != nil {
 		return err
 	}
@@ -312,21 +251,97 @@ func (s *NegotiationService) SendOffer(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Verify participant.
-	// --------------------------------------------------------
-
-	if senderID != negotiation.BuyerID &&
-		senderID != negotiation.FarmerID {
-
+	if !s.isNegotiationParticipant(
+		negotiation,
+		senderID,
+	) {
 		return errors.New(
 			"you're not part of this negotiation",
 		)
 	}
 
-	// --------------------------------------------------------
-	// Negotiation must still be open.
-	// --------------------------------------------------------
+	chatMessage := &models.NegotiationMessage{
+		NegotiationID: negotiationID,
+		SenderID:      senderID,
+		MessageType:   "message",
+		OfferPrice:    0,
+		Message:       message,
+		OfferStatus:   "none",
+	}
+
+	if err := s.msgRepo.Create(
+		chatMessage,
+	); err != nil {
+		return err
+	}
+
+	// Notify the other participant when the owner is an individual user.
+	if s.notification != nil {
+		recipientID := s.otherParticipantID(
+			negotiation,
+			senderID,
+		)
+
+		if recipientID > 0 {
+			_ = s.notification.CreateNotification(
+				recipientID,
+				"New negotiation message",
+				"You received a new message in a negotiation.",
+				"negotiation_message",
+			)
+		}
+	}
+
+	return nil
+}
+
+// SendOffer sends a new offer or counter-offer.
+//
+// Only offers consume negotiation rounds.
+// Normal messages do not consume rounds.
+func (s *NegotiationService) SendOffer(
+	negotiationID,
+	senderID int,
+	offerPrice float64,
+	message string,
+) error {
+	if negotiationID <= 0 {
+		return errors.New("invalid negotiation ID")
+	}
+
+	if senderID <= 0 {
+		return errors.New("invalid sender ID")
+	}
+
+	if offerPrice <= 0 {
+		return errors.New(
+			"offer price must be greater than zero",
+		)
+	}
+
+	message = strings.TrimSpace(message)
+
+	negotiation, err := s.repo.GetByID(
+		negotiationID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if negotiation == nil {
+		return errors.New(
+			"negotiation not found",
+		)
+	}
+
+	if !s.isNegotiationParticipant(
+		negotiation,
+		senderID,
+	) {
+		return errors.New(
+			"you're not part of this negotiation",
+		)
+	}
 
 	if negotiation.Status != "open" {
 		return errors.New(
@@ -334,12 +349,7 @@ func (s *NegotiationService) SendOffer(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Check expiration.
-	// --------------------------------------------------------
-
 	if negotiation.IsExpired() {
-
 		_ = s.repo.UpdateStatus(
 			negotiationID,
 			"expired",
@@ -350,29 +360,11 @@ func (s *NegotiationService) SendOffer(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Check round limit.
-	// --------------------------------------------------------
-
 	if negotiation.RoundCount >= negotiation.MaxRounds {
 		return errors.New(
 			"you've reached the negotiation round limit — no more offers can be made",
 		)
 	}
-
-	// --------------------------------------------------------
-	// Validate offer price.
-	// --------------------------------------------------------
-
-	if offerPrice <= 0 {
-		return errors.New(
-			"offer price must be greater than zero",
-		)
-	}
-
-	// --------------------------------------------------------
-	// Create new offer.
-	// --------------------------------------------------------
 
 	newOffer := &models.NegotiationMessage{
 		NegotiationID: negotiationID,
@@ -383,58 +375,61 @@ func (s *NegotiationService) SendOffer(
 		OfferStatus:   "pending",
 	}
 
-	if err := s.msgRepo.Create(newOffer); err != nil {
+	if err := s.msgRepo.Create(
+		newOffer,
+	); err != nil {
 		return err
 	}
 
-	// --------------------------------------------------------
-	// Increase negotiation round.
-	// --------------------------------------------------------
-
-	if err := s.repo.IncrementRound(negotiationID); err != nil {
+	if err := s.repo.IncrementRound(
+		negotiationID,
+	); err != nil {
 		return err
 	}
-
-	// ========================================================
-	// NOTIFY OTHER PARTICIPANT
-	// ========================================================
 
 	if s.notification != nil {
-
-		recipientID := negotiation.FarmerID
-
-		if senderID == negotiation.FarmerID {
-			recipientID = negotiation.BuyerID
-		}
-
-		_ = s.notification.CreateNotification(
-			recipientID,
-			"New price offer",
-			"You received a new price offer.",
-			"negotiation_offer",
+		recipientID := s.otherParticipantID(
+			negotiation,
+			senderID,
 		)
+
+		if recipientID > 0 {
+			_ = s.notification.CreateNotification(
+				recipientID,
+				"New price offer",
+				"You received a new price offer.",
+				"negotiation_offer",
+			)
+		}
 	}
 
 	return nil
 }
 
-// ============================================================
-// ACCEPT OFFER
+// Accept accepts one specific pending offer.
 //
-// Accepts ONE specific offer.
-//
-// The selected offer becomes accepted.
-// The negotiation becomes accepted.
-// The accepted deal goes into the buyer's cart.
-// ============================================================
-
+// The accepted offer finalizes the negotiation and moves
+// the agreed deal into the buyer's cart.
 func (s *NegotiationService) Accept(
 	negotiationID,
 	offerID,
 	accepterID int,
 ) error {
+	if negotiationID <= 0 {
+		return errors.New("invalid negotiation ID")
+	}
 
-	negotiation, err := s.repo.GetByID(negotiationID)
+	if offerID <= 0 {
+		return errors.New("invalid offer ID")
+	}
+
+	if accepterID <= 0 {
+		return errors.New("invalid accepter ID")
+	}
+
+	negotiation, err := s.repo.GetByID(
+		negotiationID,
+	)
 	if err != nil {
 		return err
 	}
@@ -445,21 +440,14 @@ func (s *NegotiationService) Accept(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Verify participant.
-	// --------------------------------------------------------
-
-	if accepterID != negotiation.BuyerID &&
-		accepterID != negotiation.FarmerID {
-
+	if !s.isNegotiationParticipant(
+		negotiation,
+		accepterID,
+	) {
 		return errors.New(
 			"you're not part of this negotiation",
 		)
 	}
-
-	// --------------------------------------------------------
-	// Negotiation must still be open.
-	// --------------------------------------------------------
 
 	if negotiation.Status != "open" {
 		return errors.New(
@@ -467,12 +455,7 @@ func (s *NegotiationService) Accept(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Check expiration.
-	// --------------------------------------------------------
-
 	if negotiation.IsExpired() {
-
 		_ = s.repo.UpdateStatus(
 			negotiationID,
 			"expired",
@@ -483,11 +466,9 @@ func (s *NegotiationService) Accept(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Find offer.
-	// --------------------------------------------------------
-
-	offer, err := s.msgRepo.GetByID(offerID)
+	offer, err := s.msgRepo.GetByID(
+		offerID,
+	)
 	if err != nil {
 		return err
 	}
@@ -498,29 +479,17 @@ func (s *NegotiationService) Accept(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Make sure offer belongs to this negotiation.
-	// --------------------------------------------------------
-
 	if offer.NegotiationID != negotiationID {
 		return errors.New(
 			"this offer does not belong to this negotiation",
 		)
 	}
 
-	// --------------------------------------------------------
-	// Only offers can be accepted.
-	// --------------------------------------------------------
-
 	if offer.MessageType != "offer" {
 		return errors.New(
 			"this message is not an offer",
 		)
 	}
-
-	// --------------------------------------------------------
-	// Only pending offers can be accepted.
-	// --------------------------------------------------------
 
 	if offer.OfferStatus != "pending" {
 		return errors.New(
@@ -529,50 +498,51 @@ func (s *NegotiationService) Accept(
 	}
 
 	if offer.SenderID == accepterID {
-		return errors.New("you cannot accept your own offer")
+		return errors.New(
+			"you cannot accept your own offer",
+		)
 	}
 
-	// --------------------------------------------------------
-	// Get crop.
-	// --------------------------------------------------------
-
-	crop, err := s.cropRepo.GetByID(
-		negotiation.CropID,
+	product, err := s.productRepo.GetByID(
+		negotiation.ProductID,
 	)
-
 	if err != nil {
 		return err
 	}
 
-	if crop == nil {
+	if product == nil {
 		return errors.New(
 			"product no longer exists",
 		)
 	}
 
-	// --------------------------------------------------------
-	// Make sure crop is still available.
-	// --------------------------------------------------------
-
-	if !crop.ListedForSale {
+	if !product.IsAvailable() {
 		return errors.New(
 			"this product is no longer available for sale",
 		)
 	}
 
-	// --------------------------------------------------------
-	// Check quantity.
-	// --------------------------------------------------------
-
-	if negotiation.Quantity > crop.Quantity {
+	if negotiation.Quantity > product.Quantity {
 		return errors.New(
 			"the requested quantity is no longer available",
 		)
 	}
 
-	// --------------------------------------------------------
-	// Mark offer as accepted.
-	// --------------------------------------------------------
+	if s.cartService == nil {
+		return errors.New(
+			"cart service is not configured",
+		)
+	}
+
+	// Add the agreed deal to the buyer's cart before finalizing
+	// the negotiation. This prevents an accepted negotiation from
+	// being finalized when the cart operation cannot succeed.
+	if err := s.cartService.AddFromNegotiation(
+		negotiation,
+		offer.OfferPrice,
+	); err != nil {
+		return err
+	}
 
 	if err := s.msgRepo.UpdateOfferStatus(
 		offerID,
@@ -581,87 +551,74 @@ func (s *NegotiationService) Accept(
 		return err
 	}
 
-	// --------------------------------------------------------
-	// Finalize negotiation.
-	// --------------------------------------------------------
-
 	if err := s.repo.UpdateStatus(
 		negotiationID,
 		"accepted",
 	); err != nil {
 		return err
 	}
+
+	// Record the negotiation event if event tracking is enabled.
 	if s.eventRepo != nil {
-		uid := negotiation.BuyerID
-		cid := negotiation.CropID
-		_ = s.eventRepo.Record(&models.MarketEvent{EventType: "negotiation_accepted", CropID: &cid, UserID: &uid, Metadata: fmt.Sprintf(`{"quantity":%g}`, negotiation.Quantity)})
+		userID := negotiation.BuyerID
+		productID := negotiation.ProductID
+
+		_ = s.eventRepo.Record(
+			&models.MarketEvent{
+				EventType: "negotiation_accepted",
+				ProductID: &productID,
+				UserID:    &userID,
+				Metadata: fmt.Sprintf(
+					`{"quantity":%g}`,
+					negotiation.Quantity,
+				),
+			},
+		)
 	}
-
-	// --------------------------------------------------------
-	// Move accepted deal into buyer's cart.
-	// --------------------------------------------------------
-
-	if err := s.cartService.AddFromNegotiation(
-		negotiation,
-		offer.OfferPrice,
-	); err != nil {
-		return err
-	}
-
-	// ========================================================
-	// NOTIFY OTHER PARTICIPANT
-	// ========================================================
 
 	if s.notification != nil {
-
-		recipientID := negotiation.BuyerID
-
-		if accepterID == negotiation.BuyerID {
-			recipientID = negotiation.FarmerID
-		}
-
-		_ = s.notification.CreateNotification(
-			recipientID,
-			"Negotiation accepted",
-			"An offer in your negotiation has been accepted.",
-			"negotiation_accepted",
+		recipientID := s.otherParticipantID(
+			negotiation,
+			accepterID,
 		)
+
+		if recipientID > 0 {
+			_ = s.notification.CreateNotification(
+				recipientID,
+				"Negotiation accepted",
+				"An offer in your negotiation has been accepted.",
+				"negotiation_accepted",
+			)
+		}
 	}
 
 	return nil
 }
 
-// ============================================================
-// REJECT OFFER
+// Reject rejects one specific pending offer.
 //
-// Rejects ONE specific offer.
-//
-// IMPORTANT:
-// The negotiation remains OPEN.
-//
-// Example:
-//
-// Buyer → ₦50,000
-// Seller → Reject
-//
-// Result:
-//
-// Offer = rejected
-// Negotiation = still open
-//
-// Buyer can continue chatting or send another offer.
-// ============================================================
-
+// Rejecting an offer does not close the negotiation.
+// Other offers and normal messages can continue afterward.
 func (s *NegotiationService) Reject(
 	negotiationID,
 	offerID,
 	rejecterID int,
 ) error {
+	if negotiationID <= 0 {
+		return errors.New("invalid negotiation ID")
+	}
+
+	if offerID <= 0 {
+		return errors.New("invalid offer ID")
+	}
+
+	if rejecterID <= 0 {
+		return errors.New("invalid rejecter ID")
+	}
 
 	negotiation, err := s.repo.GetByID(
 		negotiationID,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -672,21 +629,14 @@ func (s *NegotiationService) Reject(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Verify participant.
-	// --------------------------------------------------------
-
-	if rejecterID != negotiation.BuyerID &&
-		rejecterID != negotiation.FarmerID {
-
+	if !s.isNegotiationParticipant(
+		negotiation,
+		rejecterID,
+	) {
 		return errors.New(
 			"you're not part of this negotiation",
 		)
 	}
-
-	// --------------------------------------------------------
-	// Negotiation must still be open.
-	// --------------------------------------------------------
 
 	if negotiation.Status != "open" {
 		return errors.New(
@@ -694,12 +644,7 @@ func (s *NegotiationService) Reject(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Check expiration.
-	// --------------------------------------------------------
-
 	if negotiation.IsExpired() {
-
 		_ = s.repo.UpdateStatus(
 			negotiationID,
 			"expired",
@@ -710,14 +655,9 @@ func (s *NegotiationService) Reject(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Find offer.
-	// --------------------------------------------------------
-
 	offer, err := s.msgRepo.GetByID(
 		offerID,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -728,29 +668,17 @@ func (s *NegotiationService) Reject(
 		)
 	}
 
-	// --------------------------------------------------------
-	// Make sure offer belongs to negotiation.
-	// --------------------------------------------------------
-
 	if offer.NegotiationID != negotiationID {
 		return errors.New(
 			"this offer does not belong to this negotiation",
 		)
 	}
 
-	// --------------------------------------------------------
-	// Only offers can be rejected.
-	// --------------------------------------------------------
-
 	if offer.MessageType != "offer" {
 		return errors.New(
 			"this message is not an offer",
 		)
 	}
-
-	// --------------------------------------------------------
-	// Only pending offers can be rejected.
-	// --------------------------------------------------------
 
 	if offer.OfferStatus != "pending" {
 		return errors.New(
@@ -759,12 +687,10 @@ func (s *NegotiationService) Reject(
 	}
 
 	if offer.SenderID == rejecterID {
-		return errors.New("you cannot reject your own offer")
+		return errors.New(
+			"you cannot reject your own offer",
+		)
 	}
-
-	// --------------------------------------------------------
-	// Reject only this offer.
-	// --------------------------------------------------------
 
 	if err := s.msgRepo.UpdateOfferStatus(
 		offerID,
@@ -772,111 +698,207 @@ func (s *NegotiationService) Reject(
 	); err != nil {
 		return err
 	}
+
+	// Record the negotiation event if event tracking is enabled.
 	if s.eventRepo != nil {
-		uid := negotiation.BuyerID
-		cid := negotiation.CropID
-		_ = s.eventRepo.Record(&models.MarketEvent{EventType: "negotiation_rejected", CropID: &cid, UserID: &uid})
+		userID := negotiation.BuyerID
+		productID := negotiation.ProductID
+
+		_ = s.eventRepo.Record(
+			&models.MarketEvent{
+				EventType: "negotiation_rejected",
+				ProductID: &productID,
+				UserID:    &userID,
+			},
+		)
 	}
 
-	// ========================================================
-	// NOTIFY OTHER PARTICIPANT
-	// ========================================================
-
 	if s.notification != nil {
-
-		recipientID := negotiation.BuyerID
-
-		if rejecterID == negotiation.BuyerID {
-			recipientID = negotiation.FarmerID
-		}
-
-		_ = s.notification.CreateNotification(
-			recipientID,
-			"Offer rejected",
-			"An offer in your negotiation was rejected.",
-			"negotiation_rejected",
+		recipientID := s.otherParticipantID(
+			negotiation,
+			rejecterID,
 		)
+
+		if recipientID > 0 {
+			_ = s.notification.CreateNotification(
+				recipientID,
+				"Offer rejected",
+				"An offer in your negotiation was rejected.",
+				"negotiation_rejected",
+			)
+		}
 	}
 
 	return nil
 }
 
 // End closes an open negotiation without accepting an offer.
-func (s *NegotiationService) End(negotiationID, userID int) error {
-	negotiation, err := s.repo.GetByID(negotiationID)
-	if err != nil {
-		return err
+//
+// Only a participant in the negotiation can end it.
+func (s *NegotiationService) End(
+	negotiationID,
+	userID int,
+) error {
+	if negotiationID <= 0 {
+		return errors.New("invalid negotiation ID")
 	}
-	if negotiation == nil {
-		return errors.New("negotiation not found")
-	}
-	if userID != negotiation.BuyerID && userID != negotiation.FarmerID {
-		return errors.New("you're not part of this negotiation")
-	}
-	if negotiation.Status != "open" {
-		return errors.New("this negotiation is already finalized")
-	}
-	if err := s.repo.UpdateStatus(negotiationID, "rejected"); err != nil {
-		return err
-	}
-	if s.notification != nil {
-		recipientID := negotiation.FarmerID
-		if userID == negotiation.FarmerID {
-			recipientID = negotiation.BuyerID
-		}
-		_ = s.notification.CreateNotification(recipientID, "Negotiation ended", "The other participant ended a negotiation.", "negotiation_ended")
-	}
-	return nil
-}
 
-// ============================================================
-// THREAD
-//
-// Retrieves the negotiation and its COMPLETE conversation.
-//
-// Includes:
-//
-// 💬 Normal chat messages
-// 💰 Offers
-// ❌ Rejected offers
-// ✅ Accepted offers
-//
-// Nothing is removed from the conversation history.
-// ============================================================
-
-func (s *NegotiationService) Thread(
-	negotiationID int,
-) (*models.Negotiation, []models.NegotiationMessage, error) {
+	if userID <= 0 {
+		return errors.New("invalid user ID")
+	}
 
 	negotiation, err := s.repo.GetByID(
 		negotiationID,
 	)
+	if err != nil {
+		return err
+	}
 
-	if err != nil || negotiation == nil {
-		return negotiation, nil, err
+	if negotiation == nil {
+		return errors.New(
+			"negotiation not found",
+		)
+	}
+
+	if !s.isNegotiationParticipant(
+		negotiation,
+		userID,
+	) {
+		return errors.New(
+			"you're not part of this negotiation",
+		)
+	}
+
+	if negotiation.Status != "open" {
+		return errors.New(
+			"this negotiation is already finalized",
+		)
+	}
+
+	if err := s.repo.UpdateStatus(
+		negotiationID,
+		"closed",
+	); err != nil {
+		return err
+	}
+
+	if s.notification != nil {
+		recipientID := s.otherParticipantID(
+			negotiation,
+			userID,
+		)
+
+		if recipientID > 0 {
+			_ = s.notification.CreateNotification(
+				recipientID,
+				"Negotiation ended",
+				"The other participant ended the negotiation.",
+				"negotiation_ended",
+			)
+		}
+	}
+
+	return nil
+}
+
+// Thread retrieves a negotiation and its complete conversation.
+//
+// The returned messages include normal messages, offers,
+// rejected offers, and accepted offers.
+func (s *NegotiationService) Thread(
+	negotiationID int,
+) (*models.Negotiation, []models.NegotiationMessage, error) {
+	if negotiationID <= 0 {
+		return nil, nil, errors.New(
+			"invalid negotiation ID",
+		)
+	}
+
+	negotiation, err := s.repo.GetByID(
+		negotiationID,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if negotiation == nil {
+		return nil, nil, errors.New(
+			"negotiation not found",
+		)
 	}
 
 	messages, err := s.msgRepo.ListByNegotiation(
 		negotiationID,
 	)
+	if err != nil {
+		return negotiation, nil, err
+	}
 
-	return negotiation, messages, err
+	return negotiation, messages, nil
 }
 
-// ============================================================
-// MY NEGOTIATIONS
-//
-// Retrieves all negotiations involving a specific user.
-//
-// A user can be:
-//
-// - Buyer
-// - Farmer/Seller
-// ============================================================
-
+// MyNegotiations retrieves all negotiations involving a user.
 func (s *NegotiationService) MyNegotiations(
 	userID int,
 ) ([]models.Negotiation, error) {
+	if userID <= 0 {
+		return nil, errors.New(
+			"invalid user",
+		)
+	}
 
 	return s.repo.ListForUser(userID)
+}
+
+// isNegotiationParticipant determines whether a user is an authorized
+// participant in a negotiation.
+//
+// Buyers are always represented by BuyerID.
+//
+// Individual product owners are represented by OwnerID when
+// OwnerType is "user".
+//
+// Organization ownership is intentionally not treated as a user
+// relationship here. Organization-member authorization should be
+// handled by the organization access layer.
+func (s *NegotiationService) isNegotiationParticipant(
+	negotiation *models.Negotiation,
+	userID int,
+) bool {
+	if negotiation == nil || userID <= 0 {
+		return false
+	}
+
+	if negotiation.BuyerID == userID {
+		return true
+	}
+
+	return negotiation.OwnerType == "user" &&
+		negotiation.OwnerID == userID
+}
+
+// otherParticipantID returns the user ID of the other participant
+// when the negotiation belongs to an individual product owner.
+//
+// For organization-owned products, zero is returned because the
+// organization itself is not represented by a user ID.
+func (s *NegotiationService) otherParticipantID(
+	negotiation *models.Negotiation,
+	senderID int,
+) int {
+	if negotiation == nil {
+		return 0
+	}
+
+	if senderID == negotiation.BuyerID &&
+		negotiation.OwnerType == "user" {
+		return negotiation.OwnerID
+	}
+
+	if negotiation.OwnerType == "user" &&
+		senderID == negotiation.OwnerID {
+		return negotiation.BuyerID
+	}
+
+	return 0
 }

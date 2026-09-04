@@ -8,32 +8,26 @@ import (
 	"backend/internal/repository"
 )
 
-// ============================================================
-// CHAT SERVICE
+// ChatService controls the business rules for Agro-Shield chat.
 //
-// Responsibility:
-// - Controls the business rules for Agro-Shield chat.
-// - Creates private conversations.
-// - Creates group conversations.
-// - Adds and removes members.
-// - Sends messages.
-// - Loads conversations.
-// - Loads messages.
-// - Checks membership before allowing access.
-//
-// IMPORTANT:
+// The service sits between HTTP handlers and repositories:
 //
 // Handler
-//    ↓
-// ChatService
-//    ↓
-// Repository
-//    ↓
-// PostgreSQL
 //
-// The service is where we protect the chat system.
-// ============================================================
-
+//	↓
+//
+// ChatService
+//
+//	↓
+//
+// Repository
+//
+//	↓
+//
+// # PostgreSQL
+//
+// ChatService is responsible for protecting conversations,
+// membership, messages, and chat access.
 type ChatService struct {
 	conversationRepo *repository.ConversationRepository
 	memberRepo       *repository.ConversationMemberRepository
@@ -41,17 +35,14 @@ type ChatService struct {
 	notification     *NotificationService
 }
 
-// ============================================================
-// CREATE CHAT SERVICE
-// ============================================================
-
+// NewChatService creates a new ChatService connected to the
+// conversation, member, message, and notification services.
 func NewChatService(
 	conversationRepo *repository.ConversationRepository,
 	memberRepo *repository.ConversationMemberRepository,
 	messageRepo *repository.ChatMessageRepository,
 	notification *NotificationService,
 ) *ChatService {
-
 	return &ChatService{
 		conversationRepo: conversationRepo,
 		memberRepo:       memberRepo,
@@ -60,40 +51,25 @@ func NewChatService(
 	}
 }
 
-// ============================================================
-// CREATE GROUP
+// CreateGroup creates a new group conversation.
 //
-// Creates a new group conversation.
-//
-// Example:
-//
-// Name:
-// "Maize Farmers Association"
-//
-// Creator:
-// James
-//
-// The creator automatically becomes the first member.
-//
-// ============================================================
-
+// The creator automatically becomes the first member of the group.
 func (s *ChatService) CreateGroup(
 	creatorID int,
 	name string,
 ) (*models.Conversation, error) {
+	if creatorID <= 0 {
+		return nil, errors.New("invalid creator ID")
+	}
 
 	name = strings.TrimSpace(name)
 
 	if name == "" {
-		return nil, errors.New(
-			"group name cannot be empty",
-		)
+		return nil, errors.New("group name cannot be empty")
 	}
 
 	if len(name) > 100 {
-		return nil, errors.New(
-			"group name is too long",
-		)
+		return nil, errors.New("group name is too long")
 	}
 
 	conversation := &models.Conversation{
@@ -121,31 +97,17 @@ func (s *ChatService) CreateGroup(
 	return conversation, nil
 }
 
-// ============================================================
-// CREATE PRIVATE CHAT
+// CreatePrivateChat creates a one-to-one conversation between
+// two different users.
 //
-// Creates a one-to-one conversation.
-//
-// Example:
-//
-// James wants to chat with John.
-//
-// The resulting conversation contains:
-//
-// James
-// John
-//
-// ============================================================
-
+// If a private conversation already exists between the two users,
+// the existing conversation is returned instead of creating a duplicate.
 func (s *ChatService) CreatePrivateChat(
 	userID,
 	otherUserID int,
 ) (*models.Conversation, error) {
-
 	if userID <= 0 || otherUserID <= 0 {
-		return nil, errors.New(
-			"invalid user ID",
-		)
+		return nil, errors.New("invalid user ID")
 	}
 
 	if userID == otherUserID {
@@ -154,10 +116,14 @@ func (s *ChatService) CreatePrivateChat(
 		)
 	}
 
-	existing, err := s.conversationRepo.FindPrivateBetween(userID, otherUserID)
+	existing, err := s.conversationRepo.FindPrivateBetween(
+		userID,
+		otherUserID,
+	)
 	if err != nil {
 		return nil, err
 	}
+
 	if existing != nil {
 		return existing, nil
 	}
@@ -174,7 +140,7 @@ func (s *ChatService) CreatePrivateChat(
 		return nil, err
 	}
 
-	// Add first user.
+	// Add the first user.
 	firstMember := &models.ConversationMember{
 		ConversationID: conversation.ID,
 		UserID:         userID,
@@ -186,7 +152,7 @@ func (s *ChatService) CreatePrivateChat(
 		return nil, err
 	}
 
-	// Add second user.
+	// Add the second user.
 	secondMember := &models.ConversationMember{
 		ConversationID: conversation.ID,
 		UserID:         otherUserID,
@@ -201,39 +167,32 @@ func (s *ChatService) CreatePrivateChat(
 	return conversation, nil
 }
 
-// ============================================================
-// ADD MEMBER
+// AddMember adds a user to an existing group conversation.
 //
-// Adds a user to a group.
-//
-// IMPORTANT:
-//
-// Only GROUP conversations can have members added.
-//
-// Private chats already have their two members.
-//
-// The caller must already be a member of the group.
-//
-// ============================================================
-
+// Only an existing member can add another user.
+// Private conversations cannot have additional members.
 func (s *ChatService) AddMember(
 	conversationID,
 	requesterID,
 	userID int,
 ) error {
+	if conversationID <= 0 {
+		return errors.New("invalid conversation ID")
+	}
+
+	if requesterID <= 0 || userID <= 0 {
+		return errors.New("invalid user ID")
+	}
 
 	conversation, err := s.conversationRepo.GetByID(
 		conversationID,
 	)
-
 	if err != nil {
 		return err
 	}
 
 	if conversation == nil {
-		return errors.New(
-			"conversation not found",
-		)
+		return errors.New("conversation not found")
 	}
 
 	if conversation.Type != "group" {
@@ -247,7 +206,6 @@ func (s *ChatService) AddMember(
 		conversationID,
 		requesterID,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -258,12 +216,11 @@ func (s *ChatService) AddMember(
 		)
 	}
 
-	// Check if user is already a member.
+	// Check whether the target user is already a member.
 	alreadyMember, err := s.memberRepo.IsMember(
 		conversationID,
 		userID,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -282,36 +239,32 @@ func (s *ChatService) AddMember(
 	return s.memberRepo.AddMember(member)
 }
 
-// ============================================================
-// REMOVE MEMBER
+// RemoveMember removes a member from a group conversation.
 //
-// Removes a member from a group.
-//
-// The group creator cannot be removed through this function.
-//
-// The creator should leave only after we later implement
-// ownership transfer.
-//
-// ============================================================
-
+// Only the group creator can remove members.
+// The creator cannot remove themselves through this method.
 func (s *ChatService) RemoveMember(
 	conversationID,
 	requesterID,
 	userID int,
 ) error {
+	if conversationID <= 0 {
+		return errors.New("invalid conversation ID")
+	}
+
+	if requesterID <= 0 || userID <= 0 {
+		return errors.New("invalid user ID")
+	}
 
 	conversation, err := s.conversationRepo.GetByID(
 		conversationID,
 	)
-
 	if err != nil {
 		return err
 	}
 
 	if conversation == nil {
-		return errors.New(
-			"conversation not found",
-		)
+		return errors.New("conversation not found")
 	}
 
 	if conversation.Type != "group" {
@@ -327,10 +280,25 @@ func (s *ChatService) RemoveMember(
 		)
 	}
 
-	// Protect the creator.
+	// Protect the group creator.
 	if userID == conversation.CreatedBy {
 		return errors.New(
 			"group creator cannot be removed",
+		)
+	}
+
+	// Verify that the target user is actually a member.
+	isMember, err := s.memberRepo.IsMember(
+		conversationID,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if !isMember {
+		return errors.New(
+			"user is not a member of this group",
 		)
 	}
 
@@ -340,39 +308,35 @@ func (s *ChatService) RemoveMember(
 	)
 }
 
-// ============================================================
-// LEAVE GROUP
+// LeaveGroup allows a normal member to leave a group.
 //
-// Allows a normal member to leave a group.
-//
-// The creator cannot leave yet because we have not implemented
-// group ownership transfer.
-//
-// ============================================================
-
+// The group creator cannot leave until ownership transfer
+// is implemented.
 func (s *ChatService) LeaveGroup(
 	conversationID,
 	userID int,
 ) error {
+	if conversationID <= 0 {
+		return errors.New("invalid conversation ID")
+	}
+
+	if userID <= 0 {
+		return errors.New("invalid user ID")
+	}
 
 	conversation, err := s.conversationRepo.GetByID(
 		conversationID,
 	)
-
 	if err != nil {
 		return err
 	}
 
 	if conversation == nil {
-		return errors.New(
-			"conversation not found",
-		)
+		return errors.New("conversation not found")
 	}
 
 	if conversation.Type != "group" {
-		return errors.New(
-			"this is not a group",
-		)
+		return errors.New("this is not a group")
 	}
 
 	if conversation.CreatedBy == userID {
@@ -385,7 +349,6 @@ func (s *ChatService) LeaveGroup(
 		conversationID,
 		userID,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -402,29 +365,29 @@ func (s *ChatService) LeaveGroup(
 	)
 }
 
-// ============================================================
-// SEND MESSAGE
+// SendMessage sends a normal chat message.
 //
-// Sends a normal chat message.
+// Before saving the message, the service verifies that:
 //
-// Before saving:
+//  1. The conversation exists.
+//  2. The sender is a member.
+//  3. The message is not empty.
+//  4. The message does not exceed the maximum length.
 //
-// 1. Conversation must exist.
-// 2. User must belong to conversation.
-// 3. Message cannot be empty.
-//
-// Then:
-//
-// Message → Database
-//
-// And the conversation's updated_at timestamp is refreshed.
-// ============================================================
-
+// After saving, the conversation activity timestamp is refreshed
+// and other members receive chat notifications when possible.
 func (s *ChatService) SendMessage(
 	conversationID,
 	senderID int,
 	message string,
 ) (*models.ChatMessage, error) {
+	if conversationID <= 0 {
+		return nil, errors.New("invalid conversation ID")
+	}
+
+	if senderID <= 0 {
+		return nil, errors.New("invalid sender ID")
+	}
 
 	message = strings.TrimSpace(message)
 
@@ -443,7 +406,6 @@ func (s *ChatService) SendMessage(
 	conversation, err := s.conversationRepo.GetByID(
 		conversationID,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -458,7 +420,6 @@ func (s *ChatService) SendMessage(
 		conversationID,
 		senderID,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -487,12 +448,26 @@ func (s *ChatService) SendMessage(
 	); err != nil {
 		return nil, err
 	}
+
+	// Notify other conversation members.
+	//
+	// Notification failure does not invalidate the message that
+	// was already successfully stored.
 	if s.notification != nil {
-		if members, memberErr := s.memberRepo.ListMembers(conversationID); memberErr == nil {
+		if members, memberErr := s.memberRepo.ListMembers(
+			conversationID,
+		); memberErr == nil {
 			for _, member := range members {
-				if member.UserID != senderID {
-					_ = s.notification.CreateNotification(member.UserID, "New chat message", "You received a new message in chat.", "chat_message")
+				if member.UserID == senderID {
+					continue
 				}
+
+				_ = s.notification.CreateNotification(
+					member.UserID,
+					"New chat message",
+					"You received a new message in chat.",
+					"chat_message",
+				)
 			}
 		}
 	}
@@ -500,58 +475,39 @@ func (s *ChatService) SendMessage(
 	return chatMessage, nil
 }
 
-// ============================================================
-// GET USER CONVERSATIONS
-//
-// Returns all conversations belonging to the logged-in user.
-//
-// This will power:
-//
-// "My Chats"
-//
-// Example:
-//
-// James sees:
-//
-// 🌽 Maize Farmers Association
-// 🛠️ Farm Tools Sellers
-// 👤 John
-// ============================================================
-
+// MyConversations returns all conversations belonging to a user.
 func (s *ChatService) MyConversations(
 	userID int,
 ) ([]models.Conversation, error) {
+	if userID <= 0 {
+		return nil, errors.New("invalid user ID")
+	}
 
 	return s.conversationRepo.ListForUser(
 		userID,
 	)
 }
 
-// ============================================================
-// GET CONVERSATION
+// GetConversation retrieves a conversation after verifying
+// that the requesting user is a member.
 //
-// Retrieves one conversation.
-//
-// IMPORTANT:
-//
-// The user must be a member.
-//
-// This prevents someone from simply changing:
-//
-// /chat?id=5
-//
-// and reading another group's messages.
-// ============================================================
-
+// This prevents users from accessing conversations simply by
+// changing a conversation ID in a URL or request.
 func (s *ChatService) GetConversation(
 	conversationID,
 	userID int,
 ) (*models.Conversation, error) {
+	if conversationID <= 0 {
+		return nil, errors.New("invalid conversation ID")
+	}
+
+	if userID <= 0 {
+		return nil, errors.New("invalid user ID")
+	}
 
 	conversation, err := s.conversationRepo.GetByID(
 		conversationID,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +522,6 @@ func (s *ChatService) GetConversation(
 		conversationID,
 		userID,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -580,24 +535,40 @@ func (s *ChatService) GetConversation(
 	return conversation, nil
 }
 
-// ============================================================
-// GET MESSAGES
+// GetMessages returns messages from a conversation after verifying
+// that the requesting user belongs to the conversation.
 //
-// Retrieves messages after checking membership.
-//
-// This keeps the security rule in the service layer.
-// ============================================================
-
+// Successfully loading the messages also marks the conversation
+// as read for that user.
 func (s *ChatService) GetMessages(
 	conversationID,
 	userID int,
 ) ([]models.ChatMessage, error) {
+	if conversationID <= 0 {
+		return nil, errors.New("invalid conversation ID")
+	}
+
+	if userID <= 0 {
+		return nil, errors.New("invalid user ID")
+	}
+
+	conversation, err := s.conversationRepo.GetByID(
+		conversationID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if conversation == nil {
+		return nil, errors.New(
+			"conversation not found",
+		)
+	}
 
 	isMember, err := s.memberRepo.IsMember(
 		conversationID,
 		userID,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -614,31 +585,49 @@ func (s *ChatService) GetMessages(
 	if err != nil {
 		return nil, err
 	}
-	if err := s.memberRepo.MarkRead(conversationID, userID); err != nil {
+
+	if err := s.memberRepo.MarkRead(
+		conversationID,
+		userID,
+	); err != nil {
 		return nil, err
 	}
+
 	return messages, nil
 }
 
-// ============================================================
-// GET MEMBERS
+// GetMembers returns the members of a conversation.
 //
-// Returns the members of a conversation.
-//
-// The user requesting the list must already belong to the
-// conversation.
-// ============================================================
-
+// The requesting user must already belong to the conversation.
 func (s *ChatService) GetMembers(
 	conversationID,
 	userID int,
 ) ([]models.ConversationMember, error) {
+	if conversationID <= 0 {
+		return nil, errors.New("invalid conversation ID")
+	}
+
+	if userID <= 0 {
+		return nil, errors.New("invalid user ID")
+	}
+
+	conversation, err := s.conversationRepo.GetByID(
+		conversationID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if conversation == nil {
+		return nil, errors.New(
+			"conversation not found",
+		)
+	}
 
 	isMember, err := s.memberRepo.IsMember(
 		conversationID,
 		userID,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -654,28 +643,25 @@ func (s *ChatService) GetMembers(
 	)
 }
 
-// ============================================================
-// DELETE MESSAGE
+// DeleteMessage deletes a message belonging to the requesting user.
 //
-// Only the person who sent the message can delete it.
-//
-// This is why we first:
-//
-// 1. Check conversation membership.
-// 2. Find the message.
-// 3. Check sender.
-// 4. Delete it.
-// ============================================================
-
+// The message sender is checked before deletion, preventing one user
+// from deleting another user's message.
 func (s *ChatService) DeleteMessage(
 	messageID,
 	userID int,
 ) error {
+	if messageID <= 0 {
+		return errors.New("invalid message ID")
+	}
+
+	if userID <= 0 {
+		return errors.New("invalid user ID")
+	}
 
 	message, err := s.messageRepo.GetByID(
 		messageID,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -686,6 +672,22 @@ func (s *ChatService) DeleteMessage(
 		)
 	}
 
+	// Verify that the user belongs to the conversation.
+	isMember, err := s.memberRepo.IsMember(
+		message.ConversationID,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if !isMember {
+		return errors.New(
+			"you are not a member of this conversation",
+		)
+	}
+
+	// Only the sender can delete their own message.
 	if message.SenderID != userID {
 		return errors.New(
 			"you can only delete your own messages",

@@ -12,7 +12,13 @@ import (
 	"backend/render"
 )
 
-// Storage handles user product/storage operations.
+// Storage handles user product storage operations.
+//
+// Storage is responsible for creating, updating, listing, unlisting,
+// relisting, and deleting products owned by the authenticated user.
+//
+// The storage feature is also designed to support future weather-based
+// monitoring and agricultural storage alerts.
 type Storage struct {
 	product *services.ProductService
 }
@@ -24,42 +30,81 @@ func NewStorageHandler(product *services.ProductService) *Storage {
 	}
 }
 
-// StoragePageData contains the information needed
-// to render the user's storage page.
+// StoragePageData contains the information needed to render
+// the user's storage page.
 type StoragePageData struct {
-	FullName string
-	Products []models.Product
+	FullName    string
+	Products    []models.Product
 	EditProduct *models.Product
-	Error    string
+	Error       string
 }
 
 // StorageHandler handles all user storage requests.
-func (h *Storage) StorageHandler(w http.ResponseWriter, r *http.Request) {
-	user, ok := middleware.FarmerFromContext(r)
+//
+// Buyers do not currently have access to personal product storage.
+// Authenticated users who own products can create, update, unlist,
+// relist, and delete their products through this handler.
+func (h *Storage) StorageHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	// ========================================================
+	// 1. GET AUTHENTICATED USER
+	// ========================================================
+
+	user, ok := middleware.UserFromContext(r)
 
 	if !ok || user == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(
+			w,
+			r,
+			"/login",
+			http.StatusSeeOther,
+		)
 		return
 	}
 
-	// Buyers don't have produce storage.
+	// ========================================================
+	// 2. BUYER CHECK
+	// ========================================================
+
+	// Buyers currently do not have personal product storage.
 	if user.IsBuyer() {
-		http.Redirect(w, r, "/marketplace", http.StatusSeeOther)
+		http.Redirect(
+			w,
+			r,
+			"/marketplace",
+			http.StatusSeeOther,
+		)
 		return
 	}
+
+	// ========================================================
+	// 3. HANDLE REQUEST METHOD
+	// ========================================================
 
 	switch r.Method {
 
 	case http.MethodGet:
+		// ====================================================
+		// VIEW STORAGE
+		// ====================================================
+
 		log.Println("User visited storage")
 
 		var editProduct *models.Product
 
-		if editID := strings.TrimSpace(r.URL.Query().Get("edit")); editID != "" {
+		editID := strings.TrimSpace(
+			r.URL.Query().Get("edit"),
+		)
+
+		if editID != "" {
 			productID, err := strconv.Atoi(editID)
 
 			if err == nil && productID > 0 {
-				candidate, getErr := h.product.GetProduct(productID)
+				candidate, getErr := h.product.GetProduct(
+					productID,
+				)
 
 				if getErr == nil &&
 					candidate != nil &&
@@ -80,9 +125,14 @@ func (h *Storage) StorageHandler(w http.ResponseWriter, r *http.Request) {
 		)
 
 	case http.MethodPost:
+		// ====================================================
+		// PROCESS STORAGE ACTION
+		// ====================================================
 
 		if strings.HasPrefix(
-			strings.ToLower(r.Header.Get("Content-Type")),
+			strings.ToLower(
+				r.Header.Get("Content-Type"),
+			),
 			"multipart/form-data",
 		) {
 			if err := r.ParseMultipartForm(10 << 20); err != nil {
@@ -106,7 +156,9 @@ func (h *Storage) StorageHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		action := strings.TrimSpace(r.FormValue("action"))
+		action := strings.TrimSpace(
+			r.FormValue("action"),
+		)
 
 		switch action {
 
@@ -175,15 +227,31 @@ func (h *Storage) createProduct(
 	userID int,
 	fullName string,
 ) {
-	name := strings.TrimSpace(r.FormValue("produce"))
-	description := strings.TrimSpace(r.FormValue("description"))
-	category := strings.TrimSpace(r.FormValue("category"))
-	unit := strings.TrimSpace(r.FormValue("unit"))
-	community := strings.TrimSpace(r.FormValue("community"))
+	name := strings.TrimSpace(
+		r.FormValue("produce"),
+	)
+
+	description := strings.TrimSpace(
+		r.FormValue("description"),
+	)
+
+	category := strings.TrimSpace(
+		r.FormValue("category"),
+	)
+
+	unit := strings.TrimSpace(
+		r.FormValue("unit"),
+	)
+
+	community := strings.TrimSpace(
+		r.FormValue("community"),
+	)
 
 	// Keep the existing location field available for the UI.
 	// GPS remains separate and unchanged.
-	_ = strings.TrimSpace(r.FormValue("location"))
+	_ = strings.TrimSpace(
+		r.FormValue("location"),
+	)
 
 	latitude, _ := strconv.ParseFloat(
 		r.FormValue("latitude"),
@@ -201,7 +269,9 @@ func (h *Storage) createProduct(
 	)
 
 	quantity, err := strconv.ParseFloat(
-		strings.TrimSpace(r.FormValue("quantity")),
+		strings.TrimSpace(
+			r.FormValue("quantity"),
+		),
 		64,
 	)
 
@@ -216,7 +286,9 @@ func (h *Storage) createProduct(
 	}
 
 	price, err := strconv.ParseFloat(
-		strings.TrimSpace(r.FormValue("price")),
+		strings.TrimSpace(
+			r.FormValue("price"),
+		),
 		64,
 	)
 
@@ -230,13 +302,18 @@ func (h *Storage) createProduct(
 		return
 	}
 
-	listForSale := r.FormValue("list_for_sale") == "on"
+	listForSale := r.FormValue(
+		"list_for_sale",
+	) == "on"
 
 	// Product pictures are compulsory.
+	//
+	// Product images are stored under the "products"
+	// directory rather than the old "crops" directory.
 	imageURLs, err := saveUploadedFiles(
 		r,
 		"produce_image",
-		"crops",
+		"products",
 	)
 
 	if err != nil {
@@ -310,15 +387,10 @@ func (h *Storage) updateProduct(
 	fullName string,
 ) {
 	productID, err := strconv.Atoi(
-		strings.TrimSpace(r.FormValue("product_id")),
+		strings.TrimSpace(
+			r.FormValue("product_id"),
+		),
 	)
-
-	// Temporary compatibility with the old form.
-	if err != nil || productID <= 0 {
-		productID, err = strconv.Atoi(
-			strings.TrimSpace(r.FormValue("crop_id")),
-		)
-	}
 
 	if err != nil || productID <= 0 {
 		h.render(
@@ -330,14 +402,30 @@ func (h *Storage) updateProduct(
 		return
 	}
 
-	name := strings.TrimSpace(r.FormValue("produce"))
-	description := strings.TrimSpace(r.FormValue("description"))
-	category := strings.TrimSpace(r.FormValue("category"))
-	unit := strings.TrimSpace(r.FormValue("unit"))
-	community := strings.TrimSpace(r.FormValue("community"))
+	name := strings.TrimSpace(
+		r.FormValue("produce"),
+	)
+
+	description := strings.TrimSpace(
+		r.FormValue("description"),
+	)
+
+	category := strings.TrimSpace(
+		r.FormValue("category"),
+	)
+
+	unit := strings.TrimSpace(
+		r.FormValue("unit"),
+	)
+
+	community := strings.TrimSpace(
+		r.FormValue("community"),
+	)
 
 	// Keep the existing location field available for the UI.
-	_ = strings.TrimSpace(r.FormValue("location"))
+	_ = strings.TrimSpace(
+		r.FormValue("location"),
+	)
 
 	latitude, _ := strconv.ParseFloat(
 		r.FormValue("latitude"),
@@ -355,7 +443,9 @@ func (h *Storage) updateProduct(
 	)
 
 	quantity, err := strconv.ParseFloat(
-		strings.TrimSpace(r.FormValue("quantity")),
+		strings.TrimSpace(
+			r.FormValue("quantity"),
+		),
 		64,
 	)
 
@@ -370,7 +460,9 @@ func (h *Storage) updateProduct(
 	}
 
 	price, err := strconv.ParseFloat(
-		strings.TrimSpace(r.FormValue("price")),
+		strings.TrimSpace(
+			r.FormValue("price"),
+		),
 		64,
 	)
 
@@ -384,16 +476,18 @@ func (h *Storage) updateProduct(
 		return
 	}
 
-	listForSale := r.FormValue("list_for_sale") == "on"
+	listForSale := r.FormValue(
+		"list_for_sale",
+	) == "on"
 
 	// New pictures are optional during an update.
 	//
-	// ProductService automatically preserves the existing
-	// pictures when imageURLs is empty.
+	// ProductService preserves existing pictures when
+	// imageURLs is empty.
 	imageURLs, uploadErr := saveUploadedFiles(
 		r,
 		"produce_image",
-		"crops",
+		"products",
 	)
 
 	if uploadErr != nil {
@@ -458,14 +552,10 @@ func (h *Storage) unlistProduct(
 	fullName string,
 ) {
 	productID, err := strconv.Atoi(
-		strings.TrimSpace(r.FormValue("product_id")),
+		strings.TrimSpace(
+			r.FormValue("product_id"),
+		),
 	)
-
-	if err != nil || productID <= 0 {
-		productID, err = strconv.Atoi(
-			strings.TrimSpace(r.FormValue("crop_id")),
-		)
-	}
 
 	if err != nil || productID <= 0 {
 		h.render(
@@ -508,14 +598,10 @@ func (h *Storage) relistProduct(
 	fullName string,
 ) {
 	productID, err := strconv.Atoi(
-		strings.TrimSpace(r.FormValue("product_id")),
+		strings.TrimSpace(
+			r.FormValue("product_id"),
+		),
 	)
-
-	if err != nil || productID <= 0 {
-		productID, err = strconv.Atoi(
-			strings.TrimSpace(r.FormValue("crop_id")),
-		)
-	}
 
 	if err != nil || productID <= 0 {
 		h.render(
@@ -558,14 +644,10 @@ func (h *Storage) deleteProduct(
 	fullName string,
 ) {
 	productID, err := strconv.Atoi(
-		strings.TrimSpace(r.FormValue("product_id")),
+		strings.TrimSpace(
+			r.FormValue("product_id"),
+		),
 	)
-
-	if err != nil || productID <= 0 {
-		productID, err = strconv.Atoi(
-			strings.TrimSpace(r.FormValue("crop_id")),
-		)
-	}
 
 	if err != nil || productID <= 0 {
 		h.render(
@@ -616,7 +698,12 @@ func (h *Storage) render(
 	)
 }
 
-// renderPage loads products and renders storage.html.
+// renderPage loads products, their images, and the optional
+// product being edited before rendering storage.html.
+//
+// This is also the point where future weather-monitoring data
+// can be added to StoragePageData without changing the product
+// CRUD methods themselves.
 func (h *Storage) renderPage(
 	w http.ResponseWriter,
 	userID int,
@@ -645,7 +732,7 @@ func (h *Storage) renderPage(
 	}
 
 	// Load images for every product so the storage page
-	// can display the primary/product pictures.
+	// can display the product pictures.
 	for i := range products {
 		images, imageErr := h.product.GetProductImages(
 			products[i].ID,
@@ -690,7 +777,6 @@ func (h *Storage) renderPage(
 		"storage.html",
 		data,
 	); err != nil {
-
 		log.Println(
 			"storage render error:",
 			err,

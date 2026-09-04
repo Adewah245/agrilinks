@@ -9,10 +9,12 @@ import (
 	"backend/internal/repository"
 )
 
+// LocationHandler handles API requests for Nigerian states and LGAs.
 type LocationHandler struct {
 	locationRepo *repository.LocationRepository
 }
 
+// NewLocationHandler creates a new LocationHandler.
 func NewLocationHandler(
 	locationRepo *repository.LocationRepository,
 ) *LocationHandler {
@@ -21,7 +23,7 @@ func NewLocationHandler(
 	}
 }
 
-// GetStatesHandler returns all Nigerian states and the FCT.
+// GetStatesHandler returns all Nigerian states and the Federal Capital Territory.
 //
 // GET /api/states
 func (h *LocationHandler) GetStatesHandler(
@@ -50,15 +52,13 @@ func (h *LocationHandler) GetStatesHandler(
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(states); err != nil {
-		http.Error(
-			w,
-			"failed to encode states",
-			http.StatusInternalServerError,
-		)
+		// The response may already have been partially written at this
+		// point, so there is no need to call http.Error again.
+		return
 	}
 }
 
-// GetLGAsHandler returns all LGAs belonging to a state.
+// GetLGAsHandler returns all LGAs belonging to a specified state.
 //
 // GET /api/states/{stateID}/lgas
 func (h *LocationHandler) GetLGAsHandler(
@@ -77,7 +77,6 @@ func (h *LocationHandler) GetLGAsHandler(
 	// Expected path:
 	//
 	// /api/states/7/lgas
-	//
 	parts := strings.Split(
 		strings.Trim(r.URL.Path, "/"),
 		"/",
@@ -114,10 +113,8 @@ func (h *LocationHandler) GetLGAsHandler(
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(lgas); err != nil {
-		http.Error(
-			w,
-			"failed to encode LGAs",
-			http.StatusInternalServerError,
-		)
+		// The response may already have been partially written at this
+		// point, so there is no need to call http.Error again.
+		return
 	}
 }

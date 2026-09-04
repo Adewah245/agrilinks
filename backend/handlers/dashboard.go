@@ -16,6 +16,13 @@ import (
 	"backend/render"
 )
 
+// Dashboard handles the Agro-Shield user dashboard.
+//
+// The dashboard provides different information depending on the
+// authenticated user's role. Farmers and other sellers see storage,
+// listings, sales, AI diagnosis, and negotiation information, while
+// buyers see purchases, cart activity, spending, and marketplace
+// information.
 type Dashboard struct {
 	product      *services.ProductService
 	order        *services.OrderService
@@ -27,6 +34,8 @@ type Dashboard struct {
 	events       *repository.MarketEventRepository
 }
 
+// NewDashboardHandler creates a new Dashboard handler with the
+// services and repositories required by the dashboard.
 func NewDashboardHandler(
 	product *services.ProductService,
 	order *services.OrderService,
@@ -49,16 +58,18 @@ func NewDashboardHandler(
 	}
 }
 
-// DashboardData is what dashboard.html renders against.
-// Farmer-only fields and buyer-only fields are both here;
-// the template shows the right set based on IsBuyer.
+// DashboardData contains all information rendered by dashboard.html.
+//
+// The structure contains both seller-oriented and buyer-oriented
+// fields. The template decides which sections to display based on
+// the authenticated user's role.
 type DashboardData struct {
 	FullName string
 	Role     string
 	IsBuyer  bool
 	PhotoURL string
 
-	// Farmer stats.
+	// Seller statistics.
 	ProduceInStorage     int
 	StorageCrops         []models.Product
 	ListingsActive       int
@@ -68,28 +79,28 @@ type DashboardData struct {
 	Revenue30            float64
 	CompletedSales       int
 
-	// Buyer stats.
-	PurchasesMade   int
-	TotalSpent      float64
+	// Buyer statistics.
+	PurchasesMade    int
+	TotalSpent       float64
 	AvailableProduce int
-	CartItemCount   int
-	CartTotal       float64
-	HealthScore     int
-	HealthStatus    string
-	HealthMetrics   []HealthMetric
+	CartItemCount    int
+	CartTotal        float64
+	HealthScore      int
+	HealthStatus     string
+	HealthMetrics    []HealthMetric
 
 	UnreadNotifications int
 
-	Weather         services.Weather
+	Weather         models.Weather
 	LatestDiagnosis *models.Diagnosis
 
-	MarketListings       int
-	MarketPriceMin      float64
-	MarketPriceMedian   float64
-	MarketPriceMax      float64
-	MarketHasPrices     bool
-	MarketOrders30      int
-	MarketNegotiations30 int
+	MarketListings        int
+	MarketPriceMin        float64
+	MarketPriceMedian     float64
+	MarketPriceMax        float64
+	MarketHasPrices       bool
+	MarketOrders30        int
+	MarketNegotiations30  int
 
 	Demand               models.ProduceDemandSummary
 	ProduceDemands       []models.ProduceDemandSummary
@@ -100,15 +111,29 @@ type DashboardData struct {
 	RecentOrders    []models.Order
 }
 
+// HealthMetric represents one component of the seller dashboard
+// health score.
 type HealthMetric struct {
 	Name    string
 	Percent int
 }
 
+// DashboardPriority represents an action that should receive the
+// user's attention on the dashboard.
 type DashboardPriority struct {
-	Tone, Label, Title, Detail, Action, Href string
+	Tone   string
+	Label  string
+	Title  string
+	Detail string
+	Action string
+	Href   string
 }
 
+// DashBoard handles GET requests for the Agro-Shield dashboard.
+//
+// The dashboard loads user-specific marketplace, storage, order,
+// negotiation, AI, notification, weather, and market insight data.
+// POST requests are currently reserved for future dashboard actions.
 func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -120,17 +145,24 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 
 		if h.events != nil {
 			if err := h.events.ReconcileCheckoutAbandonments(24 * time.Hour); err != nil {
-				log.Printf("dashboard checkout reconciliation failed: %v", err)
+				log.Printf(
+					"dashboard checkout reconciliation failed: %v",
+					err,
+				)
 			}
 		}
 
-		user, ok := middleware.FarmerFromContext(r)
+		user, ok := middleware.UserFromContext(r)
+
 		if ok && user != nil {
 			data.FullName = user.FullName
 			data.Role = user.Role
 			data.IsBuyer = user.IsBuyer()
 			data.PhotoURL = user.PhotoURL
 
+			// -------------------------------------------------
+			// WEATHER
+			// -------------------------------------------------
 			if h.weather != nil {
 				var err error
 
@@ -168,13 +200,20 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 							err,
 						)
 					} else {
-						data.CartItemCount, data.CartTotal = cartSummary(items)
+						data.CartItemCount, data.CartTotal =
+							cartSummary(items)
 					}
 				}
 
 				if h.product != nil {
 					if available, err := h.product.AvailableProducts(); err == nil {
 						data.AvailableProduce = len(available)
+					} else {
+						log.Printf(
+							"dashboard available products unavailable for buyer %d: %v",
+							user.ID,
+							err,
+						)
 					}
 				}
 
@@ -186,6 +225,12 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 						for _, purchase := range purchases {
 							data.TotalSpent += purchase.TotalPrice
 						}
+					} else {
+						log.Printf(
+							"dashboard purchases unavailable for buyer %d: %v",
+							user.ID,
+							err,
+						)
 					}
 				}
 
@@ -193,13 +238,16 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 
 			} else {
 				// -------------------------------------------------
-				// FARMER / SELLER DASHBOARD
+				// SELLER DASHBOARD
 				// -------------------------------------------------
 
 				var userProducts []models.Product
 
 				if h.product != nil {
-					if got, err := h.product.MyProducts("user", user.ID); err == nil {
+					if got, err := h.product.MyProducts(
+						"user",
+						user.ID,
+					); err == nil {
 						userProducts = got
 
 						data.StorageCrops = got
@@ -214,21 +262,30 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 								}
 							}
 						}
+					} else {
+						log.Printf(
+							"dashboard products unavailable for user %d: %v",
+							user.ID,
+							err,
+						)
 					}
 				}
 
+				// -------------------------------------------------
+				// MARKET DEMAND
+				// -------------------------------------------------
 				if h.events != nil && len(userProducts) > 0 {
 					cutoff := time.Now().Add(-30 * 24 * time.Hour)
 					previous := cutoff.Add(-30 * 24 * time.Hour)
 
-					if summary, err := h.events.FarmerDemandSummary(
+					if summary, err := h.events.UserDemandSummary(
 						user.ID,
 						user.Location,
 						cutoff,
 						previous,
 					); err != nil {
 						log.Printf(
-							"dashboard demand summary unavailable for farmer %d: %v",
+							"dashboard demand summary unavailable for user %d: %v",
 							user.ID,
 							err,
 						)
@@ -243,18 +300,23 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 						previous,
 					); err != nil {
 						log.Printf(
-							"dashboard produce comparisons unavailable for farmer %d: %v",
+							"dashboard product comparisons unavailable for user %d: %v",
 							user.ID,
 							err,
 						)
 					} else {
 						data.ProduceDemands = summaries
 						data.ProduceDemandPreview =
-							prioritizeDemandSummaries(summaries, 3)
+							prioritizeDemandSummaries(
+								summaries,
+								3,
+							)
 					}
 				}
 
-				// Marketplace statistics.
+				// -------------------------------------------------
+				// MARKETPLACE STATISTICS
+				// -------------------------------------------------
 				if h.product != nil {
 					if available, err := h.product.AvailableProducts(); err == nil {
 						data.MarketListings = len(available)
@@ -281,27 +343,52 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 								data.MarketPriceMedian =
 									(prices[middle-1] + prices[middle]) / 2
 							} else {
-								data.MarketPriceMedian = prices[middle]
+								data.MarketPriceMedian =
+									prices[middle]
 							}
 
 							data.MarketHasPrices = true
 						}
+					} else {
+						log.Printf(
+							"dashboard marketplace statistics unavailable for user %d: %v",
+							user.ID,
+							err,
+						)
 					}
 				}
 
-				// AI diagnosis statistics.
+				// -------------------------------------------------
+				// AI DIAGNOSIS STATISTICS
+				// -------------------------------------------------
 				if h.ai != nil {
-					if count, err := h.ai.CountThisMonth(user.ID); err == nil {
+					if count, err := h.ai.CountThisMonth(
+						user.ID,
+					); err == nil {
 						data.AIDiagnosesThisMonth = count
+					} else {
+						log.Printf(
+							"dashboard AI diagnosis count unavailable for user %d: %v",
+							user.ID,
+							err,
+						)
 					}
 				}
 
-				// Sales statistics.
+				// -------------------------------------------------
+				// SALES STATISTICS
+				// -------------------------------------------------
 				if h.order != nil {
-					if sales, err := h.order.MySales("user", user.ID); err == nil {
-						data.RecentOrders = limitOrders(sales, 5)
+					if sales, err := h.order.MySales(
+						"user",
+						user.ID,
+					); err == nil {
+						data.RecentOrders =
+							limitOrders(sales, 5)
 
-						cutoff := time.Now().Add(-30 * 24 * time.Hour)
+						cutoff := time.Now().Add(
+							-30 * 24 * time.Hour,
+						)
 
 						for _, sale := range sales {
 							data.Revenue += sale.TotalPrice
@@ -312,51 +399,86 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 								data.MarketOrders30++
 							}
 						}
+					} else {
+						log.Printf(
+							"dashboard sales unavailable for user %d: %v",
+							user.ID,
+							err,
+						)
 					}
 				}
 
-				// Negotiation statistics.
+				// -------------------------------------------------
+				// NEGOTIATION STATISTICS
+				// -------------------------------------------------
 				if h.negotiation != nil {
-					if negotiations, err := h.negotiation.MyNegotiations(user.ID); err == nil {
-						cutoff := time.Now().Add(-30 * 24 * time.Hour)
+					if negotiations, err := h.negotiation.MyNegotiations(
+						user.ID,
+					); err == nil {
+						cutoff := time.Now().Add(
+							-30 * 24 * time.Hour,
+						)
 
 						for _, negotiation := range negotiations {
 							if !negotiation.CreatedAt.Before(cutoff) {
 								data.MarketNegotiations30++
 							}
 						}
+					} else {
+						log.Printf(
+							"dashboard negotiations unavailable for user %d: %v",
+							user.ID,
+							err,
+						)
 					}
 				}
 
-				// Product list for dashboard priorities.
-				products := userProducts
-
-				// AI diagnosis history.
+				// -------------------------------------------------
+				// AI DIAGNOSIS HISTORY
+				// -------------------------------------------------
 				var diagnoses []models.Diagnosis
 
 				if h.ai != nil {
-					if got, err := h.ai.History(user.ID); err == nil {
+					if got, err := h.ai.History(
+						user.ID,
+					); err == nil {
 						diagnoses = got
 
 						if len(diagnoses) > 0 {
 							latest := diagnoses[0]
 							data.LatestDiagnosis = &latest
 						}
+					} else {
+						log.Printf(
+							"dashboard diagnosis history unavailable for user %d: %v",
+							user.ID,
+							err,
+						)
 					}
 				}
 
-				// Negotiations for dashboard priorities.
+				// -------------------------------------------------
+				// NEGOTIATIONS FOR PRIORITIES
+				// -------------------------------------------------
 				var negotiations []models.Negotiation
 
 				if h.negotiation != nil {
-					if got, err := h.negotiation.MyNegotiations(user.ID); err == nil {
+					if got, err := h.negotiation.MyNegotiations(
+						user.ID,
+					); err == nil {
 						negotiations = got
+					} else {
+						log.Printf(
+							"dashboard negotiation priorities unavailable for user %d: %v",
+							user.ID,
+							err,
+						)
 					}
 				}
 
 				data.Priorities = sellerPriorities(
 					data,
-					products,
+					userProducts,
 					diagnoses,
 					negotiations,
 				)
@@ -367,10 +489,20 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 					farmHealth(data, diagnoses)
 			}
 
-			// Notifications are available to every user.
+			// -------------------------------------------------
+			// NOTIFICATIONS
+			// -------------------------------------------------
 			if h.notification != nil {
-				if count, err := h.notification.GetUnreadCount(user.ID); err == nil {
+				if count, err := h.notification.GetUnreadCount(
+					user.ID,
+				); err == nil {
 					data.UnreadNotifications = count
+				} else {
+					log.Printf(
+						"dashboard notification count unavailable for user %d: %v",
+						user.ID,
+						err,
+					)
 				}
 			}
 
@@ -393,6 +525,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 			}
 
 			log.Println("render error", err)
+
 			http.Error(
 				w,
 				"Internal Server Error",
@@ -402,20 +535,44 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case http.MethodPost:
-		log.Println("user's Choices")
+		log.Println("User dashboard POST request received")
+
+		http.Error(
+			w,
+			"Method Not Allowed",
+			http.StatusMethodNotAllowed,
+		)
+
+	default:
+		http.Error(
+			w,
+			"Method Not Allowed",
+			http.StatusMethodNotAllowed,
+		)
 	}
 }
 
-// A client may close the browser connection while a large dashboard is being
-// written. The response is no longer writable in that case, so attempting to
-// send a second HTTP error response causes a misleading superfluous-header log.
+// clientDisconnected reports whether an HTTP response failed because
+// the client closed the connection while the server was writing.
 func clientDisconnected(err error) bool {
+	if err == nil {
+		return false
+	}
+
 	return errors.Is(err, syscall.EPIPE) ||
 		errors.Is(err, syscall.ECONNRESET) ||
-		strings.Contains(strings.ToLower(err.Error()), "broken pipe") ||
-		strings.Contains(strings.ToLower(err.Error()), "connection reset")
+		strings.Contains(
+			strings.ToLower(err.Error()),
+			"broken pipe",
+		) ||
+		strings.Contains(
+			strings.ToLower(err.Error()),
+			"connection reset",
+		)
 }
 
+// cartSummary calculates the number of items and total value of
+// the products currently in a user's cart.
 func cartSummary(items []models.CartItem) (int, float64) {
 	total := 0.0
 
@@ -426,11 +583,30 @@ func cartSummary(items []models.CartItem) (int, float64) {
 	return len(items), total
 }
 
-func (h *Dashboard) MarketInsights(w http.ResponseWriter, r *http.Request) {
-	user, ok := middleware.FarmerFromContext(r)
+// MarketInsights renders market demand and pricing insights for
+// the authenticated user.
+func (h *Dashboard) MarketInsights(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	user, ok := middleware.UserFromContext(r)
 
 	if !ok || user == nil {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		http.Redirect(
+			w,
+			r,
+			"/login",
+			http.StatusSeeOther,
+		)
+		return
+	}
+
+	if h.events == nil {
+		http.Error(
+			w,
+			"Market insights are unavailable",
+			http.StatusInternalServerError,
+		)
 		return
 	}
 
@@ -445,7 +621,7 @@ func (h *Dashboard) MarketInsights(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		log.Printf(
-			"market insights unavailable for farmer %d: %v",
+			"market insights unavailable for user %d: %v",
 			user.ID,
 			err,
 		)
@@ -462,8 +638,11 @@ func (h *Dashboard) MarketInsights(w http.ResponseWriter, r *http.Request) {
 		FullName  string
 		Summaries []models.ProduceDemandSummary
 	}{
-		user.FullName,
-		prioritizeDemandSummaries(summaries, len(summaries)),
+		FullName: user.FullName,
+		Summaries: prioritizeDemandSummaries(
+			summaries,
+			len(summaries),
+		),
 	}
 
 	if err := render.RenderTemplates(
@@ -471,7 +650,18 @@ func (h *Dashboard) MarketInsights(w http.ResponseWriter, r *http.Request) {
 		"market-insights.html",
 		data,
 	); err != nil {
-		log.Printf("market insights render error: %v", err)
+		if clientDisconnected(err) {
+			log.Printf(
+				"market insights client disconnected while rendering: %v",
+				err,
+			)
+			return
+		}
+
+		log.Printf(
+			"market insights render error: %v",
+			err,
+		)
 
 		http.Error(
 			w,
@@ -481,6 +671,8 @@ func (h *Dashboard) MarketInsights(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// prioritizeDemandSummaries sorts demand summaries so that potentially
+// actionable market opportunities appear first.
 func prioritizeDemandSummaries(
 	items []models.ProduceDemandSummary,
 	limit int,
@@ -494,29 +686,39 @@ func prioritizeDemandSummaries(
 		items...,
 	)
 
-	sort.SliceStable(result, func(i, j int) bool {
-		rank := func(s models.ProduceDemandSummary) int {
-			if s.PriceDifferencePercent > 15 && s.Orders == 0 {
-				return 5
+	sort.SliceStable(
+		result,
+		func(i, j int) bool {
+			rank := func(
+				s models.ProduceDemandSummary,
+			) int {
+				if s.PriceDifferencePercent > 15 &&
+					s.Orders == 0 {
+					return 5
+				}
+
+				if s.CartAdds > 0 &&
+					s.Orders == 0 {
+					return 4
+				}
+
+				if s.Views+
+					s.CartAdds+
+					s.Orders+
+					s.Negotiations == 0 {
+					return 3
+				}
+
+				if s.Orders > 0 {
+					return 1
+				}
+
+				return 2
 			}
 
-			if s.CartAdds > 0 && s.Orders == 0 {
-				return 4
-			}
-
-			if s.Views+s.CartAdds+s.Orders+s.Negotiations == 0 {
-				return 3
-			}
-
-			if s.Orders > 0 {
-				return 1
-			}
-
-			return 2
-		}
-
-		return rank(result[i]) > rank(result[j])
-	})
+			return rank(result[i]) > rank(result[j])
+		},
+	)
 
 	if len(result) > limit {
 		result = result[:limit]
@@ -525,7 +727,16 @@ func prioritizeDemandSummaries(
 	return result
 }
 
-func limitOrders(orders []models.Order, max int) []models.Order {
+// limitOrders limits the number of orders returned for dashboard
+// display without modifying the original order slice.
+func limitOrders(
+	orders []models.Order,
+	max int,
+) []models.Order {
+	if max <= 0 {
+		return nil
+	}
+
 	if len(orders) <= max {
 		return orders
 	}
@@ -533,7 +744,11 @@ func limitOrders(orders []models.Order, max int) []models.Order {
 	return orders[:max]
 }
 
-func buyerPriorities(data DashboardData) []DashboardPriority {
+// buyerPriorities creates dashboard priorities for buyers based on
+// their purchasing activity.
+func buyerPriorities(
+	data DashboardData,
+) []DashboardPriority {
 	if data.PurchasesMade == 0 {
 		return []DashboardPriority{
 			{
@@ -559,6 +774,8 @@ func buyerPriorities(data DashboardData) []DashboardPriority {
 	}
 }
 
+// sellerPriorities creates dashboard priorities for users who sell
+// agricultural products.
 func sellerPriorities(
 	data DashboardData,
 	products []models.Product,
@@ -569,7 +786,8 @@ func sellerPriorities(
 
 	for _, diagnosis := range diagnoses {
 		text := strings.ToLower(
-			diagnosis.Result + " " + diagnosis.Description,
+			diagnosis.Result + " " +
+				diagnosis.Description,
 		)
 
 		if strings.Contains(text, "severe") ||
@@ -581,7 +799,7 @@ func sellerPriorities(
 				DashboardPriority{
 					Tone:   "danger",
 					Label:  "Urgent",
-					Title:  "Review a crop health alert",
+					Title:  "Review an agricultural health alert",
 					Detail: "Open your latest urgent AI diagnosis and follow its treatment guidance.",
 					Action: "Review diagnosis",
 					Href:   "/ai-diagnosis-history",
@@ -648,7 +866,7 @@ func sellerPriorities(
 			DashboardPriority{
 				Tone:   "warning",
 				Label:  "Action needed",
-				Title:  "Add produce to your storage",
+				Title:  "Add products to your storage",
 				Detail: "Create a product record so you can track stock and list it for sale.",
 				Action: "Open storage",
 				Href:   "/storage",
@@ -665,7 +883,7 @@ func sellerPriorities(
 				Tone:   "warning",
 				Label:  "Action needed",
 				Title:  "Publish a listing",
-				Detail: "Make your available produce visible to buyers in the marketplace.",
+				Detail: "Make your available products visible to buyers in the marketplace.",
 				Action: "Manage storage",
 				Href:   "/storage",
 			},
@@ -679,23 +897,27 @@ func sellerPriorities(
 				Tone:   "success",
 				Label:  "On track",
 				Title:  "Your farm is ready for business",
-				Detail: "Keep stock current and use the AI assistant whenever a crop needs attention.",
+				Detail: "Keep stock current and use the AI assistant whenever an agricultural activity needs attention.",
 				Action: "View listings",
 				Href:   "/marketplace",
 			},
 		)
 	}
 
-	sort.SliceStable(priorities, func(i, j int) bool {
-		rank := map[string]int{
-			"danger":  3,
-			"warning": 2,
-			"info":    1,
-			"success": 0,
-		}
+	sort.SliceStable(
+		priorities,
+		func(i, j int) bool {
+			rank := map[string]int{
+				"danger":  3,
+				"warning": 2,
+				"info":    1,
+				"success": 0,
+			}
 
-		return rank[priorities[i].Tone] > rank[priorities[j].Tone]
-	})
+			return rank[priorities[i].Tone] >
+				rank[priorities[j].Tone]
+		},
+	)
 
 	if len(priorities) > 3 {
 		priorities = priorities[:3]
@@ -704,6 +926,8 @@ func sellerPriorities(
 	return priorities
 }
 
+// farmHealth calculates a simple seller dashboard health score
+// from storage, listing, sales, and agricultural health activity.
 func farmHealth(
 	data DashboardData,
 	diagnoses []models.Diagnosis,
@@ -714,7 +938,8 @@ func farmHealth(
 		storage = 100
 
 		listings =
-			data.ListingsActive * 100 /
+			data.ListingsActive *
+				100 /
 				data.ProduceInStorage
 
 		if listings > 100 {
@@ -728,7 +953,8 @@ func farmHealth(
 
 	for _, diagnosis := range diagnoses {
 		text := strings.ToLower(
-			diagnosis.Result + " " + diagnosis.Description,
+			diagnosis.Result + " " +
+				diagnosis.Description,
 		)
 
 		if strings.Contains(text, "severe") ||
@@ -744,7 +970,10 @@ func farmHealth(
 		}
 	}
 
-	score := (storage + listings + sales + health) / 4
+	score := (storage +
+		listings +
+		sales +
+		health) / 4
 
 	status := "Needs attention"
 
@@ -755,9 +984,21 @@ func farmHealth(
 	}
 
 	return []HealthMetric{
-		{"Storage", storage},
-		{"Listings", listings},
-		{"Produce health", health},
-		{"Sales activity", sales},
+		{
+			Name:    "Storage",
+			Percent: storage,
+		},
+		{
+			Name:    "Listings",
+			Percent: listings,
+		},
+		{
+			Name:    "Produce health",
+			Percent: health,
+		},
+		{
+			Name:    "Sales activity",
+			Percent: sales,
+		},
 	}, score, status
 }

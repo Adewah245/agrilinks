@@ -13,86 +13,142 @@ import (
 	"backend/render"
 )
 
+// AIDiagnosisHistory handles requests for a user's AI diagnosis history.
 type AIDiagnosisHistory struct {
 	ai *services.AIService
 }
 
+// NewAIDiagnosisHistoryHandler creates a new AI diagnosis history handler.
 func NewAIDiagnosisHistoryHandler(
 	ai *services.AIService,
 ) *AIDiagnosisHistory {
-
 	return &AIDiagnosisHistory{
 		ai: ai,
 	}
 }
 
+// AIDiagnosisHistoryPageData contains the data rendered on the
+// AI diagnosis history page.
 type AIDiagnosisHistoryPageData struct {
 	History []models.Diagnosis
 }
 
+// Handler displays the authenticated user's diagnosis history and
+// handles requests to delete individual diagnosis records.
 func (h *AIDiagnosisHistory) Handler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	user, ok := middleware.UserFromContext(r)
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
-
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
 			"/login",
 			http.StatusSeeOther,
 		)
-
 		return
 	}
+
+	// --------------------------------------------------
+	// DELETE DIAGNOSIS
+	// --------------------------------------------------
 
 	if r.Method == http.MethodPost {
 		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+			http.Error(
+				w,
+				"Invalid request",
+				http.StatusBadRequest,
+			)
 			return
 		}
-		id, err := strconv.Atoi(r.FormValue("id"))
+
+		id, err := strconv.Atoi(
+			r.FormValue("id"),
+		)
+
 		if err != nil || id <= 0 {
-			http.Error(w, "Invalid diagnosis", http.StatusBadRequest)
+			http.Error(
+				w,
+				"Invalid diagnosis",
+				http.StatusBadRequest,
+			)
 			return
 		}
-		if err := h.ai.DeleteDiagnosis(farmer.ID, id); err != nil {
+
+		if err := h.ai.DeleteDiagnosis(
+			user.ID,
+			id,
+		); err != nil {
+
 			if errors.Is(err, sql.ErrNoRows) {
-				http.Error(w, "Diagnosis not found", http.StatusNotFound)
+				http.Error(
+					w,
+					"Diagnosis not found",
+					http.StatusNotFound,
+				)
 				return
 			}
-			log.Println("failed to delete diagnosis:", err)
-			http.Error(w, "Unable to delete diagnosis", http.StatusInternalServerError)
+
+			log.Println(
+				"failed to delete diagnosis:",
+				err,
+			)
+
+			http.Error(
+				w,
+				"Unable to delete diagnosis",
+				http.StatusInternalServerError,
+			)
 			return
 		}
+
+		// Allow the AI Assistant page to send the user back to
+		// itself after deleting a diagnosis from its history.
 		redirectTo := "/ai-diagnosis-history"
+
 		if r.FormValue("return_to") == "/ai-assistant" {
 			redirectTo = "/ai-assistant"
 		}
-		http.Redirect(w, r, redirectTo, http.StatusSeeOther)
-		return
-	}
 
-	if r.Method != http.MethodGet {
-
-		http.Error(
+		http.Redirect(
 			w,
-			"Method Not Allowed",
-			http.StatusMethodNotAllowed,
+			r,
+			redirectTo,
+			http.StatusSeeOther,
 		)
 
 		return
 	}
 
-	log.Println("User visited AI diagnosis history")
+	// --------------------------------------------------
+	// ONLY GET IS ALLOWED FOR HISTORY DISPLAY
+	// --------------------------------------------------
 
-	history, err := h.ai.History(farmer.ID)
+	if r.Method != http.MethodGet {
+		http.Error(
+			w,
+			"Method Not Allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
+
+	log.Println(
+		"User visited AI diagnosis history",
+	)
+
+	// --------------------------------------------------
+	// LOAD USER HISTORY
+	// --------------------------------------------------
+
+	history, err := h.ai.History(
+		user.ID,
+	)
 
 	if err != nil {
-
 		log.Println(
 			"failed to load diagnosis history:",
 			err,
@@ -106,6 +162,10 @@ func (h *AIDiagnosisHistory) Handler(
 
 		return
 	}
+
+	// --------------------------------------------------
+	// RENDER PAGE
+	// --------------------------------------------------
 
 	data := AIDiagnosisHistoryPageData{
 		History: history,
@@ -122,13 +182,8 @@ func (h *AIDiagnosisHistory) Handler(
 			err,
 		)
 
-		http.Error(
-			w,
-			"Internal Server Error",
-			http.StatusInternalServerError,
-		)
-
+		// Do not call http.Error here because the template renderer
+		// may already have written the response headers/body.
 		return
 	}
-
 }

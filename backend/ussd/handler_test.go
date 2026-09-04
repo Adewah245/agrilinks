@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"backend/internal/models"
-	"backend/internal/services"
 )
 
 type fakeUsers struct {
@@ -31,8 +30,8 @@ func (f fakeProducts) MyProducts(string, int) ([]models.Product, error) {
 
 type fakeWeather struct{}
 
-func (fakeWeather) Current(context.Context, string) (services.Weather, error) {
-	return services.Weather{
+func (fakeWeather) Current(context.Context, string) (models.Weather, error) {
+	return models.Weather{
 		Available:      true,
 		Location:       "Makurdi",
 		Temperature:    "30C",

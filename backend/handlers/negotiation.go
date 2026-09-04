@@ -13,76 +13,47 @@ import (
 	"backend/render"
 )
 
-// ============================================================
-// NEGOTIATION HANDLER
-//
-// Responsibility:
-// - Display negotiations.
-// - Start negotiations.
-// - Display negotiation conversations.
-// - Send normal chat messages.
-// - Send offers.
-// - Accept individual offers.
-// - Reject individual offers.
-//
-// IMPORTANT:
-//
-// Negotiation chat and offers are different.
-//
-// CHAT:
-// - Unlimited.
-// - Does not consume rounds.
-// - Not affected by negotiation expiry.
-//
-// OFFERS:
-// - Limited by negotiation rounds.
-// - Can be accepted/rejected.
-// - Affected by negotiation expiry.
-// ============================================================
-
+// Negotiation handles negotiation pages, messages, offers,
+// offer responses, and negotiation closing.
 type Negotiation struct {
 	service *services.NegotiationService
 	events  *repository.MarketEventRepository
 }
 
-// ============================================================
-// CREATE NEGOTIATION HANDLER
-// ============================================================
-
+// NewNegotiationHandler creates a new Negotiation handler.
 func NewNegotiationHandler(
 	service *services.NegotiationService,
 	events *repository.MarketEventRepository,
 ) *Negotiation {
-
 	return &Negotiation{
 		service: service,
 		events:  events,
 	}
 }
 
-// ============================================================
-// NEGOTIATION LIST PAGE DATA
-// ============================================================
-
+// NegotiationListPageData contains the data passed to the
+// negotiations list page.
 type NegotiationListPageData struct {
 	Negotiations []models.Negotiation
 	UserID       int
 }
 
-// ============================================================
-// LIST NEGOTIATIONS
-//
-// Displays all negotiations involving the logged-in user.
-// ============================================================
-
+// ListHandler displays all negotiations involving the logged-in user.
 func (h *Negotiation) ListHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	if r.Method != http.MethodGet {
+		http.Error(
+			w,
+			"Method Not Allowed",
+			http.StatusMethodNotAllowed,
+		)
+		return
+	}
 
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -92,10 +63,7 @@ func (h *Negotiation) ListHandler(
 		return
 	}
 
-	negotiations, err := h.service.MyNegotiations(
-		farmer.ID,
-	)
-
+	negotiations, err := h.service.MyNegotiations(user.ID)
 	if err != nil {
 		log.Println(
 			"failed to load negotiations:",
@@ -105,7 +73,7 @@ func (h *Negotiation) ListHandler(
 
 	data := NegotiationListPageData{
 		Negotiations: negotiations,
-		UserID:       farmer.ID,
+		UserID:       user.ID,
 	}
 
 	if err := render.RenderTemplates(
@@ -113,44 +81,21 @@ func (h *Negotiation) ListHandler(
 		"negotiations.html",
 		data,
 	); err != nil {
-
 		log.Println(
-			"render error:",
+			"negotiation list render error:",
 			err,
 		)
-
-		http.Error(
-			w,
-			"Internal Server Error",
-			http.StatusInternalServerError,
-		)
+		return
 	}
 }
 
-// ============================================================
-// START NEGOTIATION
-//
-// Starts a negotiation from a marketplace listing.
+// StartHandler starts a new negotiation from a marketplace product.
 //
 // POST /negotiation/start
-// ============================================================
-
 func (h *Negotiation) StartHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
-		http.Redirect(
-			w,
-			r,
-			"/login",
-			http.StatusSeeOther,
-		)
-		return
-	}
 	if r.Method != http.MethodPost {
 		http.Error(
 			w,
@@ -160,15 +105,23 @@ func (h *Negotiation) StartHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Get crop ID.
-	// --------------------------------------------------------
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil {
+		http.Redirect(
+			w,
+			r,
+			"/login",
+			http.StatusSeeOther,
+		)
+		return
+	}
 
-	cropID, err := strconv.Atoi(
-		r.FormValue("crop_id"),
+	// Get product ID.
+	productID, err := strconv.Atoi(
+		r.FormValue("product_id"),
 	)
 
-	if err != nil || cropID <= 0 {
+	if err != nil || productID <= 0 {
 		http.Redirect(
 			w,
 			r,
@@ -178,10 +131,7 @@ func (h *Negotiation) StartHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Get quantity.
-	// --------------------------------------------------------
-
+	// Get requested quantity.
 	quantity, err := strconv.ParseFloat(
 		r.FormValue("quantity"),
 		64,
@@ -197,10 +147,7 @@ func (h *Negotiation) StartHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Get first offer price.
-	// --------------------------------------------------------
-
+	// Get the first offer price.
 	price, err := strconv.ParseFloat(
 		r.FormValue("offer_price"),
 		64,
@@ -218,20 +165,16 @@ func (h *Negotiation) StartHandler(
 
 	message := r.FormValue("message")
 
-	// --------------------------------------------------------
-	// Create negotiation.
-	// --------------------------------------------------------
-
+	// Create the negotiation.
 	negotiation, err := h.service.StartNegotiation(
-		farmer.ID,
-		cropID,
+		user.ID,
+		productID,
 		quantity,
 		price,
 		message,
 	)
 
 	if err != nil {
-
 		log.Println(
 			"failed to start negotiation:",
 			err,
@@ -243,19 +186,29 @@ func (h *Negotiation) StartHandler(
 			"/marketplace",
 			http.StatusSeeOther,
 		)
-
 		return
 	}
+
+	// Record the negotiation event.
 	if h.events != nil {
-		uid := farmer.ID
-		cid := cropID
-		_ = h.events.Record(&models.MarketEvent{EventType: "negotiation_started", CropID: &cid, UserID: &uid, Metadata: fmt.Sprintf(`{"quantity":%g,"offer_price":%g}`, quantity, price)})
+		uid := user.ID
+		pid := productID
+
+		_ = h.events.Record(
+			&models.MarketEvent{
+				EventType: "negotiation_started",
+				ProductID: &pid,
+				UserID:    &uid,
+				Metadata: fmt.Sprintf(
+					`{"quantity":%g,"offer_price":%g}`,
+					quantity,
+					price,
+				),
+			},
+		)
 	}
 
-	// --------------------------------------------------------
-	// Open negotiation conversation.
-	// --------------------------------------------------------
-
+	// Open the newly created negotiation.
 	http.Redirect(
 		w,
 		r,
@@ -266,10 +219,8 @@ func (h *Negotiation) StartHandler(
 	)
 }
 
-// ============================================================
-// NEGOTIATION THREAD PAGE DATA
-// ============================================================
-
+// NegotiationThreadPageData contains the data passed to the
+// negotiation thread page.
 type NegotiationThreadPageData struct {
 	Negotiation *models.Negotiation
 	Messages    []models.NegotiationMessage
@@ -278,28 +229,14 @@ type NegotiationThreadPageData struct {
 	TimeLeft    string
 }
 
-// ============================================================
-// THREAD HANDLER
-//
-// GET:
-//     Display negotiation.
-//
-// POST:
-//
-//     action=chat
-//     action=offer
-//     action=accept
-//     action=reject
-// ============================================================
-
+// ThreadHandler displays a negotiation thread and processes
+// messages, offers, acceptances, rejections, and closing requests.
 func (h *Negotiation) ThreadHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-
-	farmer, ok := middleware.FarmerFromContext(r)
-
-	if !ok || farmer == nil {
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil {
 		http.Redirect(
 			w,
 			r,
@@ -309,252 +246,92 @@ func (h *Negotiation) ThreadHandler(
 		return
 	}
 
-	// --------------------------------------------------------
-	// Get negotiation ID.
-	// --------------------------------------------------------
-
 	negotiationID, err := strconv.Atoi(
 		r.URL.Query().Get("id"),
 	)
 
 	if err != nil || negotiationID <= 0 {
-
 		http.Error(
 			w,
 			"Invalid negotiation ID",
 			http.StatusBadRequest,
 		)
-
 		return
 	}
 
-	// ========================================================
-	// HANDLE REQUEST METHOD
-	// ========================================================
-
 	switch r.Method {
-
-	// ========================================================
-	// GET
-	// ========================================================
-
 	case http.MethodGet:
-
 		h.render(
 			w,
 			negotiationID,
-			farmer.ID,
+			user.ID,
 			"",
 		)
-
-	// ========================================================
-	// POST
-	// ========================================================
+		return
 
 	case http.MethodPost:
-
 		action := r.FormValue("action")
 
 		switch action {
-
-		// ====================================================
-		// NORMAL CHAT MESSAGE
-		//
-		// Chat does NOT:
-		// - consume a negotiation round
-		// - use the offer timer
-		// - create an offer
-		// ====================================================
-
 		case "chat":
-
-			message := r.FormValue("message")
-
-			if message == "" {
-
-				h.render(
-					w,
-					negotiationID,
-					farmer.ID,
-					"message cannot be empty",
-				)
-
-				return
-			}
-
-			err := h.service.SendMessage(
+			h.handleChat(
+				w,
+				r,
 				negotiationID,
-				farmer.ID,
-				message,
+				user.ID,
 			)
-
-			if err != nil {
-
-				h.render(
-					w,
-					negotiationID,
-					farmer.ID,
-					err.Error(),
-				)
-
-				return
-			}
-
-		// ====================================================
-		// SEND OFFER
-		// ====================================================
+			return
 
 		case "offer":
-
-			price, err := strconv.ParseFloat(
-				r.FormValue("offer_price"),
-				64,
-			)
-
-			if err != nil || price <= 0 {
-
-				h.render(
-					w,
-					negotiationID,
-					farmer.ID,
-					"invalid offer price",
-				)
-
-				return
-			}
-
-			message := r.FormValue("message")
-
-			err = h.service.SendOffer(
+			h.handleOffer(
+				w,
+				r,
 				negotiationID,
-				farmer.ID,
-				price,
-				message,
+				user.ID,
 			)
-
-			if err != nil {
-
-				h.render(
-					w,
-					negotiationID,
-					farmer.ID,
-					err.Error(),
-				)
-
-				return
-			}
-
-		// ====================================================
-		// ACCEPT OFFER
-		//
-		// IMPORTANT:
-		// offer_id identifies the exact offer being accepted.
-		// ====================================================
+			return
 
 		case "accept":
-
-			offerID, err := strconv.Atoi(
-				r.FormValue("offer_id"),
-			)
-
-			if err != nil || offerID <= 0 {
-
-				h.render(
-					w,
-					negotiationID,
-					farmer.ID,
-					"invalid offer ID",
-				)
-
-				return
-			}
-
-			err = h.service.Accept(
+			h.handleAccept(
+				w,
+				r,
 				negotiationID,
-				offerID,
-				farmer.ID,
+				user.ID,
 			)
-
-			if err != nil {
-
-				h.render(
-					w,
-					negotiationID,
-					farmer.ID,
-					err.Error(),
-				)
-
-				return
-			}
-
-		// ====================================================
-		// REJECT OFFER
-		//
-		// Rejecting an offer does NOT close the negotiation.
-		// ====================================================
+			return
 
 		case "reject":
-
-			offerID, err := strconv.Atoi(
-				r.FormValue("offer_id"),
-			)
-
-			if err != nil || offerID <= 0 {
-
-				h.render(
-					w,
-					negotiationID,
-					farmer.ID,
-					"invalid offer ID",
-				)
-
-				return
-			}
-
-			err = h.service.Reject(
+			h.handleReject(
+				w,
+				r,
 				negotiationID,
-				offerID,
-				farmer.ID,
+				user.ID,
 			)
-
-			if err != nil {
-
-				h.render(
-					w,
-					negotiationID,
-					farmer.ID,
-					err.Error(),
-				)
-
-				return
-			}
+			return
 
 		case "end":
-
-			if err := h.service.End(negotiationID, farmer.ID); err != nil {
-				h.render(w, negotiationID, farmer.ID, err.Error())
+			if err := h.service.End(
+				negotiationID,
+				user.ID,
+			); err != nil {
+				h.render(
+					w,
+					negotiationID,
+					user.ID,
+					err.Error(),
+				)
 				return
 			}
 
-		// ====================================================
-		// UNKNOWN ACTION
-		// ====================================================
-
 		default:
-
 			h.render(
 				w,
 				negotiationID,
-				farmer.ID,
+				user.ID,
 				"invalid negotiation action",
 			)
-
 			return
 		}
-
-		// ----------------------------------------------------
-		// After successful POST, return to negotiation page.
-		// ----------------------------------------------------
 
 		http.Redirect(
 			w,
@@ -564,13 +341,9 @@ func (h *Negotiation) ThreadHandler(
 			),
 			http.StatusSeeOther,
 		)
-
-	// ========================================================
-	// UNSUPPORTED METHOD
-	// ========================================================
+		return
 
 	default:
-
 		http.Error(
 			w,
 			"Method Not Allowed",
@@ -579,69 +352,219 @@ func (h *Negotiation) ThreadHandler(
 	}
 }
 
-// ============================================================
-// RENDER NEGOTIATION THREAD
-//
-// Loads:
-//
-// - Negotiation information.
-// - Complete chat history.
-// - Offers.
-// - Accepted offers.
-// - Rejected offers.
-// ============================================================
+// handleChat sends a normal negotiation chat message.
+func (h *Negotiation) handleChat(
+	w http.ResponseWriter,
+	r *http.Request,
+	negotiationID int,
+	userID int,
+) {
+	message := r.FormValue("message")
 
+	if message == "" {
+		h.render(
+			w,
+			negotiationID,
+			userID,
+			"message cannot be empty",
+		)
+		return
+	}
+
+	if err := h.service.SendMessage(
+		negotiationID,
+		userID,
+		message,
+	); err != nil {
+		h.render(
+			w,
+			negotiationID,
+			userID,
+			err.Error(),
+		)
+		return
+	}
+
+	http.Redirect(
+		w,
+		r,
+		"/negotiation?id="+strconv.Itoa(
+			negotiationID,
+		),
+		http.StatusSeeOther,
+	)
+}
+
+// handleOffer sends a new negotiation offer.
+func (h *Negotiation) handleOffer(
+	w http.ResponseWriter,
+	r *http.Request,
+	negotiationID int,
+	userID int,
+) {
+	price, err := strconv.ParseFloat(
+		r.FormValue("offer_price"),
+		64,
+	)
+
+	if err != nil || price <= 0 {
+		h.render(
+			w,
+			negotiationID,
+			userID,
+			"invalid offer price",
+		)
+		return
+	}
+
+	message := r.FormValue("message")
+
+	if err := h.service.SendOffer(
+		negotiationID,
+		userID,
+		price,
+		message,
+	); err != nil {
+		h.render(
+			w,
+			negotiationID,
+			userID,
+			err.Error(),
+		)
+		return
+	}
+
+	http.Redirect(
+		w,
+		r,
+		"/negotiation?id="+strconv.Itoa(
+			negotiationID,
+		),
+		http.StatusSeeOther,
+	)
+}
+
+// handleAccept accepts a specific negotiation offer.
+func (h *Negotiation) handleAccept(
+	w http.ResponseWriter,
+	r *http.Request,
+	negotiationID int,
+	userID int,
+) {
+	offerID, err := strconv.Atoi(
+		r.FormValue("offer_id"),
+	)
+
+	if err != nil || offerID <= 0 {
+		h.render(
+			w,
+			negotiationID,
+			userID,
+			"invalid offer ID",
+		)
+		return
+	}
+
+	if err := h.service.Accept(
+		negotiationID,
+		offerID,
+		userID,
+	); err != nil {
+		h.render(
+			w,
+			negotiationID,
+			userID,
+			err.Error(),
+		)
+		return
+	}
+
+	http.Redirect(
+		w,
+		r,
+		"/negotiation?id="+strconv.Itoa(
+			negotiationID,
+		),
+		http.StatusSeeOther,
+	)
+}
+
+// handleReject rejects a specific negotiation offer.
+func (h *Negotiation) handleReject(
+	w http.ResponseWriter,
+	r *http.Request,
+	negotiationID int,
+	userID int,
+) {
+	offerID, err := strconv.Atoi(
+		r.FormValue("offer_id"),
+	)
+
+	if err != nil || offerID <= 0 {
+		h.render(
+			w,
+			negotiationID,
+			userID,
+			"invalid offer ID",
+		)
+		return
+	}
+
+	if err := h.service.Reject(
+		negotiationID,
+		offerID,
+		userID,
+	); err != nil {
+		h.render(
+			w,
+			negotiationID,
+			userID,
+			err.Error(),
+		)
+		return
+	}
+
+	http.Redirect(
+		w,
+		r,
+		"/negotiation?id="+strconv.Itoa(
+			negotiationID,
+		),
+		http.StatusSeeOther,
+	)
+}
+
+// render loads a negotiation thread and renders the negotiation page.
+//
+// Authorization is enforced by the negotiation service when the
+// thread is loaded, so this handler does not incorrectly treat an
+// organization ID as a user ID.
 func (h *Negotiation) render(
 	w http.ResponseWriter,
-	negotiationID,
+	negotiationID int,
 	userID int,
 	errMsg string,
 ) {
-
 	negotiation, messages, err := h.service.Thread(
 		negotiationID,
 	)
 
 	if err != nil || negotiation == nil {
-
 		http.Error(
 			w,
 			"Negotiation not found",
 			http.StatusNotFound,
 		)
-
 		return
 	}
 
-	if userID != negotiation.BuyerID && userID != negotiation.FarmerID {
-		http.Error(w, "You are not part of this negotiation", http.StatusForbidden)
-		return
-	}
-
-	// ========================================================
-	// CALCULATE TIME LEFT
-	//
-	// IMPORTANT:
-	//
-	// This timer is only informational for the negotiation
-	// offer window.
-	//
-	// It does NOT control normal chat.
-	// ========================================================
-
+	// Calculate the remaining offer-window time.
 	timeLeft := negotiation.TimeLeft()
-
 	timeLeftStr := "Expired"
 
 	if timeLeft > 0 {
-
-		hours := int(
-			timeLeft.Hours(),
-		)
-
-		minutes := int(
-			timeLeft.Minutes(),
-		) % 60
+		hours := int(timeLeft.Hours())
+		minutes := int(timeLeft.Minutes()) % 60
 
 		timeLeftStr =
 			strconv.Itoa(hours) +
@@ -649,10 +572,6 @@ func (h *Negotiation) render(
 				strconv.Itoa(minutes) +
 				"m left"
 	}
-
-	// ========================================================
-	// PAGE DATA
-	// ========================================================
 
 	data := NegotiationThreadPageData{
 		Negotiation: negotiation,
@@ -662,25 +581,14 @@ func (h *Negotiation) render(
 		TimeLeft:    timeLeftStr,
 	}
 
-	// ========================================================
-	// RENDER TEMPLATE
-	// ========================================================
-
 	if err := render.RenderTemplates(
 		w,
 		"negotiation.html",
 		data,
 	); err != nil {
-
 		log.Println(
-			"render error:",
+			"negotiation render error:",
 			err,
-		)
-
-		http.Error(
-			w,
-			"Internal Server Error",
-			http.StatusInternalServerError,
 		)
 	}
 }

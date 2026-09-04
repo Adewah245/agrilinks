@@ -185,32 +185,33 @@ func (r *ChatMessageRepository) ListByConversation(
 			m.sender_id,
 			m.message,
 			m.created_at,
-			f.full_name,
-			EXISTS (SELECT 1 FROM conversation_members receipt WHERE receipt.conversation_id = m.conversation_id AND receipt.user_id <> m.sender_id AND receipt.last_read_at >= m.created_at) AS seen
-			FROM chat_messages m
-		JOIN farmers f ON f.id = m.sender_id
-			WHERE m.conversation_id = $1
-			ORDER BY m.created_at ASC, m.id ASC
+			u.full_name,
+			EXISTS (
+				SELECT 1
+				FROM conversation_members receipt
+				WHERE receipt.conversation_id = m.conversation_id
+				  AND receipt.user_id <> m.sender_id
+				  AND receipt.last_read_at >= m.created_at
+			) AS seen
+		FROM chat_messages m
+		JOIN users u
+			ON u.id = m.sender_id
+		WHERE m.conversation_id = $1
+		ORDER BY m.created_at ASC, m.id ASC
 	`
 
-	rows, err := r.db.Query(
-		query,
-		conversationID,
-	)
-
+	rows, err := r.db.Query(query, conversationID)
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
 	var messages []models.ChatMessage
 
 	for rows.Next() {
-
 		var message models.ChatMessage
 
-		err := rows.Scan(
+		if err := rows.Scan(
 			&message.ID,
 			&message.ConversationID,
 			&message.SenderID,
@@ -218,16 +219,11 @@ func (r *ChatMessageRepository) ListByConversation(
 			&message.CreatedAt,
 			&message.SenderName,
 			&message.Seen,
-		)
-
-		if err != nil {
+		); err != nil {
 			return nil, err
 		}
 
-		messages = append(
-			messages,
-			message,
-		)
+		messages = append(messages, message)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -236,7 +232,6 @@ func (r *ChatMessageRepository) ListByConversation(
 
 	return messages, nil
 }
-
 // ============================================================
 // DELETE MESSAGE
 // ============================================================

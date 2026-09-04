@@ -7,22 +7,22 @@ import "time"
 //
 // Responsibility:
 // - Represents one message inside a negotiation.
-// - A message can be normal chat.
+// - A message can be a normal negotiation message.
 // - A message can also contain a price offer.
 // - Keeps track of the type of message.
 // - Keeps track of offer status when the message is an offer.
 //
 // Message types:
 //
-//   "chat"  → normal conversation message
-//   "offer" → message containing a price offer
+//   "message" → normal negotiation message
+//   "offer"   → message containing a price offer
 //
 // Offer statuses:
 //
 //   "pending"  → offer is waiting for a response
 //   "accepted" → offer was accepted
 //   "rejected" → offer was rejected
-//   "none"     → normal chat message has no offer status
+//   "none"     → normal message has no offer status
 //
 // This model is used by:
 //
