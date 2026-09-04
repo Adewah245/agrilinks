@@ -1,0 +1,374 @@
+/* =========================================
+   GLOBAL RESET & BASE STYLES
+========================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f8faf8;
+    color: #1a231e;
+    line-height: 1.6;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.2s ease;
+}
+
+
+/* =========================================
+   NAVBAR
+========================================= */
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 80px;
+    background: #ffffff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.logo img {
+    height: 45px;
+    width: auto;
+    object-fit: contain;
+}
+
+.navbar nav {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.navbar nav a {
+    font-size: 16px;
+    font-weight: 500;
+    color: #2e3d32;
+    padding: 6px 0;
+    position: relative;
+}
+
+.navbar nav a:hover,
+.navbar nav a[aria-current="page"] {
+    color: #1b5e20;
+    font-weight: 600;
+}
+
+/* Active indicator underline */
+.navbar nav a[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #1b5e20;
+    border-radius: 2px;
+}
+
+
+/* =========================================
+   HERO SECTION
+========================================= */
+
+main {
+    width: 100%;
+}
+
+.hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 80px 40px;
+}
+
+/* Hero Content (Left) */
+
+.hero-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.hero-content h1 {
+    font-size: clamp(32px, 3.5vw, 48px);
+    line-height: 1.25;
+    font-weight: 800;
+    color: #0f3814;
+    margin-bottom: 20px;
+}
+
+.hero-tagline {
+    display: block;
+    color: #2e7d32;
+    margin-top: 8px;
+}
+
+.hero-subtitle {
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #2b4530;
+    margin-bottom: 16px;
+}
+
+.hero-description {
+    font-size: 16px;
+    line-height: 1.65;
+    color: #4a5d4f;
+    margin-bottom: 36px;
+}
+
+/* Hero Buttons */
+
+.hero-buttons {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.primary-btn,
+.secondary-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    height: 52px;
+    padding: 0 32px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.primary-btn {
+    background: #1b5e20;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(27, 94, 32, 0.25);
+}
+
+.primary-btn:hover {
+    background: #124116;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(27, 94, 32, 0.35);
+}
+
+.secondary-btn {
+    background: #e8f5e9;
+    color: #1b5e20;
+    border: 1.5px solid #c8e6c9;
+}
+
+.secondary-btn:hover {
+    background: #c8e6c9;
+    color: #0f3814;
+    transform: translateY(-2px);
+}
+
+/* Hero Image (Right) */
+
+.hero-image {
+    position: relative;
+    width: 100%;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.hero-image img {
+    width: 100%;
+    height: 480px;
+    object-fit: cover;
+    transition: opacity 0.4s ease;
+}
+
+
+/* =========================================
+   FOOTER
+========================================= */
+
+.footer {
+    background: #0d2813;
+    color: #e2ebe4;
+    padding: 70px 40px 30px;
+    margin-top: 60px;
+}
+
+.footer-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 60px;
+}
+
+/* Brand Column */
+
+.footer-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.footer-brand-logo {
+    height: 40px;
+    width: auto;
+    object-fit: contain;
+    filter: brightness(0) invert(1); /* Makes logo white if PNG */
+}
+
+.footer-brand p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #a3c2a8;
+    max-width: 400px;
+}
+
+/* Footer Navigation Column */
+
+.footer-links h2,
+.footer-contact h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.footer-links ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.footer-links a {
+    color: #a3c2a8;
+    font-size: 15px;
+}
+
+.footer-links a:hover {
+    color: #81c784;
+    padding-left: 4px;
+}
+
+/* Contact Column */
+
+.footer-contact p {
+    font-size: 15px;
+    color: #a3c2a8;
+    margin-bottom: 12px;
+}
+
+.footer-contact a {
+    color: #81c784;
+    text-decoration: underline;
+}
+
+.footer-contact a:hover {
+    color: #ffffff;
+}
+
+/* Copyright & Divider */
+
+.footer hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 50px 0 25px;
+}
+
+.copyright {
+    text-align: center;
+    font-size: 14px;
+    color: #7a9a80;
+}
+
+
+/* =========================================
+   RESPONSIVE DESIGN
+========================================= */
+
+@media (max-width: 1024px) {
+    .navbar {
+        padding: 16px 40px;
+    }
+
+    .hero {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        padding: 50px 30px;
+    }
+
+    .hero-image img {
+        height: 380px;
+    }
+
+    .footer-container {
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+    }
+
+    .footer-brand {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 600px) {
+    .navbar {
+        padding: 14px 20px;
+    }
+
+    .navbar nav {
+        gap: 16px;
+    }
+
+    .hero {
+        padding: 30px 18px;
+    }
+
+    .hero-subtitle {
+        font-size: 17px;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .primary-btn,
+    .secondary-btn {
+        width: 100%;
+    }
+
+    .hero-image img {
+        height: 280px;
+    }
+
+    .footer-container {
+        grid-template-columns: 1fr;
+    }
+
+    .footer-brand {
+        grid-column: span 1;
+    }
+}

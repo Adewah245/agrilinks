@@ -2,36 +2,79 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>AI Assistant | Agro-Shield</title>
 
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/ai-assistant.css?v=20260829-clean">
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/ai-assistant.css?v=20260904"
+    >
 </head>
 
 <body>
 
 <header class="navbar">
-    <a class="logo" href="/dashboard">
-        <img
-            src="/static/assets/logo/Agro-Shield_logo.png"
-            alt="Agro-Shield"
+    <div class="navbar-container">
+        <a
+            class="logo"
+            href="/dashboard"
+            aria-label="Agro-Shield Dashboard"
         >
-    </a>
+            <img
+                src="/static/assets/logo/Agro-Shield_logo.png"
+                alt="Agro-Shield"
+            >
+        </a>
 
-    <nav aria-label="Main navigation">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/storage">Storage</a>
-        <a href="/marketplace">Marketplace</a>
-        <a href="/negotiations">Negotiations</a>
-        <a href="/cart">Cart</a>
-        <a href="/chat">Chat</a>
-        <a href="/ai-assistant" aria-current="page">AI Assistant</a>
-        <a href="/profile">Profile</a>
-        <a href="/notifications">Notifications</a>
-        <a href="/logout">Logout</a>
-    </nav>
+        <!-- Mobile Menu Toggle Button -->
+        <button
+            class="nav-toggle"
+            id="navToggle"
+            aria-label="Toggle navigation menu"
+            aria-expanded="false"
+            aria-controls="navLinks"
+        >
+            <span class="hamburger"></span>
+        </button>
+
+        <nav
+            class="nav-links"
+            id="navLinks"
+            aria-label="Main navigation"
+        >
+            <a href="/dashboard">Dashboard</a>
+            <a href="/storage">Storage</a>
+            <a href="/marketplace">Marketplace</a>
+            <a href="/negotiations">Negotiations</a>
+            <a href="/cart">Cart</a>
+            <a href="/chat">Chat</a>
+
+            <a
+                href="/ai-assistant"
+                aria-current="page"
+            >
+                AI Assistant
+            </a>
+
+            <a href="/profile">Profile</a>
+            <a href="/notifications">Notifications</a>
+            <a
+                href="/logout"
+                class="nav-logout"
+            >
+                Logout
+            </a>
+        </nav>
+    </div>
 </header>
 
 
@@ -46,12 +89,14 @@
 
 
     {{if .Error}}
+
     <div
         class="message error-message"
         role="alert"
     >
         {{.Error}}
     </div>
+
     {{end}}
 
 
@@ -67,7 +112,9 @@
         id="ai-form"
     >
 
-        <!-- CATEGORY -->
+        <!-- =================================================
+             FARMING CATEGORY
+             ================================================= -->
 
         <label for="category">
             Farming Category
@@ -98,16 +145,60 @@
                 🐐 Goats
             </option>
 
+            <option value="Sheep">
+                🐑 Sheep
+            </option>
+
+            <option value="Cattle">
+                🐄 Cattle
+            </option>
+
+            <option value="Pigs">
+                🐖 Pigs
+            </option>
+
             <option value="Fish">
-                🐟 Fish
+                🐟 Fish / Aquaculture
+            </option>
+
+            <option value="Beekeeping">
+                🐝 Beekeeping
             </option>
 
             <option value="Pests/Insects">
-                🐛 Pests/Insects
+                🐛 Pests / Insects
             </option>
 
             <option value="Plant Problems">
                 🌱 Plant Problems
+            </option>
+
+            <option value="Animal Health">
+                🩺 Animal Health
+            </option>
+
+            <option value="Fish Health">
+                🐟 Fish Health
+            </option>
+
+            <option value="Feed and Nutrition">
+                🌾 Feed and Nutrition
+            </option>
+
+            <option value="Storage">
+                🏠 Agricultural Storage
+            </option>
+
+            <option value="Weather and Climate">
+                🌦️ Weather and Climate
+            </option>
+
+            <option value="Farm Management">
+                📋 Farm Management
+            </option>
+
+            <option value="Market and Pricing">
+                💰 Market and Pricing
             </option>
 
             <option value="General Farming Questions">
@@ -138,11 +229,15 @@
                 id="description"
                 name="description"
                 rows="5"
-                placeholder="Describe what you noticed..."
+                maxlength="5000"
+                placeholder="Describe what you noticed, what you are trying to do, or the question you want to ask..."
+                aria-describedby="description-help"
             ></textarea>
 
 
-            <!-- Hidden media inputs -->
+            <!-- =================================================
+                 HIDDEN MEDIA INPUTS
+                 ================================================= -->
 
             <input
                 type="file"
@@ -184,7 +279,9 @@
 
             <div class="composer-controls">
 
-                <!-- ATTACHMENT MENU -->
+                <!-- =================================================
+                     ATTACHMENT MENU
+                     ================================================= -->
 
                 <div class="attachment-menu-wrap">
 
@@ -194,6 +291,7 @@
                         class="composer-icon plus-button"
                         aria-label="Add media"
                         aria-expanded="false"
+                        aria-controls="attachment-menu"
                         title="Add media"
                     >
                         +
@@ -239,7 +337,9 @@
                 </div>
 
 
-                <!-- THINK -->
+                <!-- =================================================
+                     THINK MODE
+                     ================================================= -->
 
                 <button
                     type="button"
@@ -247,13 +347,16 @@
                     class="think-toggle"
                     aria-label="Use deeper AI analysis"
                     aria-pressed="false"
+                    title="Use deeper AI analysis"
                 >
                     <span aria-hidden="true">◉</span>
                     <span>Think</span>
                 </button>
 
 
-                <!-- MICROPHONE -->
+                <!-- =================================================
+                     MICROPHONE
+                     ================================================= -->
 
                 <button
                     type="button"
@@ -265,13 +368,18 @@
                     <svg
                         viewBox="0 0 24 24"
                         aria-hidden="true"
+                        focusable="false"
                     >
-                        <path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4Zm-7-4a7 7 0 0 0 14 0M12 18v3m-3 0h6"/>
+                        <path
+                            d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4Zm-7-4a7 7 0 0 0 14 0M12 18v3m-3 0h6"
+                        />
                     </svg>
                 </button>
 
 
-                <!-- STOP AUDIO -->
+                <!-- =================================================
+                     STOP AUDIO
+                     ================================================= -->
 
                 <button
                     type="button"
@@ -284,20 +392,27 @@
                 </button>
 
 
-                <!-- SEND -->
+                <!-- =================================================
+                     SEND
+                     ================================================= -->
 
                 <button
                     type="submit"
                     class="send-button"
                     aria-label="Send to AI"
-                    title="Send"
+                    title="Send to AI"
                 >
                     <svg
                         viewBox="0 0 24 24"
                         aria-hidden="true"
+                        focusable="false"
                     >
-                        <path d="m4 12 16-8-6 16-3-7-7-1Z"/>
-                        <path d="m11 13 4-4"/>
+                        <path
+                            d="m4 12 16-8-6 16-3-7-7-1Z"
+                        />
+                        <path
+                            d="m11 13 4-4"
+                        />
                     </svg>
                 </button>
 
@@ -306,13 +421,24 @@
         </div>
 
 
+        <p
+            id="description-help"
+            class="media-help"
+        >
+            You can describe the issue or attach a photo,
+            video, or voice recording. Media uploads are optional.
+        </p>
+
+
         <!-- =================================================
              ATTACHMENT / RECORDING FEEDBACK
              ================================================= -->
 
         <div class="composer-feedback">
 
-            <!-- IMAGE PREVIEW -->
+            <!-- =================================================
+                 IMAGE PREVIEW
+                 ================================================= -->
 
             <div
                 id="image-preview-wrap"
@@ -322,12 +448,20 @@
 
                 <img
                     id="image-preview"
-                    alt="Selected crop or farm image preview"
+                    alt="Selected agricultural image preview"
                 >
 
                 <div class="attachment-info">
-                    <strong>Photo attached</strong>
-                    <span id="image-status"></span>
+
+                    <strong>
+                        Photo attached
+                    </strong>
+
+                    <span
+                        id="image-status"
+                        aria-live="polite"
+                    ></span>
+
                 </div>
 
                 <button
@@ -341,7 +475,9 @@
             </div>
 
 
-            <!-- VIDEO STATUS -->
+            <!-- =================================================
+                 VIDEO FEEDBACK
+                 ================================================= -->
 
             <div
                 id="video-feedback"
@@ -351,7 +487,9 @@
 
                 <div class="video-feedback-content">
 
-                    <strong>🎥 Video attached</strong>
+                    <strong>
+                        🎥 Video attached
+                    </strong>
 
                     <span
                         id="video-status"
@@ -365,6 +503,7 @@
                     controls
                     playsinline
                     hidden
+                    aria-label="Selected video preview"
                 ></video>
 
                 <button
@@ -378,7 +517,9 @@
             </div>
 
 
-            <!-- AUDIO STATUS -->
+            <!-- =================================================
+                 AUDIO RECORDING STATUS
+                 ================================================= -->
 
             <p
                 id="audio-status"
@@ -387,12 +528,15 @@
             ></p>
 
 
-            <!-- AUDIO PREVIEW -->
+            <!-- =================================================
+                 AUDIO PREVIEW
+                 ================================================= -->
 
             <audio
                 id="audio-preview"
                 controls
                 hidden
+                aria-label="Voice recording preview"
             ></audio>
 
 
@@ -418,13 +562,9 @@
         </div>
 
 
-        <p class="media-help">
-            You can describe the issue or attach a photo, video,
-            or voice recording. Media uploads are optional.
-        </p>
-
-
-        <!-- SUBMIT STATUS -->
+        <!-- =================================================
+             SUBMIT STATUS
+             ================================================= -->
 
         <div
             id="submit-status"
@@ -445,9 +585,12 @@
     <section
         class="ai-result"
         aria-live="polite"
+        aria-label="AI diagnosis result"
     >
 
-        <h2>🤖 AI Result</h2>
+        <h2>
+            🤖 AI Result
+        </h2>
 
         <div class="ai-result-text">
             {{.Result}}
@@ -476,8 +619,17 @@
 </main>
 
 
-<script src="/static/js/ai_assistant.js?v=20260829-clean"></script>
-<script src="/static/js/navigation.js"></script>
+<!-- =========================================================
+     JAVASCRIPT
+     ========================================================= -->
+
+<script
+    src="/static/js/ai_assistant.js?v=20260904"
+></script>
+
+<script
+    src="/static/js/navigation.js"
+></script>
 
 </body>
 </html>

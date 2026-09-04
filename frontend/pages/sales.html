@@ -1,125 +1,448 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="View completed agricultural product sales and revenue on Agro-Shield."
+    >
+
     <title>Sales | Agro-Shield</title>
 
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/sales.css">
+
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css?v=20260904"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/sales.css?v=20260904"
+    >
+
 </head>
+
 
 <body>
 
 <header class="navbar">
-    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+
+
+    <!-- =========================================================
+         BRAND
+    ========================================================== -->
+
+    <a
+        class="logo"
+        href="/dashboard"
+        aria-label="Agro-Shield Dashboard"
+    >
+
+        <img
+            src="/static/assets/logo/Agro-Shield_logo.png?v=20260904"
+            alt="Agro-Shield"
+        >
+
+    </a>
+
+
+
+    <!-- =========================================================
+         MAIN NAVIGATION
+    ========================================================== -->
 
     <nav aria-label="Main navigation">
-        <a href="/marketplace">Marketplace</a>
-        <a href="/chat">Chat</a>
-        <a href="/sales" aria-current="page">Sales</a>
-        <a href="/ai-assistant">AI Assistant</a>
-        <a href="/profile">Profile</a>
-        <a href="/notifications">Notifications</a>
+
+
+        <a href="/dashboard">
+            Dashboard
+        </a>
+
+
+        <a href="/storage">
+            Storage
+        </a>
+
+
+        <a href="/marketplace">
+            Marketplace
+        </a>
+
+
+        <a href="/negotiations">
+            Negotiations
+        </a>
+
+
+        <a href="/chat">
+            Chat
+        </a>
+
+
+        <a
+            href="/sales"
+            aria-current="page"
+        >
+            Sales
+        </a>
+
+
+        <a href="/ai-assistant">
+            AI Assistant
+        </a>
+
+
+        <a href="/cart">
+            Cart
+        </a>
+
+
+        <a href="/profile">
+            Profile
+        </a>
+
+
+        <!-- =====================================================
+             NOTIFICATION BELL
+        ====================================================== -->
+
+        <a
+            href="/notifications"
+            class="notification-link"
+            aria-label="Notifications"
+        >
+
+            <span
+                class="notification-bell"
+                aria-hidden="true"
+            >
+                🔔
+            </span>
+
+
+            <span class="notification-label">
+                Notifications
+            </span>
+
+
+            {{if gt .UnreadCount 0}}
+
+            <span
+                class="notification-badge"
+                aria-label="{{.UnreadCount}} unread notifications"
+            >
+                {{.UnreadCount}}
+            </span>
+
+            {{end}}
+
+        </a>
+
+
+        <a href="/logout">
+            Logout
+        </a>
+
     </nav>
+
 </header>
+
+
+
+<!-- =============================================================
+     MAIN CONTENT
+============================================================== -->
 
 <main class="sales-page">
 
+
+    <!-- =========================================================
+         PAGE HEADING
+    ========================================================== -->
+
     <div class="sales-heading">
+
+
         <div>
-            <p class="eyebrow">Farmer performance</p>
-            <h1>Sales</h1>
-            <p>Review completed orders and revenue from your produce.</p>
+
+            <p class="eyebrow">
+                Seller performance
+            </p>
+
+
+            <h1>
+                Sales
+            </h1>
+
+
+            <p>
+                Review completed orders and revenue from
+                your agricultural products.
+            </p>
+
         </div>
 
-        <a class="back-link" href="/dashboard">Back to dashboard</a>
+
+        <a
+            class="back-link"
+            href="/dashboard"
+        >
+            ← Back to dashboard
+        </a>
+
     </div>
 
-    <section class="sales-summary">
+
+
+    <!-- =========================================================
+         SALES SUMMARY
+    ========================================================== -->
+
+    <section
+        class="sales-summary"
+        aria-label="Sales summary"
+    >
+
 
         <div>
-            <span>Completed sales</span>
-            <strong>{{.Count}}</strong>
-            <small>All recorded orders</small>
+
+            <span>
+                Completed sales
+            </span>
+
+
+            <strong>
+                {{.Count}}
+            </strong>
+
+
+            <small>
+                All recorded orders
+            </small>
+
         </div>
 
+
+
         <div>
-            <span>Total revenue</span>
-            <strong>₦{{money .Total}}</strong>
-            <small>Across completed sales</small>
+
+            <span>
+                Total revenue
+            </span>
+
+
+            <strong>
+                ₦{{money .Total}}
+            </strong>
+
+
+            <small>
+                Across completed sales
+            </small>
+
         </div>
+
 
     </section>
 
-    <section class="sales-card">
 
-        <h2>Sales history</h2>
+
+    <!-- =========================================================
+         SALES HISTORY
+    ========================================================== -->
+
+    <section
+        class="sales-card"
+        aria-labelledby="sales-history-title"
+    >
+
+
+        <h2 id="sales-history-title">
+            Sales History
+        </h2>
+
 
         {{if .Sales}}
 
+
         <div class="sales-table">
+
             <table>
 
                 <thead>
+
                     <tr>
-                        <th>Product</th>
-                        <th>Buyer</th>
-                        <th>Quantity</th>
-                        <th>Total</th>
-                        <th>Status</th>
-                        <th>Date</th>
+
+                        <th scope="col">
+                            Product
+                        </th>
+
+                        <th scope="col">
+                            Buyer
+                        </th>
+
+                        <th scope="col">
+                            Quantity
+                        </th>
+
+                        <th scope="col">
+                            Total
+                        </th>
+
+                        <th scope="col">
+                            Status
+                        </th>
+
+                        <th scope="col">
+                            Date
+                        </th>
+
                     </tr>
+
                 </thead>
+
 
                 <tbody>
 
+
                     {{range .Sales}}
 
+
                     <tr>
-                        <td>{{.CropName}}</td>
-                        <td>{{.BuyerName}}</td>
-                        <td>{{printf "%.0f" .Quantity}}</td>
-                        <td>₦{{money .TotalPrice}}</td>
+
+
+                        <!-- PRODUCT -->
 
                         <td>
+                            {{.ProductName}}
+                        </td>
+
+
+                        <!-- BUYER -->
+
+                        <td>
+                            {{.BuyerName}}
+                        </td>
+
+
+                        <!-- QUANTITY -->
+
+                        <td>
+                            {{printf "%.0f" .Quantity}}
+                        </td>
+
+
+                        <!-- TOTAL -->
+
+                        <td>
+                            ₦{{money .TotalPrice}}
+                        </td>
+
+
+                        <!-- STATUS -->
+
+                        <td>
+
                             <span class="sale-status">
+
                                 {{.Status}}
+
                             </span>
+
                         </td>
 
+
+                        <!-- DATE -->
+
                         <td>
-                            {{.CreatedAt.Format "02 Jan 2006"}}
+
+                            <time
+                                datetime="{{.CreatedAt}}"
+                            >
+                                {{.CreatedAt.Format "02 Jan 2006"}}
+                            </time>
+
                         </td>
+
+
                     </tr>
 
+
                     {{end}}
+
 
                 </tbody>
 
             </table>
+
         </div>
+
 
         {{else}}
 
-        <div class="sales-empty">
-            <h3>No completed sales yet</h3>
+
+        <!-- =====================================================
+             EMPTY STATE
+        ====================================================== -->
+
+        <div
+            class="sales-empty"
+            aria-live="polite"
+        >
+
+            <div
+                class="sales-empty-icon"
+                aria-hidden="true"
+            >
+                📦
+            </div>
+
+
+            <h3>
+                No completed sales yet
+            </h3>
+
 
             <p>
-                List your produce and respond to buyer negotiations
-                to record your first sale.
+                List your agricultural products and respond
+                to buyer negotiations to record your first sale.
             </p>
 
-            <a href="/storage">Manage products</a>
+
+            <a href="/storage">
+                Manage Products
+            </a>
+
         </div>
+
 
         {{end}}
 
+
     </section>
+
 
 </main>
 
-<script src="/static/js/navigation.js"></script>
+
+
+<!-- =============================================================
+     NAVIGATION JAVASCRIPT
+============================================================== -->
+
+<script
+    src="/static/js/navigation.js?v=20260904"
+></script>
+
 
 </body>
+
 </html>

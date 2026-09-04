@@ -1,140 +1,788 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Storage | Agro-Shield</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/storage.css?v=20260824-modal-fit">
+
+<meta
+    name="description"
+    content="Agro-Shield storage management for agricultural products, inventory, GPS location, and marketplace listings."
+>
+
+<title>Storage | Agro-Shield</title>
+
+<link
+    rel="stylesheet"
+    href="/static/css/style.css?v=20260904"
+>
+
+<link
+    rel="stylesheet"
+    href="/static/css/storage.css?v=20260904-storage"
+>
+
 </head>
+
 <body>
 
 <header class="navbar">
-    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
-    <nav aria-label="Main navigation">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/storage" aria-current="page">Storage</a>
-        <a href="/marketplace">Marketplace</a>
-        <a href="/chat">Chat</a>
-        <a href="/ai-assistant">AI Assistant</a>
-        <a href="/cart">Cart</a>
-        <a href="/notifications">Notifications</a>
-        <a href="/profile">Profile</a>
-        <a href="/logout">Logout</a>
+    <div class="navbar-container">
+
+    <a
+        class="navbar-brand"
+        href="/dashboard"
+        aria-label="Agro-Shield Dashboard"
+    >
+        <img
+            src="/static/assets/logo/Agro-Shield_logo.png?v=20260904"
+            alt="Agro-Shield logo"
+            class="navbar-logo"
+        >
+
+        <span class="navbar-title">
+            Agro-Shield
+        </span>
+    </a>
+
+    <nav
+        class="navbar-menu"
+        aria-label="Main navigation"
+    >
+        <a
+            href="/dashboard"
+            class="nav-link"
+        >
+            Dashboard
+        </a>
+
+        <a
+            href="/storage"
+            class="nav-link"
+            aria-current="page"
+        >
+            Storage
+        </a>
+
+        <a
+            href="/marketplace"
+            class="nav-link"
+        >
+            Marketplace
+        </a>
+
+        <a
+            href="/negotiations"
+            class="nav-link"
+        >
+            Negotiations
+        </a>
+
+        <a
+            href="/chat"
+            class="nav-link"
+        >
+            Chat
+        </a>
+
+        <a
+            href="/cart"
+            class="nav-link"
+        >
+            Cart
+        </a>
+
+        <a
+            href="/ai-assistant"
+            class="nav-link"
+        >
+            AI Assistant
+        </a>
+
+        <a
+            href="/profile"
+            class="nav-link"
+        >
+            Profile
+        </a>
+
+        <a
+            href="/notifications"
+            class="nav-link notification-link"
+            aria-label="Notifications"
+        >
+            <span
+                class="notification-bell"
+                aria-hidden="true"
+            >
+                🔔
+            </span>
+
+            <span class="notification-label">
+                Notifications
+            </span>
+        </a>
+
+        <a
+            href="/logout"
+            class="nav-link logout-link"
+        >
+            Logout
+        </a>
     </nav>
+
+</div>
+
 </header>
 
 <main class="storage">
 
-    <div class="storage-header">
-        <div>
-            <h1>Storage Management</h1>
-            <p>Register your produce and choose what to list on the Marketplace.</p>
-        </div>
-        <button id="add-btn" type="button">Add product</button>
+<section
+    class="storage-header"
+    aria-labelledby="storage-title"
+>
+    <div>
+        <h1 id="storage-title">
+            Storage Management
+        </h1>
+
+        <p>
+            Manage your agricultural products, monitor stored inventory,
+            and choose what to list on the Marketplace.
+        </p>
     </div>
 
-    {{if .Error}}
-    <p class="message" style="color:red;">{{.Error}}</p>
-    {{end}}
+    <button
+        id="add-btn"
+        type="button"
+        class="btn btn-primary"
+    >
+        Add Product
+    </button>
+</section>
 
-    <div class="storage-search">
-        <input type="search" id="search" placeholder="Search produce...">
-    </div>
 
+{{if .Error}}
+<p
+    class="message error-message"
+    role="alert"
+>
+    {{.Error}}
+</p>
+{{end}}
+
+
+<section
+    class="storage-search"
+    aria-label="Search stored products"
+>
+    <label
+        for="search"
+        class="sr-only"
+    >
+        Search products
+    </label>
+
+    <input
+        type="search"
+        id="search"
+        placeholder="Search products..."
+        autocomplete="off"
+        aria-label="Search products"
+    >
+</section>
+
+
+<section
+    class="storage-table-wrapper"
+    aria-label="Stored products"
+>
     <table>
+
         <thead>
             <tr>
-                <th>Photo</th>
-                <th>Products</th>
-                <th>Quantity</th>
-                <th>Unit</th>
-                <th>Location</th>
-                <th>Price/Unit</th>
-                <th>Listed for Sale</th>
-                <th>Date Stored</th>
-                <th>Actions</th>
+                <th scope="col">Photo</th>
+                <th scope="col">Product</th>
+                <th scope="col">Category</th>
+                <th scope="col">Quantity</th>
+                <th scope="col">Unit</th>
+                <th scope="col">Location</th>
+                <th scope="col">Price / Unit</th>
+                <th scope="col">Marketplace</th>
+                <th scope="col">Date Stored</th>
+                <th scope="col">Actions</th>
             </tr>
         </thead>
+
         <tbody id="storage-body">
-            {{range .Crops}}
+
+            {{range .Products}}
+
+            {{$product := .}}
+
             <tr data-product-name="{{.Name}}">
-                <td>{{if .ImageURL}}<img src="{{.ImageURL}}" alt="{{.Name}}" class="thumb">{{else}}—{{end}}</td>
-                <td>{{.Name}}</td>
-                <td>{{.Quantity}}</td>
-                <td>{{.Unit}}</td>
-                <td>{{.Location}}</td>
-                <td>₦{{money .PricePerUnit}}</td>
-                <td>{{if .ListedForSale}}Yes{{else}}No{{end}}</td>
-                <td>{{.CreatedAt.Format "02 Jan 2006"}}</td>
+
+                <td>
+                    {{if .Images}}
+
+                        {{range .Images}}
+
+                            {{if .IsPrimary}}
+
+                            <img
+                                src="{{.ImageURL}}"
+                                alt="{{ $product.Name }} product photo"
+                                class="thumb"
+                                loading="lazy"
+                            >
+
+                            {{end}}
+
+                        {{end}}
+
+                    {{else}}
+
+                        <span class="no-image">
+                            —
+                        </span>
+
+                    {{end}}
+                </td>
+
+
+                <td>
+                    <strong>
+                        {{.Name}}
+                    </strong>
+                </td>
+
+
+                <td>
+                    {{if .Category}}
+                        {{.Category}}
+                    {{else}}
+                        —
+                    {{end}}
+                </td>
+
+
+                <td>
+                    {{.Quantity}}
+                </td>
+
+
+                <td>
+                    {{.Unit}}
+                </td>
+
+
+                <td>
+                    {{if .Location}}
+                        {{.Location}}
+                    {{else}}
+                        —
+                    {{end}}
+                </td>
+
+
+                <td>
+                    ₦{{money .Price}}
+                </td>
+
+
+                <td>
+
+                    {{if eq .Status "active"}}
+
+                    <span class="status status-active">
+                        Listed
+                    </span>
+
+                    {{else if eq .Status "sold_out"}}
+
+                    <span class="status status-sold-out">
+                        Sold Out
+                    </span>
+
+                    {{else}}
+
+                    <span class="status status-inactive">
+                        Not Listed
+                    </span>
+
+                    {{end}}
+
+                </td>
+
+
+                <td>
+                    {{.CreatedAt.Format "02 Jan 2006"}}
+                </td>
+
+
                 <td class="product-actions">
-                    <a class="product-action edit-action" href="/storage?edit={{.ID}}">Edit</a>
-                    <form method="POST" action="/storage">
-                        <input type="hidden" name="action" value="{{if .ListedForSale}}unlist{{else}}relist{{end}}">
-                        <input type="hidden" name="crop_id" value="{{.ID}}">
-                        <button type="submit" class="product-action listing-action">{{if .ListedForSale}}Unlist{{else}}List{{end}}</button>
+
+                    <a
+                        class="product-action edit-action"
+                        href="/storage?edit={{.ID}}"
+                    >
+                        Edit
+                    </a>
+
+
+                    {{if eq .Status "active"}}
+
+                    <form
+                        method="POST"
+                        action="/storage"
+                    >
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="unlist"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="product_id"
+                            value="{{.ID}}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="product-action listing-action"
+                        >
+                            Unlist
+                        </button>
                     </form>
-                    <form method="POST" action="/storage" class="delete-form">
-                        <input type="hidden" name="action" value="delete">
-                        <input type="hidden" name="crop_id" value="{{.ID}}">
-                        <button type="submit" class="product-action delete-action">Delete</button>
+
+                    {{else}}
+
+                    <form
+                        method="POST"
+                        action="/storage"
+                    >
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="relist"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="product_id"
+                            value="{{.ID}}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="product-action listing-action"
+                        >
+                            List
+                        </button>
                     </form>
+
+                    {{end}}
+
+
+                    <form
+                        method="POST"
+                        action="/storage"
+                        class="delete-form"
+                    >
+                        <input
+                            type="hidden"
+                            name="action"
+                            value="delete"
+                        >
+
+                        <input
+                            type="hidden"
+                            name="product_id"
+                            value="{{.ID}}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="product-action delete-action"
+                        >
+                            Delete
+                        </button>
+                    </form>
+
+                </td>
+
+            </tr>
+
+            {{else}}
+
+            <tr>
+                <td colspan="10">
+
+                    No products in storage yet —
+                    add your first agricultural product above.
+
                 </td>
             </tr>
-            {{else}}
-            <tr><td colspan="9">No product in storage yet — add your first item above.</td></tr>
+
             {{end}}
+
         </tbody>
     </table>
+</section>
 
-    <div id="modal" class="modal{{if .EditCrop}} modal-open{{end}}">
-        <form id="storage-form" method="POST" action="/storage" enctype="multipart/form-data">
-            <h2 id="modal-title">{{if .EditCrop}}Edit Product{{else}}Add Product{{end}}</h2>
-            <input type="hidden" name="action" id="form-action" value="{{if .EditCrop}}update{{else}}create{{end}}">
-            <input type="hidden" name="crop_id" id="crop-id" value="{{if .EditCrop}}{{.EditCrop.ID}}{{end}}">
-            <input type="hidden" name="image_url" id="image-url" value="{{if .EditCrop}}{{.EditCrop.ImageURL}}{{end}}">
 
-            <label>Product Name</label>
-            <input type="text" name="produce" id="produce" value="{{if .EditCrop}}{{.EditCrop.Name}}{{end}}" placeholder="e.g. Maize" required>
+<!--
+    Product Add/Edit Modal
 
-            <label>Quantity</label>
-            <input type="number" step="0.01" min="0.01" name="quantity" id="quantity" value="{{if .EditCrop}}{{.EditCrop.Quantity}}{{end}}" required>
+    The same form handles both product creation and
+    product updates.
 
-            <label>Unit</label>
-            <input type="text" name="unit" id="unit" value="{{if .EditCrop}}{{.EditCrop.Unit}}{{end}}" placeholder="Bags, Kg, Tons..." required>
+    The backend determines the operation using the
+    hidden "action" field.
+-->
 
-            <label>Farm Location Name</label>
-            <input type="text" name="location" id="location" value="{{if .EditCrop}}{{.EditCrop.Location}}{{end}}" placeholder="e.g. Otukpo farm" required>
+<div
+    id="modal"
+    class="modal{{if .EditProduct}} modal-open{{end}}"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+>
 
-            <input type="hidden" name="latitude" id="latitude" value="{{if .EditCrop}}{{.EditCrop.Latitude}}{{end}}">
-            <input type="hidden" name="longitude" id="longitude" value="{{if .EditCrop}}{{.EditCrop.Longitude}}{{end}}">
-            <input type="hidden" name="location_accuracy" id="location-accuracy" value="{{if .EditCrop}}{{.EditCrop.LocationAccuracy}}{{end}}">
-            <button type="button" id="capture-location">Capture farm location</button>
-            <small id="location-status">{{if and .EditCrop (hasCoordinates .EditCrop.Latitude .EditCrop.Longitude)}}Saved GPS location will be kept unless you capture it again.{{else}}Capture GPS while physically at the farm location.{{end}}</small>
+    <form
+        id="storage-form"
+        method="POST"
+        action="/storage"
+        enctype="multipart/form-data"
+    >
 
-            <label>Price per Unit (₦)</label>
-            <input type="number" step="0.01" min="0" name="price" id="price" value="{{if .EditCrop}}{{.EditCrop.PricePerUnit}}{{end}}" placeholder="Required if listing for sale" required>
+        <h2 id="modal-title">
 
-            <label>Photo</label>
-            <input type="file" name="produce_image" id="produce-image" accept="image/*" {{if not .EditCrop}}required{{end}}>
-            <small id="image-help">{{if .EditCrop}}Leave empty to keep the current image.{{else}}A product photo is required.{{end}}</small>
+            {{if .EditProduct}}
+                Edit Product
+            {{else}}
+                Add Product
+            {{end}}
 
-            <label class="checkbox-row">
-                <input type="checkbox" name="list_for_sale" id="list-for-sale" {{if .EditCrop}}{{if .EditCrop.ListedForSale}}checked{{end}}{{end}}>
-                List this on the Marketplace
-            </label>
+        </h2>
 
-            <div class="modal-actions">
-                <button type="submit">Save</button>
-                <a href="/storage" id="close-btn" class="cancel-action">Cancel</a>
-            </div>
-        </form>
-    </div>
+
+        <input
+            type="hidden"
+            name="action"
+            id="form-action"
+            value="{{if .EditProduct}}update{{else}}create{{end}}"
+        >
+
+
+        <input
+            type="hidden"
+            name="product_id"
+            id="product-id"
+            value="{{if .EditProduct}}{{.EditProduct.ID}}{{end}}"
+        >
+
+
+        <label for="produce">
+            Product Name
+        </label>
+
+        <input
+            type="text"
+            name="produce"
+            id="produce"
+            value="{{if .EditProduct}}{{.EditProduct.Name}}{{end}}"
+            placeholder="e.g. Maize, Fish, Eggs, Honey"
+            maxlength="150"
+            required
+        >
+
+
+        <label for="description">
+            Description
+        </label>
+
+        <textarea
+            name="description"
+            id="description"
+            placeholder="Describe your product..."
+            maxlength="1000"
+            rows="4"
+        >{{if .EditProduct}}{{.EditProduct.Description}}{{end}}</textarea>
+
+
+        <label for="category">
+            Agricultural Category
+        </label>
+
+        <select
+            name="category"
+            id="category"
+            required
+        >
+            <option value="">
+                Select category
+            </option>
+
+            <option
+                value="crops"
+                {{if .EditProduct}}{{if eq .EditProduct.Category "crops"}}selected{{end}}{{end}}
+            >
+                Crops
+            </option>
+
+            <option
+                value="livestock"
+                {{if .EditProduct}}{{if eq .EditProduct.Category "livestock"}}selected{{end}}{{end}}
+            >
+                Livestock
+            </option>
+
+            <option
+                value="poultry"
+                {{if .EditProduct}}{{if eq .EditProduct.Category "poultry"}}selected{{end}}{{end}}
+            >
+                Poultry
+            </option>
+
+            <option
+                value="fisheries"
+                {{if .EditProduct}}{{if eq .EditProduct.Category "fisheries"}}selected{{end}}{{end}}
+            >
+                Fisheries / Aquaculture
+            </option>
+
+            <option
+                value="beekeeping"
+                {{if .EditProduct}}{{if eq .EditProduct.Category "beekeeping"}}selected{{end}}{{end}}
+            >
+                Beekeeping
+            </option>
+
+            <option
+                value="other"
+                {{if .EditProduct}}{{if eq .EditProduct.Category "other"}}selected{{end}}{{end}}
+            >
+                Other Agriculture
+            </option>
+        </select>
+
+
+        <label for="quantity">
+            Quantity
+        </label>
+
+        <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            name="quantity"
+            id="quantity"
+            value="{{if .EditProduct}}{{.EditProduct.Quantity}}{{end}}"
+            required
+        >
+
+
+        <label for="unit">
+            Unit
+        </label>
+
+        <input
+            type="text"
+            name="unit"
+            id="unit"
+            value="{{if .EditProduct}}{{.EditProduct.Unit}}{{end}}"
+            placeholder="Bags, Kg, Tons, Litres, Crates..."
+            maxlength="50"
+            required
+        >
+
+
+        <label for="location">
+            Farm / Production Location
+        </label>
+
+        <input
+            type="text"
+            name="location"
+            id="location"
+            value="{{if .EditProduct}}{{.EditProduct.Location}}{{end}}"
+            placeholder="e.g. Otukpo farm"
+            maxlength="200"
+            required
+        >
+
+
+        <label for="community">
+            Community
+        </label>
+
+        <input
+            type="text"
+            name="community"
+            id="community"
+            value="{{if .EditProduct}}{{.EditProduct.Community}}{{end}}"
+            placeholder="e.g. Otukpa"
+            maxlength="150"
+        >
+
+
+        <!--
+            GPS coordinates are managed by storage.js.
+
+            The coordinates allow Agro-Shield to associate
+            products with their actual agricultural location.
+        -->
+
+        <input
+            type="hidden"
+            name="latitude"
+            id="latitude"
+            value="{{if .EditProduct}}{{.EditProduct.Latitude}}{{end}}"
+        >
+
+
+        <input
+            type="hidden"
+            name="longitude"
+            id="longitude"
+            value="{{if .EditProduct}}{{.EditProduct.Longitude}}{{end}}"
+        >
+
+
+        <input
+            type="hidden"
+            name="location_accuracy"
+            id="location-accuracy"
+            value="{{if .EditProduct}}{{.EditProduct.LocationAccuracy}}{{end}}"
+        >
+
+
+        <button
+            type="button"
+            id="capture-location"
+            class="location-button"
+        >
+            Capture Farm Location
+        </button>
+
+
+        <small id="location-status">
+
+            {{if and .EditProduct (hasCoordinates .EditProduct.Latitude .EditProduct.Longitude)}}
+
+                Saved GPS location will be kept unless you capture it again.
+
+            {{else}}
+
+                Capture GPS while physically at the farm or production location.
+
+            {{end}}
+
+        </small>
+
+
+        <label for="price">
+            Price per Unit (₦)
+        </label>
+
+        <input
+            type="number"
+            step="0.01"
+            min="0"
+            name="price"
+            id="price"
+            value="{{if .EditProduct}}{{.EditProduct.Price}}{{end}}"
+            placeholder="Enter price per unit"
+            required
+        >
+
+
+        <label for="produce-image">
+            Product Photo
+        </label>
+
+        <input
+            type="file"
+            name="produce_image"
+            id="produce-image"
+            accept="image/jpeg,image/png,image/webp"
+            {{if not .EditProduct}}required{{end}}
+        >
+
+
+        <small id="image-help">
+
+            {{if .EditProduct}}
+
+                Leave empty to keep the current product image.
+
+            {{else}}
+
+                A product photo is required.
+
+            {{end}}
+
+        </small>
+
+
+        <label class="checkbox-row">
+
+            <input
+                type="checkbox"
+                name="list_for_sale"
+                id="list-for-sale"
+                {{if .EditProduct}}
+                    {{if eq .EditProduct.Status "active"}}
+                        checked
+                    {{end}}
+                {{end}}
+            >
+
+            <span>
+                List this product on the Marketplace
+            </span>
+
+        </label>
+
+
+        <div class="modal-actions">
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Save Product
+            </button>
+
+
+            <a
+                href="/storage"
+                id="close-btn"
+                class="cancel-action"
+            >
+                Cancel
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+```
 
 </main>
 
-<script src="/static/js/storage.js?v=20260824-product-actions"></script>
+<script
+    src="/static/js/storage.js?v=20260904-storage"
+    defer
+></script>
 
-<script src="/static/js/navigation.js"></script>
+<script
+    src="/static/js/navigation.js?v=20260904"
+    defer
+></script>
+
 </body>
 </html>

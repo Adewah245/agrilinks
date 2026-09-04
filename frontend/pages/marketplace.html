@@ -1,194 +1,498 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Browse agricultural products, connect with sellers, place orders, and negotiate prices on the Agro-Shield marketplace."
+    >
 
     <title>Marketplace | Agro-Shield</title>
 
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/marketplace.css">
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css?v=20260904"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/marketplace.css?v=20260904"
+    >
 </head>
+
 
 <body>
 
+<!-- =========================
+     STICKY NAVIGATION HEADER
+========================== -->
 <header class="navbar">
 
-    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+    <a
+        class="logo"
+        href="/dashboard"
+        aria-label="Agro-Shield dashboard"
+    >
+        <img
+            src="/static/assets/logo/Agro-Shield_logo.png"
+            alt="Agro-Shield logo"
+        >
+    </a>
+
 
     <nav aria-label="Main navigation">
-        <a href="/dashboard">Dashboard</a>
+
+        <a href="/dashboard">
+            Dashboard
+        </a>
 
         {{if not .IsBuyer}}
-            <a href="/storage">Storage</a>
-        {{end}}
-        {{if not .IsBuyer}}
-            <a href="/ai-assistant">AI Assistant</a>
+        <a href="/storage">
+            Storage
+        </a>
         {{end}}
 
-        <a href="/profile">Profile</a>
-        <a href="/notifications">Notifications</a>
-        <a href="/logout">Logout</a>
+        <a href="/marketplace">
+            Marketplace
+        </a>
+
+        <a href="/negotiations">
+            Negotiations
+        </a>
+
+        <a href="/chat">
+            Chat
+        </a>
+
+        <a
+            href="/cart"
+            aria-label="Shopping cart"
+        >
+            🛒
+        </a>
+
+        <a href="/ai-assistant">
+            AI Assistant
+        </a>
+
+        <a href="/profile">
+            Profile
+        </a>
+
+        <a href="/notifications">
+            Notifications
+        </a>
+
+        <a href="/logout">
+            Logout
+        </a>
+
     </nav>
 
 </header>
 
+
 <main class="marketplace">
 
+    <!-- =========================
+         MARKETPLACE HEADER
+    ========================== -->
     <div class="market-header">
 
         <div>
-            <h1>Marketplace</h1>
+
+            <p class="eyebrow">
+                Agricultural Commerce
+            </p>
+
+            <h1>
+                Marketplace
+            </h1>
+
 
             {{if .IsBuyer}}
-                <p>Browse fresh produce from farmers and place an order.</p>
+
+            <p>
+                Browse agricultural products from verified
+                sellers, compare available products, place
+                orders, and negotiate prices.
+            </p>
+
             {{else}}
-                <p>See what's currently listed for sale across Agro-Shield.</p>
+
+            <p>
+                Discover agricultural products currently
+                listed for sale across Agro-Shield.
+            </p>
+
             {{end}}
+
         </div>
 
     </div>
 
+
+    <!-- =========================
+         SUCCESS MESSAGE
+    ========================== -->
     {{if .Message}}
-        <p class="message" style="color:green;">
-            {{.Message}}
-        </p>
+
+    <p
+        class="message success-message"
+        role="status"
+        aria-live="polite"
+    >
+        {{.Message}}
+    </p>
+
     {{end}}
 
+
+    <!-- =========================
+         ERROR MESSAGE
+    ========================== -->
     {{if .Error}}
-        <p class="message" style="color:red;">
-            {{.Error}}
-        </p>
+
+    <p
+        class="message error-message"
+        role="alert"
+        aria-live="assertive"
+    >
+        {{.Error}}
+    </p>
+
     {{end}}
 
-    <form method="post" action="/marketplace" class="marketplace-search-form">
-        <input type="hidden" name="action" value="search">
-        <input type="search" name="search_term" id="search" placeholder="Search products..." class="search-box">
-        <button type="submit">Search</button>
+
+    <!-- =========================
+         SEARCH
+    ========================== -->
+    <form
+        method="POST"
+        action="/marketplace"
+        class="marketplace-search-form"
+        role="search"
+    >
+
+        <input
+            type="hidden"
+            name="action"
+            value="search"
+        >
+
+        <label
+            for="search"
+            class="sr-only"
+        >
+            Search agricultural products
+        </label>
+
+        <input
+            type="search"
+            name="search_term"
+            id="search"
+            placeholder="Search agricultural products..."
+            class="search-box"
+            autocomplete="off"
+            maxlength="100"
+        >
+
+        <button
+            type="submit"
+            aria-label="Search agricultural products"
+        >
+            Search
+        </button>
+
     </form>
 
-    <section class="product-grid" id="product-grid">
 
-        {{range .Crops}}
+    <!-- =========================
+         PRODUCT GRID
+    ========================== -->
+    <section
+        class="product-grid"
+        id="product-grid"
+        aria-label="Available agricultural products"
+    >
 
-            <div class="product-card">
+        {{range .Products}}
 
-                {{if .ImageURL}}
+        <article class="product-card">
+
+            <!-- =========================
+                 PRODUCT IMAGE
+            ========================== -->
+            {{if .ImageURL}}
+
+            <img
+                src="{{.ImageURL}}"
+                alt="{{.Name}}"
+                class="product-image"
+                loading="lazy"
+            >
+
+            {{end}}
+
+
+            <!-- =========================
+                 PRODUCT NAME
+            ========================== -->
+            <h3>
+                {{.Name}}
+            </h3>
+
+
+            <!-- =========================
+                 PRODUCT PRICE
+            ========================== -->
+            <p class="price">
+
+                ₦{{money .PricePerUnit}}
+                /
+                {{.Unit}}
+
+            </p>
+
+
+            <!-- =========================
+                 SELLER
+            ========================== -->
+            <p>
+
+                <span class="seller-identity">
+
+                    {{if .SellerPhotoURL}}
+
                     <img
-                        src="{{.ImageURL}}"
-                        alt="{{.Name}}"
-                        class="product-image"
+                        src="{{.SellerPhotoURL}}"
+                        alt=""
+                        loading="lazy"
                     >
-                {{end}}
 
-                <h3>{{.Name}}</h3>
-
-                <p class="price">
-                    ₦{{money .PricePerUnit}} / {{.Unit}}
-                </p>
-
-                <p>
-                    <span class="seller-identity">{{if .SellerPhotoURL}}<img src="{{.SellerPhotoURL}}" alt="">{{else}}<span>👤</span>{{end}} Seller: {{.SellerName}}</span>
-                </p>
-
-                <p>
-                    {{.Quantity}} {{.Unit}} available
-                </p>
-
-                <p class="product-location">
-                    <strong>Location:</strong>
-                    {{if .Location}}
-                        <a href="https://www.google.com/maps/search/?api=1&query={{urlquery .Location}}" target="_blank" rel="noopener" aria-label="View {{.Name}} location on Google Maps">{{.Location}} <span>↗</span></a>
                     {{else}}
-                        Location not provided
-                    {{end}}
-                </p>
 
-                <!-- Opens the Product Details page. -->
-                <a href="/product?id={{.ID}}" class="view-product" aria-label="View {{.Name}} product details">
-                    View Product
+                    <span aria-hidden="true">
+                        👤
+                    </span>
+
+                    {{end}}
+
+                    Seller:
+                    {{.SellerName}}
+
+                </span>
+
+            </p>
+
+
+            <!-- =========================
+                 AVAILABLE QUANTITY
+            ========================== -->
+            <p>
+
+                {{.Quantity}}
+                {{.Unit}}
+                available
+
+            </p>
+
+
+            <!-- =========================
+                 LOCATION
+            ========================== -->
+            <p class="product-location">
+
+                <strong>
+                    Location:
+                </strong>
+
+
+                {{if .Location}}
+
+                <a
+                    href="https://www.google.com/maps/search/?api=1&query={{urlquery .Location}}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="View {{.Name}} location on Google Maps"
+                >
+                    {{.Location}}
+                    <span aria-hidden="true">
+                        ↗
+                    </span>
                 </a>
 
-                {{if $.IsBuyer}}
+                {{else}}
 
-                    <form
-                        method="POST"
-                        action="/marketplace"
-                        class="buy-form"
-                    >
-
-                        <input
-                            type="hidden"
-                            name="crop_id"
-                            value="{{.ID}}"
-                        >
-
-                        <input
-                            type="number"
-                            name="quantity"
-                            min="0.01"
-                            max="{{.Quantity}}"
-                            step="0.01"
-                            placeholder="Qty"
-                            required
-                        >
-
-                        <button type="submit">
-                            Buy
-                        </button>
-
-                    </form>
+                <span>
+                    Location not provided
+                </span>
 
                 {{end}}
 
-                {{if ne .FarmerID $.CurrentUserID}}
+            </p>
 
-                    <form
-                        method="POST"
-                        action="/negotiation/start"
-                        class="negotiate-form"
-                    >
 
-                        <input
-                            type="hidden"
-                            name="crop_id"
-                            value="{{.ID}}"
-                        >
+            <!-- =========================
+                 PRODUCT DETAILS
+            ========================== -->
+            <a
+                href="/product?id={{.ID}}"
+                class="view-product"
+                aria-label="View {{.Name}} product details"
+            >
+                View Product
+            </a>
 
-                        <input
-                            type="number"
-                            name="quantity"
-                            min="0.01"
-                            max="{{.Quantity}}"
-                            step="0.01"
-                            placeholder="Qty"
-                            required
-                        >
 
-                        <input
-                            type="number"
-                            name="offer_price"
-                            min="0.01"
-                            step="0.01"
-                            placeholder="Your offer ₦"
-                            required
-                        >
+            <!-- =========================
+                 BUY PRODUCT
+            ========================== -->
+            {{if $.IsBuyer}}
 
-                        <button type="submit">
-                            Negotiate
-                        </button>
+            <form
+                method="POST"
+                action="/marketplace"
+                class="buy-form"
+            >
 
-                    </form>
+                <input
+                    type="hidden"
+                    name="product_id"
+                    value="{{.ID}}"
+                >
 
-                {{end}}
+                <label
+                    for="buy-quantity-{{.ID}}"
+                    class="sr-only"
+                >
+                    Quantity of {{.Name}} to buy
+                </label>
 
-            </div>
+                <input
+                    type="number"
+                    id="buy-quantity-{{.ID}}"
+                    name="quantity"
+                    min="0.01"
+                    max="{{.Quantity}}"
+                    step="0.01"
+                    placeholder="Qty"
+                    required
+                    inputmode="decimal"
+                    aria-label="Quantity of {{.Name}} to buy"
+                >
+
+                <button
+                    type="submit"
+                >
+                    Buy
+                </button>
+
+            </form>
+
+            {{end}}
+
+
+            <!-- =========================
+                 NEGOTIATION
+            ========================== -->
+            {{if ne .OwnerID $.CurrentUserID}}
+
+            <form
+                method="POST"
+                action="/negotiation/start"
+                class="negotiate-form"
+            >
+
+                <input
+                    type="hidden"
+                    name="product_id"
+                    value="{{.ID}}"
+                >
+
+                <label
+                    for="negotiation-quantity-{{.ID}}"
+                    class="sr-only"
+                >
+                    Quantity of {{.Name}} to negotiate
+                </label>
+
+                <input
+                    type="number"
+                    id="negotiation-quantity-{{.ID}}"
+                    name="quantity"
+                    min="0.01"
+                    max="{{.Quantity}}"
+                    step="0.01"
+                    placeholder="Qty"
+                    required
+                    inputmode="decimal"
+                >
+
+
+                <label
+                    for="offer-price-{{.ID}}"
+                    class="sr-only"
+                >
+                    Your offer price for {{.Name}}
+                </label>
+
+                <input
+                    type="number"
+                    id="offer-price-{{.ID}}"
+                    name="offer_price"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="Your offer ₦"
+                    required
+                    inputmode="decimal"
+                >
+
+
+                <button
+                    type="submit"
+                >
+                    Negotiate
+                </button>
+
+            </form>
+
+            {{end}}
+
+        </article>
+
 
         {{else}}
 
+        <!-- =========================
+             EMPTY MARKETPLACE
+        ========================== -->
+        <div class="empty-state">
+
             <p>
-                No product listed for sale yet.
+                No agricultural products are currently
+                listed for sale.
             </p>
+
+            {{if not .IsBuyer}}
+
+            <a
+                href="/storage"
+                class="primary-btn"
+            >
+                Add Product
+            </a>
+
+            {{end}}
+
+        </div>
 
         {{end}}
 
@@ -196,8 +500,11 @@
 
 </main>
 
-<script src="/static/js/marketplace.js"></script>
 
-<script src="/static/js/navigation.js"></script>
+<script src="/static/js/marketplace.js?v=20260904"></script>
+
+<script src="/static/js/navigation.js?v=20260904"></script>
+
 </body>
+
 </html>

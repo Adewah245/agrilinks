@@ -1,77 +1,100 @@
-const loginForm = document.getElementById("login-form");
+document.addEventListener("DOMContentLoaded", () => {
+  const loginForm = document.getElementById("login-form");
+  if (!loginForm) return;
 
-const phone = document.getElementById("phone");
-const password = document.getElementById("password");
+  const phone = document.getElementById("phone");
+  const password = document.getElementById("password");
+  const button = loginForm.querySelector("button[type='submit']");
 
-const button = loginForm.querySelector("button[type='submit']");
-
-// Create message container for client-side validation errors
-const message = document.createElement("p");
-message.className = "message";
-loginForm.appendChild(message);
-
-// ---------- Show Password ----------
-
-const toggle = document.getElementById("toggle-password");
-
-toggle.addEventListener("click", () => {
-  if (password.type === "password") {
-    password.type = "text";
-    toggle.classList.remove("fa-eye");
-    toggle.classList.add("fa-eye-slash");
+  // Create message container and place it right above the inputs for better visibility
+  const message = document.createElement("p");
+  message.className = "message";
+  message.setAttribute("aria-live", "polite"); // Screen reader support for dynamic error messages
+  
+  const formHeading = loginForm.querySelector("h2");
+  if (formHeading && formHeading.nextSibling) {
+    loginForm.insertBefore(message, formHeading.nextSibling);
   } else {
-    password.type = "password";
-    toggle.classList.remove("fa-eye-slash");
-    toggle.classList.add("fa-eye");
+    loginForm.prepend(message);
+  }
+
+  // ---------- Password Visibility Toggle ----------
+
+  const toggle = document.getElementById("toggle-password");
+
+  if (toggle && password) {
+    toggle.addEventListener("click", () => {
+      const isPassword = password.type === "password";
+      
+      // Toggle field type
+      password.type = isPassword ? "text" : "password";
+      
+      // Toggle icon classes
+      const icon = toggle.querySelector("i") || toggle;
+      icon.classList.toggle("fa-eye", !isPassword);
+      icon.classList.toggle("fa-eye-slash", isPassword);
+
+      // Update accessibility state
+      toggle.setAttribute("aria-pressed", isPassword ? "true" : "false");
+      toggle.setAttribute(
+        "aria-label",
+        isPassword ? "Hide password" : "Show password"
+      );
+    });
+  }
+
+  // ---------- Form Submission & Validation ----------
+
+  loginForm.addEventListener("submit", function (event) {
+    message.textContent = "";
+
+    // Basic Phone Validation
+    if (!phone.value.trim()) {
+      event.preventDefault();
+      message.textContent = "Phone number is required.";
+      phone.focus();
+      return;
+    }
+
+    // Basic Password Length Validation
+    if (password.value.length < 8) {
+      event.preventDefault();
+      message.textContent = "Password must be at least 8 characters.";
+      password.focus();
+      return;
+    }
+
+    // Validation passed — lock button to prevent double submissions
+    button.disabled = true;
+    button.textContent = "Signing In...";
+  });
+
+  // ---------- Background Image Rotator (with Preloading) ----------
+
+  const loginImages = [
+    "/static/assets/images/login-image1.jpeg",
+    "/static/assets/images/login-image2.jpeg",
+    "/static/assets/images/login-image3.jpeg",
+    "/static/assets/images/login-image4.jpeg",
+    "/static/assets/images/login-image5.jpeg"
+  ];
+
+  const background = document.getElementById("auth-background");
+
+  if (background && loginImages.length > 1) {
+    // Preload images into browser memory to eliminate flash on slide change
+    loginImages.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+
+    let current = 0;
+
+    function changeBackground() {
+      current = (current + 1) % loginImages.length;
+      background.src = loginImages[current];
+    }
+
+    setInterval(changeBackground, 4000);
   }
 });
-
-// ---------- Login ----------
-
-loginForm.addEventListener("submit", function (event) {
-
-  message.textContent = "";
-
-  if (phone.value.trim() === "") {
-    event.preventDefault();
-    message.textContent = "Phone number is required.";
-    message.style.color = "red";
-    phone.focus();
-    return;
-  }
-
-  if (password.value.length < 8) {
-    event.preventDefault();
-    message.textContent = "Password must be at least 8 characters.";
-    message.style.color = "red";
-    password.focus();
-    return;
-  }
-
-  // Validation passed — let the form submit for real to POST /login.
-  // The server checks the password and creates the session.
-  button.disabled = true;
-  button.textContent = "Signing In...";
-});
-
-// ---------- Background Images ----------
-
-const loginImages = [
-  "/static/assets/images/login-image1.jpeg",
-  "/static/assets/images/login-image2.jpeg",
-  "/static/assets/images/login-image3.jpeg",
-  "/static/assets/images/login-image4.jpeg",
-  "/static/assets/images/login-image5.jpeg"
-];
-
-const background = document.getElementById("auth-background");
-
-let current = 0;
-
-function changeBackground() {
-  current++;
-  if (current >= loginImages.length) current = 0;
-  background.src = loginImages[current];
-}
-
-setInterval(changeBackground, 4000);

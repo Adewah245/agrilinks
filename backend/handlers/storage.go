@@ -12,13 +12,18 @@ import (
 	"backend/render"
 )
 
-// Storage handles user product storage operations.
+// Storage handles product storage operations for authenticated users.
 //
 // Storage is responsible for creating, updating, listing, unlisting,
-// relisting, and deleting products owned by the authenticated user.
+// relisting, and deleting agricultural products owned by the authenticated
+// user.
 //
-// The storage feature is also designed to support future weather-based
-// monitoring and agricultural storage alerts.
+// The storage feature is designed to support different agricultural
+// activities, including crops, livestock, poultry, fisheries, beekeeping,
+// and other product categories supported by Agro-Shield.
+//
+// Weather-based storage monitoring and agricultural alerts can be added
+// later without changing the core product CRUD operations.
 type Storage struct {
 	product *services.ProductService
 }
@@ -30,8 +35,11 @@ func NewStorageHandler(product *services.ProductService) *Storage {
 	}
 }
 
-// StoragePageData contains the information needed to render
-// the user's storage page.
+// StoragePageData contains the data required to render the storage page.
+//
+// Products contains the authenticated user's products, while EditProduct
+// contains the optional product selected for editing. Error contains a
+// user-facing message when a storage operation fails.
 type StoragePageData struct {
 	FullName    string
 	Products    []models.Product
@@ -39,11 +47,11 @@ type StoragePageData struct {
 	Error       string
 }
 
-// StorageHandler handles all user storage requests.
+// StorageHandler handles authenticated user storage requests.
 //
-// Buyers do not currently have access to personal product storage.
-// Authenticated users who own products can create, update, unlist,
-// relist, and delete their products through this handler.
+// Buyers currently do not have personal product storage and are redirected
+// to the marketplace. Other authenticated users can create, update,
+// unlist, relist, and delete products they own.
 func (h *Storage) StorageHandler(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -129,10 +137,12 @@ func (h *Storage) StorageHandler(
 		// PROCESS STORAGE ACTION
 		// ====================================================
 
+		contentType := strings.ToLower(
+			r.Header.Get("Content-Type"),
+		)
+
 		if strings.HasPrefix(
-			strings.ToLower(
-				r.Header.Get("Content-Type"),
-			),
+			contentType,
 			"multipart/form-data",
 		) {
 			if err := r.ParseMultipartForm(10 << 20); err != nil {
@@ -218,9 +228,13 @@ func (h *Storage) StorageHandler(
 			http.StatusMethodNotAllowed,
 		)
 	}
+
 }
 
-// createProduct handles creation of a new product.
+// createProduct creates a new product owned by the authenticated user.
+//
+// Product pictures are required when creating a product. Uploaded pictures
+// are stored under the products upload directory.
 func (h *Storage) createProduct(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -247,8 +261,11 @@ func (h *Storage) createProduct(
 		r.FormValue("community"),
 	)
 
-	// Keep the existing location field available for the UI.
-	// GPS remains separate and unchanged.
+	// The location name remains available to the UI.
+	//
+	// The current ProductService contract stores geographic
+	// coordinates separately and does not accept a standalone
+	// location-name parameter.
 	_ = strings.TrimSpace(
 		r.FormValue("location"),
 	)
@@ -306,10 +323,7 @@ func (h *Storage) createProduct(
 		"list_for_sale",
 	) == "on"
 
-	// Product pictures are compulsory.
-	//
-	// Product images are stored under the "products"
-	// directory rather than the old "crops" directory.
+	// Product pictures are compulsory when creating a product.
 	imageURLs, err := saveUploadedFiles(
 		r,
 		"produce_image",
@@ -341,8 +355,7 @@ func (h *Storage) createProduct(
 		return
 	}
 
-	// ProductService currently accepts GPS after imageURLs.
-	// GPS values themselves are unchanged.
+	// ProductService accepts GPS information after image URLs.
 	if err := h.product.AddProduct(
 		"user",
 		userID,
@@ -377,9 +390,13 @@ func (h *Storage) createProduct(
 		"/storage",
 		http.StatusSeeOther,
 	)
+
 }
 
-// updateProduct handles editing an existing product.
+// updateProduct updates an existing product owned by the authenticated user.
+//
+// New product pictures are optional during an update. When no new picture
+// is supplied, ProductService preserves the existing product images.
 func (h *Storage) updateProduct(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -422,7 +439,7 @@ func (h *Storage) updateProduct(
 		r.FormValue("community"),
 	)
 
-	// Keep the existing location field available for the UI.
+	// The location name remains available to the UI.
 	_ = strings.TrimSpace(
 		r.FormValue("location"),
 	)
@@ -481,9 +498,6 @@ func (h *Storage) updateProduct(
 	) == "on"
 
 	// New pictures are optional during an update.
-	//
-	// ProductService preserves existing pictures when
-	// imageURLs is empty.
 	imageURLs, uploadErr := saveUploadedFiles(
 		r,
 		"produce_image",
@@ -505,8 +519,6 @@ func (h *Storage) updateProduct(
 		return
 	}
 
-	// ProductService currently accepts GPS after imageURLs.
-	// GPS values themselves are unchanged.
 	if err := h.product.UpdateProduct(
 		"user",
 		userID,
@@ -542,9 +554,11 @@ func (h *Storage) updateProduct(
 		"/storage",
 		http.StatusSeeOther,
 	)
+
 }
 
-// unlistProduct removes a product from the marketplace.
+// unlistProduct removes a product from the marketplace while keeping
+// the product in the user's storage.
 func (h *Storage) unlistProduct(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -588,9 +602,10 @@ func (h *Storage) unlistProduct(
 		"/storage",
 		http.StatusSeeOther,
 	)
+
 }
 
-// relistProduct puts a product back on the marketplace.
+// relistProduct puts an existing product back on the marketplace.
 func (h *Storage) relistProduct(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -634,9 +649,11 @@ func (h *Storage) relistProduct(
 		"/storage",
 		http.StatusSeeOther,
 	)
+
 }
 
-// deleteProduct permanently removes a product.
+// deleteProduct permanently deletes a product owned by the authenticated
+// user.
 func (h *Storage) deleteProduct(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -680,9 +697,10 @@ func (h *Storage) deleteProduct(
 		"/storage",
 		http.StatusSeeOther,
 	)
+
 }
 
-// render loads the user's products and renders the storage page.
+// render renders the storage page with an optional error message.
 func (h *Storage) render(
 	w http.ResponseWriter,
 	userID int,
@@ -698,12 +716,12 @@ func (h *Storage) render(
 	)
 }
 
-// renderPage loads products, their images, and the optional
-// product being edited before rendering storage.html.
+// renderPage loads the authenticated user's products and their images,
+// optionally loads the product being edited, and renders storage.html.
 //
-// This is also the point where future weather-monitoring data
-// can be added to StoragePageData without changing the product
-// CRUD methods themselves.
+// This method is also the appropriate place to add future weather,
+// storage-monitoring, or agricultural alert data without coupling those
+// concerns to the product CRUD methods.
 func (h *Storage) renderPage(
 	w http.ResponseWriter,
 	userID int,
@@ -731,8 +749,7 @@ func (h *Storage) renderPage(
 		return
 	}
 
-	// Load images for every product so the storage page
-	// can display the product pictures.
+	// Load images for every product.
 	for i := range products {
 		images, imageErr := h.product.GetProductImages(
 			products[i].ID,
@@ -749,7 +766,7 @@ func (h *Storage) renderPage(
 		products[i].Images = images
 	}
 
-	// Also load images for the product being edited.
+	// Load images for the product currently being edited.
 	if editProduct != nil {
 		images, imageErr := h.product.GetProductImages(
 			editProduct.ID,
@@ -788,4 +805,5 @@ func (h *Storage) renderPage(
 			http.StatusInternalServerError,
 		)
 	}
+
 }

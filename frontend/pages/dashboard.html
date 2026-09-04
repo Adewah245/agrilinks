@@ -4,19 +4,32 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<meta
+    name="description"
+    content="Agro-Shield agricultural management dashboard for farmers, buyers, and agricultural businesses."
+>
 
 <title>Dashboard | Agro-Shield</title>
 
-<link rel="stylesheet" href="/static/css/style.css">
-<link rel="stylesheet" href="/static/css/dashboard.css?v=20260825-logo-large">
+<link
+    rel="stylesheet"
+    href="/static/css/style.css?v=20260904"
+>
 
+<link
+    rel="stylesheet"
+    href="/static/css/dashboard.css?v=20260904"
+>
 
 </head>
 
 <body>
-
 
 <!-- =========================================================
      NAVIGATION
@@ -24,194 +37,377 @@
 
 <header class="navbar">
 
-    <a class="logo dashboard-logo" href="/dashboard">
+<a
+    class="logo dashboard-logo"
+    href="/dashboard"
+    aria-label="Agro-Shield Dashboard"
+>
 
-        <img
-            src="/static/assets/logo/Agro-Shield_logo.png"
-            alt="Agro-Shield"
+    <img
+        src="/static/assets/logo/Agro-Shield_logo.png"
+        alt="Agro-Shield"
+    >
+
+</a>
+
+
+<nav aria-label="Main navigation">
+
+    <a
+        class="active"
+        href="/dashboard"
+        aria-current="page"
+    >
+        Dashboard
+    </a>
+
+
+    {{if not .IsBuyer}}
+
+        <a href="/storage">
+            Storage
+        </a>
+
+    {{end}}
+
+
+    <a href="/marketplace">
+        Marketplace
+    </a>
+
+
+    <a href="/chat">
+        Chat
+    </a>
+
+
+    {{if .IsBuyer}}
+
+        <a
+            href="/cart"
+            class="cart-nav-link"
         >
+
+            Cart
+
+            {{if .CartItemCount}}
+
+                <span class="cart-badge">
+                    {{.CartItemCount}}
+                </span>
+
+            {{end}}
+
+        </a>
+
+    {{end}}
+
+
+    {{if not .IsBuyer}}
+
+        <a href="/ai-assistant">
+            AI Assistant
+        </a>
+
+        <a href="/sales">
+            Sales
+        </a>
+
+    {{end}}
+
+
+    <a href="/profile">
+        Profile
+    </a>
+
+
+    <a
+        href="/notifications"
+        class="notification-nav-link"
+        aria-label="Notifications"
+    >
+
+        <span aria-hidden="true">
+            🔔
+        </span>
+
+        {{if .UnreadNotifications}}
+
+            <span class="notification-nav-badge">
+                {{.UnreadNotifications}}
+            </span>
+
+        {{end}}
 
     </a>
 
 
-    <nav aria-label="Main navigation">
+    <a href="/logout">
+        Log out
+    </a>
 
-        <a class="active" href="/dashboard">
-            Dashboard
-        </a>
+</nav>
+```
+
+</header>
+
+<!-- =========================================================
+     MAIN DASHBOARD
+========================================================== -->
+
+<main class="dashboard">
+
+<!-- =====================================================
+     DASHBOARD HEADER
+====================================================== -->
+
+<section class="dashboard-header">
 
 
-        {{if not .IsBuyer}}
-
-            <a href="/storage">
-                Storage
-            </a>
-
-        {{end}}
+    <div class="dashboard-intro">
 
 
-        <a href="/marketplace">
-            Marketplace
-        </a>
+        <div class="dashboard-datetime">
+
+            <p
+                class="eyebrow"
+                id="today"
+            >
+                Today
+            </p>
 
 
-        <a href="/chat">
-            Chat
-        </a>
+            <p
+                class="current-time"
+                id="currentTime"
+                aria-live="polite"
+            ></p>
+
+        </div>
+
+
+
+        <h1>
+
+            <span id="greeting">
+                Welcome back
+            </span>,
+
+            {{.FullName}}
+
+        </h1>
+
 
 
         {{if .IsBuyer}}
 
-            <a href="/cart" class="cart-nav-link">
+            <p class="header-copy">
 
-                Cart
+                Find agricultural products from trusted
+                farmers and sellers and keep track of
+                your purchases.
 
-                {{if .CartItemCount}}
-                    <span class="cart-badge">
-                        {{.CartItemCount}}
-                    </span>
-                {{end}}
+            </p>
 
+        {{else}}
+
+            <p class="header-copy">
+
+                Manage your farming activities, products,
+                storage, sales, health, marketplace,
+                and agricultural operations.
+
+            </p>
+
+        {{end}}
+
+
+    </div>
+
+
+
+    <div class="header-actions">
+
+
+        {{if .IsBuyer}}
+
+            <a
+                class="primary-action"
+                href="/marketplace"
+            >
+                Browse marketplace
+            </a>
+
+        {{else}}
+
+            <a
+                class="primary-action"
+                href="/storage"
+            >
+                Add product
             </a>
 
         {{end}}
 
 
-        {{if not .IsBuyer}}
-
-            <a href="/ai-assistant">
-                AI Assistant
-            </a>
-
-            <a href="/sales">
-                Sales
-            </a>
-
-        {{end}}
+    </div>
 
 
-        <a href="/profile">
-            Profile
-        </a>
-
-
-        <a
-            href="/notifications"
-            class="notification-nav-link"
-            aria-label="Notifications"
-        >
-
-            <span aria-hidden="true">
-                🔔
-            </span>
-
-            {{if .UnreadNotifications}}
-
-                <span class="notification-nav-badge">
-                    {{.UnreadNotifications}}
-                </span>
-
-            {{end}}
-
-        </a>
-
-
-        <a href="/logout">
-            Log out
-        </a>
-
-    </nav>
-
-</header>
+</section>
 
 
 
-<main class="dashboard">
+<!-- =====================================================
+     FARMING TYPE OVERVIEW
+====================================================== -->
+
+{{if not .IsBuyer}}
+
+    <section
+        class="panel farming-overview"
+        aria-labelledby="farming-overview-title"
+    >
 
 
-    <!-- =====================================================
-         DASHBOARD HEADER
-    ====================================================== -->
-
-    <section class="dashboard-header">
+        <div class="section-heading">
 
 
-        <div class="dashboard-intro">
+            <div>
 
-
-            <div class="dashboard-datetime">
-
-                <p class="eyebrow" id="today">
-                    Today
+                <p class="eyebrow">
+                    Farming Activities
                 </p>
 
-
-                <p
-                    class="current-time"
-                    id="currentTime"
-                ></p>
+                <h2 id="farming-overview-title">
+                    Your Farm Types
+                </h2>
 
             </div>
 
 
-
-            <h1>
-
-                <span id="greeting">
-                    Welcome back
-                </span>,
-
-                {{.FullName}}
-
-            </h1>
-
-
-
-            {{if .IsBuyer}}
-
-                <p class="header-copy">
-
-                    Find fresh produce from trusted local farmers
-                    and keep track of your purchases.
-
-                </p>
-
-            {{else}}
-
-                <p class="header-copy">
-
-                    Manage your farm activities, products,
-                    sales, health, and marketplace.
-
-                </p>
-
-            {{end}}
+            <a href="/profile">
+                Manage profile
+            </a>
 
 
         </div>
 
 
 
-        <div class="header-actions">
+        <div class="farm-type-grid">
 
 
-            {{if .IsBuyer}}
+            {{range .FarmingTypes}}
 
-                <a
-                    class="primary-action"
-                    href="/marketplace"
-                >
-                    Browse marketplace
-                </a>
+
+                <article class="farm-type-card">
+
+
+                    <div
+                        class="farm-type-icon"
+                        aria-hidden="true"
+                    >
+
+
+                        {{if eq . "Crop Farming"}}
+
+                            🌾
+
+                        {{else if eq . "Animal Farming"}}
+
+                            🐄
+
+                        {{else if eq . "Poultry Farming"}}
+
+                            🐔
+
+                        {{else if eq . "Fish Farming"}}
+
+                            🐟
+
+                        {{else if eq . "Apiculture"}}
+
+                            🐝
+
+                        {{else if eq . "Pig Farming"}}
+
+                            🐖
+
+                        {{else if eq . "Goat Farming"}}
+
+                            🐐
+
+                        {{else if eq . "Sheep Farming"}}
+
+                            🐑
+
+                        {{else}}
+
+                            🌱
+
+                        {{end}}
+
+
+                    </div>
+
+
+
+                    <div class="farm-type-content">
+
+
+                        <h3>
+                            {{.}}
+                        </h3>
+
+
+                        <p>
+                            Manage your {{.}} activities.
+                        </p>
+
+
+                    </div>
+
+
+                </article>
+
 
             {{else}}
 
-                <a
-                    class="primary-action"
-                    href="/storage"
+
+                <article
+                    class="farm-type-card farm-type-empty"
                 >
-                    Add produce
-                </a>
+
+
+                    <div
+                        class="farm-type-icon"
+                        aria-hidden="true"
+                    >
+                        🌱
+                    </div>
+
+
+                    <div class="farm-type-content">
+
+                        <h3>
+                            Farming type not selected
+                        </h3>
+
+                        <p>
+                            Select your farming activities
+                            from your profile.
+                        </p>
+
+                    </div>
+
+
+                    <a href="/profile">
+                        Update profile
+                    </a>
+
+
+                </article>
+
 
             {{end}}
 
@@ -221,15 +417,344 @@
 
     </section>
 
+{{end}}
 
 
-    <!-- =====================================================
-         FARMING TYPE OVERVIEW
-    ====================================================== -->
 
-    {{if not .IsBuyer}}
+<!-- =====================================================
+     NOTIFICATION / ATTENTION BANNER
+====================================================== -->
 
-        <section class="panel farming-overview">
+{{if not .IsBuyer}}
+
+    <section
+        class="attention-banner priority-{{.PrimaryPriority.Tone}}"
+        aria-label="Priority alert"
+    >
+
+
+        <div
+            class="attention-icon"
+            aria-hidden="true"
+        >
+
+            {{if eq .PrimaryPriority.Tone "danger"}}
+
+                !
+
+            {{else if eq .PrimaryPriority.Tone "warning"}}
+
+                !
+
+            {{else}}
+
+                &#10003;
+
+            {{end}}
+
+        </div>
+
+
+
+        <div class="attention-content">
+
+
+            <span class="attention-label">
+                {{.PrimaryPriority.Label}}
+            </span>
+
+
+            <h2>
+                {{.PrimaryPriority.Title}}
+            </h2>
+
+
+            <p>
+                {{.PrimaryPriority.Detail}}
+            </p>
+
+
+        </div>
+
+
+
+        <a
+            href="{{.PrimaryPriority.Href}}"
+            class="primary-action priority-action"
+        >
+            {{.PrimaryPriority.Action}}
+        </a>
+
+
+    </section>
+
+{{end}}
+
+
+
+<!-- =====================================================
+     KEY METRICS
+====================================================== -->
+
+<section
+    class="metrics"
+    aria-label="Account overview"
+>
+
+
+    {{if .IsBuyer}}
+
+
+        <!-- =================================================
+             BUYER PURCHASES
+        ================================================= -->
+
+        <a
+            href="/profile"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Purchases made
+            </span>
+
+
+            <strong
+                class="counter"
+                data-target="{{.PurchasesMade}}"
+            >
+                0
+            </strong>
+
+
+            <span class="metric-detail">
+                Completed orders
+            </span>
+
+        </a>
+
+
+
+        <!-- =================================================
+             BUYER SPENDING
+        ================================================= -->
+
+        <a
+            href="/profile"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Total spent
+            </span>
+
+
+            <strong>
+                ₦{{money .TotalSpent}}
+            </strong>
+
+
+            <span class="metric-detail">
+                Across all purchases
+            </span>
+
+        </a>
+
+
+
+        <!-- =================================================
+             MARKETPLACE
+        ================================================= -->
+
+        <a
+            href="/marketplace"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Available listings
+            </span>
+
+
+            <strong>
+                {{.AvailableProduce}}
+            </strong>
+
+
+            <span class="metric-detail">
+                Agricultural products currently available
+            </span>
+
+        </a>
+
+
+
+        <!-- =================================================
+             ACCOUNT STATUS
+        ================================================= -->
+
+        <div class="metric-card">
+
+            <span class="metric-label">
+                Account status
+            </span>
+
+
+            <strong class="status-positive">
+                Verified
+            </strong>
+
+
+            <span class="metric-detail">
+                Trusted Agro-Shield buyer
+            </span>
+
+        </div>
+
+
+    {{else}}
+
+
+        <!-- =================================================
+             STORAGE
+        ================================================= -->
+
+        <a
+            href="/storage"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Products in storage
+            </span>
+
+
+            <strong
+                class="counter"
+                data-target="{{.ProduceInStorage}}"
+            >
+                0
+            </strong>
+
+
+            <span class="metric-detail">
+                Product items recorded
+            </span>
+
+        </a>
+
+
+
+        <!-- =================================================
+             ACTIVE LISTINGS
+        ================================================= -->
+
+        <a
+            href="/storage"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Active listings
+            </span>
+
+
+            <strong
+                class="counter"
+                data-target="{{.ListingsActive}}"
+            >
+                0
+            </strong>
+
+
+            <span class="metric-detail">
+                Visible to buyers · your account
+            </span>
+
+        </a>
+
+
+
+        <!-- =================================================
+             AI
+        ================================================= -->
+
+        <a
+            href="/ai-diagnosis-history"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                AI health checks
+            </span>
+
+
+            <strong
+                class="counter"
+                data-target="{{.AIDiagnosesThisMonth}}"
+            >
+                0
+            </strong>
+
+
+            <span class="metric-detail">
+                Completed this month · your account
+            </span>
+
+        </a>
+
+
+
+        <!-- =================================================
+             REVENUE
+        ================================================= -->
+
+        <a
+            href="/profile"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Sales revenue · 30 days
+            </span>
+
+
+            <strong>
+                ₦{{money .Revenue30}}
+            </strong>
+
+
+            <span class="metric-detail">
+                {{.CompletedSales}} completed sales · platform records
+            </span>
+
+        </a>
+
+
+    {{end}}
+
+
+</section>
+
+
+
+<!-- =====================================================
+     FARM HEALTH + WEATHER
+====================================================== -->
+
+{{if not .IsBuyer}}
+
+    <section class="dashboard-grid">
+
+
+        <!-- =================================================
+             FARM HEALTH
+        ================================================= -->
+
+        <section
+            class="panel farm-health"
+            aria-labelledby="farm-readiness-title"
+        >
 
 
             <div class="section-heading">
@@ -238,858 +763,826 @@
                 <div>
 
                     <p class="eyebrow">
-                        Farming Activities
+                        Overview
                     </p>
 
-                    <h2>
-                        Your Farm Types
+
+                    <h2 id="farm-readiness-title">
+                        Operational readiness
                     </h2>
 
                 </div>
 
 
-                <a href="/profile">
-                    Manage profile
-                </a>
+                <span class="health-status">
+                    {{.HealthStatus}}
+                </span>
 
 
             </div>
 
 
 
-            <div class="farm-type-grid">
+            <div class="health-score">
 
 
-                {{range .FarmingTypes}}
+                <div class="health-score-number">
 
+                    {{.HealthScore}}
 
-                    <article class="farm-type-card">
-
-
-                        <div class="farm-type-icon">
-
-
-                            {{if eq . "Crop Farming"}}
-
-                                🌾
-
-                            {{else if eq . "Animal Farming"}}
-
-                                🐄
-
-                            {{else if eq . "Poultry Farming"}}
-
-                                🐔
-
-                            {{else if eq . "Fish Farming"}}
-
-                                🐟
-
-                            {{else if eq . "Apiculture"}}
-
-                                🐝
-
-                            {{else if eq . "Pig Farming"}}
-
-                                🐖
-
-                            {{else if eq . "Goat Farming"}}
-
-                                🐐
-
-                            {{else if eq . "Sheep Farming"}}
-
-                                🐑
-
-                            {{else}}
-
-                                🌱
-
-                            {{end}}
-
-
-                        </div>
-
-
-
-                        <div class="farm-type-content">
-
-
-                            <h3>
-                                {{.}}
-                            </h3>
-
-
-                            <p>
-                                Manage your {{.}} activities.
-                            </p>
-
-
-                        </div>
-
-
-                    </article>
-
-
-                {{else}}
-
-
-                    <article class="farm-type-card farm-type-empty">
-
-
-                        <div class="farm-type-icon">
-                            🌱
-                        </div>
-
-
-                        <div class="farm-type-content">
-
-                            <h3>
-                                Farming type not selected
-                            </h3>
-
-                            <p>
-                                Select your farming activities
-                                from your profile.
-                            </p>
-
-                        </div>
-
-
-                        <a href="/profile">
-                            Update profile
-                        </a>
-
-
-                    </article>
-
-
-                {{end}}
-
-
-            </div>
-
-
-        </section>
-
-    {{end}}
-
-
-
-    <!-- =====================================================
-         NOTIFICATION / ATTENTION BANNER
-    ====================================================== -->
-
-    {{if not .IsBuyer}}
-
-        <section class="attention-banner priority-{{.PrimaryPriority.Tone}}">
-
-
-            <div class="attention-icon">
-
-                {{if eq .PrimaryPriority.Tone "danger"}}
-
-                    !
-
-                {{else if eq .PrimaryPriority.Tone "warning"}}
-
-                    !
-
-                {{else}}
-
-                    &#10003;
-
-                {{end}}
-
-            </div>
-
-
-
-            <div class="attention-content">
-
-
-                <span class="attention-label">
-                    {{.PrimaryPriority.Label}}
-                </span>
-
-
-                <h2>
-                    {{.PrimaryPriority.Title}}
-                </h2>
-
-
-                <p>
-                    {{.PrimaryPriority.Detail}}
-                </p>
-
-
-            </div>
-
-
-
-            <a
-                href="{{.PrimaryPriority.Href}}"
-                class="primary-action priority-action"
-            >
-                {{.PrimaryPriority.Action}}
-            </a>
-
-
-        </section>
-
-    {{end}}
-
-
-
-    <!-- =====================================================
-         KEY METRICS
-    ====================================================== -->
-
-    <section
-        class="metrics"
-        aria-label="Account overview"
-    >
-
-
-        {{if .IsBuyer}}
-
-
-            <!-- Purchases -->
-
-            <a
-                href="/profile"
-                class="metric-card"
-            >
-
-                <span class="metric-label">
-                    Purchases made
-                </span>
-
-
-                <strong
-                    class="counter"
-                    data-target="{{.PurchasesMade}}"
-                >
-                    0
-                </strong>
-
-
-                <span class="metric-detail">
-                    Completed orders
-                </span>
-
-            </a>
-
-
-
-            <!-- Spending -->
-
-            <a
-                href="/sales"
-                class="metric-card"
-            >
-
-                <span class="metric-label">
-                    Total spent
-                </span>
-
-
-                <strong>
-                    ₦{{money .TotalSpent}}
-                </strong>
-
-
-                <span class="metric-detail">
-                    Across all purchases
-                </span>
-
-            </a>
-
-
-
-            <!-- Marketplace -->
-
-            <a
-                href="/marketplace"
-                class="metric-card"
-            >
-
-                <span class="metric-label">
-                    Available listings
-                </span>
-
-
-                <strong>
-                    {{.AvailableProduce}}
-                </strong>
-
-
-                <span class="metric-detail">
-                    Listings currently open to buy
-                </span>
-
-            </a>
-
-
-
-            <!-- Trust -->
-
-            <div class="metric-card">
-
-                <span class="metric-label">
-                    Account status
-                </span>
-
-
-                <strong class="status-positive">
-                    Verified
-                </strong>
-
-
-                <span class="metric-detail">
-                    Trusted Agro-Shield buyer
-                </span>
-
-            </div>
-
-
-        {{else}}
-
-
-            <!-- Storage -->
-
-            <a
-                href="/storage"
-                class="metric-card"
-            >
-
-                <span class="metric-label">
-                    Produce in storage
-                </span>
-
-
-                <strong
-                    class="counter"
-                    data-target="{{.ProduceInStorage}}"
-                >
-                    0
-                </strong>
-
-
-                <span class="metric-detail">
-                    Product items recorded
-                </span>
-
-            </a>
-
-
-
-            <!-- Listings -->
-
-            <a
-                href="/storage"
-                class="metric-card"
-            >
-
-                <span class="metric-label">
-                    Active listings
-                </span>
-
-
-                <strong
-                    class="counter"
-                    data-target="{{.ListingsActive}}"
-                >
-                    0
-                </strong>
-
-
-                <span class="metric-detail">
-                    Visible to buyers · your account
-                </span>
-
-            </a>
-
-
-
-            <!-- AI -->
-
-            <a
-                href="/ai-diagnosis-history"
-                class="metric-card"
-            >
-
-                <span class="metric-label">
-                    AI health checks
-                </span>
-
-
-                <strong
-                    class="counter"
-                    data-target="{{.AIDiagnosesThisMonth}}"
-                >
-                    0
-                </strong>
-
-
-                <span class="metric-detail">
-                    Completed this month · your account
-                </span>
-
-            </a>
-
-
-
-            <!-- Revenue -->
-
-            <a
-                href="/profile"
-                class="metric-card"
-            >
-
-                <span class="metric-label">
-                    Sales revenue · 30 days
-                </span>
-
-
-                <strong>
-                    ₦{{money .Revenue30}}
-                </strong>
-
-
-                <span class="metric-detail">
-                    {{.CompletedSales}} completed sales · platform records
-                </span>
-
-            </a>
-
-
-        {{end}}
-
-
-    </section>
-
-
-
-    <!-- =====================================================
-         FARM HEALTH + WEATHER
-    ====================================================== -->
-
-    {{if not .IsBuyer}}
-
-        <section class="dashboard-grid">
-
-
-            <!-- FARM HEALTH -->
-
-            <section class="panel farm-health">
-
-
-                <div class="section-heading">
-
-
-                    <div>
-
-                        <p class="eyebrow">
-                            Overview
-                        </p>
-
-
-                        <h2>
-                            Operational readiness
-                        </h2>
-
-                    </div>
-
-
-                    <span class="health-status">
-                        {{.HealthStatus}}
+                    <span>
+                        /100
                     </span>
 
-
                 </div>
 
 
 
-                <div class="health-score">
-
-
-                    <div class="health-score-number">
-
-                        {{.HealthScore}}
-
-                        <span>
-                            /100
-                        </span>
-
-                    </div>
-
-
-
-                    <div class="health-score-copy">
-
-                        <strong>
-                            Your farm readiness overview
-                        </strong>
-
-
-                        <p>
-                            This is an operational indicator based
-                            on storage, listings, AI checks, and
-                            completed sales—not a crop diagnosis.
-                        </p>
-
-                    </div>
-
-
-                </div>
-
-
-
-                <div class="health-bars">
-
-
-                    <div class="health-item">
-
-
-                        <div class="health-item-header">
-
-                            <span>
-                                Storage
-                            </span>
-
-
-                            <strong>
-                                {{with index .HealthMetrics 0}}{{.Percent}}{{end}}%
-                            </strong>
-
-                        </div>
-
-
-                        <div class="progress">
-
-                            <span
-                                class="progress-value"
-                                data-width="{{with index .HealthMetrics 0}}{{.Percent}}{{end}}%"
-                            ></span>
-
-                        </div>
-
-
-                    </div>
-
-
-
-                    <div class="health-item">
-
-
-                        <div class="health-item-header">
-
-                            <span>
-                                Listings
-                            </span>
-
-
-                            <strong>
-                                {{with index .HealthMetrics 1}}{{.Percent}}{{end}}%
-                            </strong>
-
-                        </div>
-
-
-                        <div class="progress">
-
-                            <span
-                                class="progress-value"
-                                data-width="{{with index .HealthMetrics 1}}{{.Percent}}{{end}}%"
-                            ></span>
-
-                        </div>
-
-
-                    </div>
-
-
-
-                    <div class="health-item">
-
-
-                        <div class="health-item-header">
-
-                            <span>
-                                Sales activity
-                            </span>
-
-
-                            <strong>
-                                {{with index .HealthMetrics 3}}{{.Percent}}{{end}}%
-                            </strong>
-
-                        </div>
-
-
-                        <div class="progress">
-
-                            <span
-                                class="progress-value"
-                                data-width="{{with index .HealthMetrics 3}}{{.Percent}}{{end}}%"
-                            ></span>
-
-                        </div>
-
-
-                    </div>
-
-
-                </div>
-
-
-            </section>
-
-
-
-            <!-- WEATHER -->
-
-            <section class="panel weather-card">
-
-
-                <div class="section-heading">
-
-
-                    <div>
-
-                        <p class="eyebrow">
-                            Conditions
-                        </p>
-
-
-                        <h2>
-                            Today's weather
-                        </h2>
-
-
-                        {{if .Weather.Available}}
-
-                            <span class="weather-source">
-
-                                <img
-                                    class="weather-location-icon"
-                                    src="/static/assets/icon/location-image.avif"
-                                    width="14"
-                                    height="14"
-                                    alt=""
-                                >
-
-                                <span>
-                                    {{.Weather.Location}}
-                                    · Source: {{.Weather.Source}}
-                                </span>
-
-                            </span>
-
-
-                            <span class="weather-updated">
-
-                                {{if .Weather.Cached}}
-                                    Cached conditions
-                                {{else}}
-                                    Live conditions
-                                {{end}}
-
-                                · Updated
-                                {{.Weather.LastUpdated.Format "3:04 PM"}}
-
-                            </span>
-
-
-                        {{else}}
-
-                            <span class="weather-source">
-                                Live weather unavailable
-                            </span>
-
-                        {{end}}
-
-
-                    </div>
-
-
-                </div>
-
-
-
-                <div class="weather-main">
-
-
-                    <div class="weather-icon">
-
-                        {{if .Weather.Available}}
-                            ☀
-                        {{else}}
-                            —
-                        {{end}}
-
-                    </div>
-
-
-                    <div>
-
-
-                        <strong class="temperature">
-
-                            {{if .Weather.Available}}
-                                {{.Weather.Temperature}}
-                            {{else}}
-                                Unavailable
-                            {{end}}
-
-                        </strong>
-
-
-                        <span>
-
-                            {{if .Weather.Available}}
-                                {{.Weather.Summary}}
-                            {{else}}
-                                Weather unavailable
-                            {{end}}
-
-                        </span>
-
-
-                    </div>
-
-
-                </div>
-
-
-
-                <div class="weather-details">
-
-
-                    <div>
-
-                        <span>
-                            Humidity
-                        </span>
-
-
-                        <strong>
-
-                            {{if .Weather.Available}}
-                                {{.Weather.Humidity}}
-                            {{else}}
-                                —
-                            {{end}}
-
-                        </strong>
-
-                    </div>
-
-
-
-                    <div>
-
-                        <span>
-                            Rain chance
-                        </span>
-
-
-                        <strong>
-
-                            {{if .Weather.Available}}
-                                {{.Weather.RainChance}}
-                            {{else}}
-                                —
-                            {{end}}
-
-                        </strong>
-
-                    </div>
-
-
-
-                    <div>
-
-                        <span>
-                            Conditions
-                        </span>
-
-
-                        <strong>
-
-                            {{if .Weather.Available}}
-                                {{.Weather.Conditions}}
-                            {{else}}
-                                Unavailable
-                            {{end}}
-
-                        </strong>
-
-                    </div>
-
-
-                </div>
-
-
-
-                <div class="weather-recommendation">
-
+                <div class="health-score-copy">
 
                     <strong>
-                        Farm recommendation
+                        Your farm readiness overview
                     </strong>
+
+
+                    <p>
+                        This is an operational indicator based
+                        on storage, listings, AI checks, and
+                        completed sales—not a diagnosis of crops,
+                        livestock, poultry, fish, or other farm
+                        activities.
+                    </p>
+
+                </div>
+
+
+            </div>
+
+
+
+            <div class="health-bars">
+
+
+                <div class="health-item">
+
+
+                    <div class="health-item-header">
+
+                        <span>
+                            Storage
+                        </span>
+
+
+                        <strong>
+                            {{with index .HealthMetrics 0}}{{.Percent}}{{end}}%
+                        </strong>
+
+                    </div>
+
+
+                    <div class="progress">
+
+                        <span
+                            class="progress-value"
+                            data-width="{{with index .HealthMetrics 0}}{{.Percent}}{{end}}%"
+                        ></span>
+
+                    </div>
+
+
+                </div>
+
+
+
+                <div class="health-item">
+
+
+                    <div class="health-item-header">
+
+                        <span>
+                            Listings
+                        </span>
+
+
+                        <strong>
+                            {{with index .HealthMetrics 1}}{{.Percent}}{{end}}%
+                        </strong>
+
+                    </div>
+
+
+                    <div class="progress">
+
+                        <span
+                            class="progress-value"
+                            data-width="{{with index .HealthMetrics 1}}{{.Percent}}{{end}}%"
+                        ></span>
+
+                    </div>
+
+
+                </div>
+
+
+
+                <div class="health-item">
+
+
+                    <div class="health-item-header">
+
+                        <span>
+                            Sales activity
+                        </span>
+
+
+                        <strong>
+                            {{with index .HealthMetrics 3}}{{.Percent}}{{end}}%
+                        </strong>
+
+                    </div>
+
+
+                    <div class="progress">
+
+                        <span
+                            class="progress-value"
+                            data-width="{{with index .HealthMetrics 3}}{{.Percent}}{{end}}%"
+                        ></span>
+
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             WEATHER
+        ================================================== -->
+
+        <section
+            class="panel weather-card"
+            aria-labelledby="weather-title"
+        >
+
+
+            <div class="section-heading">
+
+
+                <div>
+
+                    <p class="eyebrow">
+                        Conditions
+                    </p>
+
+
+                    <h2 id="weather-title">
+                        Today's weather
+                    </h2>
 
 
                     {{if .Weather.Available}}
 
-                        <span class="weather-recommendation-source">
-                            Based on current conditions
+                        <span class="weather-source">
+
+                            <img
+                                class="weather-location-icon"
+                                src="/static/assets/icon/location-image.avif"
+                                width="14"
+                                height="14"
+                                alt=""
+                            >
+
+                            <span>
+                                {{.Weather.Location}}
+                                · Source: {{.Weather.Source}}
+                            </span>
+
+                        </span>
+
+
+                        <span class="weather-updated">
+
+                            {{if .Weather.Cached}}
+                                Cached conditions
+                            {{else}}
+                                Live conditions
+                            {{end}}
+
+                            · Updated
+                            {{.Weather.LastUpdated.Format "3:04 PM"}}
+
+                        </span>
+
+
+                    {{else}}
+
+                        <span class="weather-source">
+                            Live weather unavailable
                         </span>
 
                     {{end}}
 
 
-                    <p>
+                </div>
+
+
+            </div>
+
+
+
+            <div class="weather-main">
+
+
+                <div
+                    class="weather-icon"
+                    aria-hidden="true"
+                >
+
+                    {{if .Weather.Available}}
+                        ☀
+                    {{else}}
+                        —
+                    {{end}}
+
+                </div>
+
+
+                <div>
+
+
+                    <strong class="temperature">
 
                         {{if .Weather.Available}}
-
-                            {{.Weather.Recommendation}}
-
+                            {{.Weather.Temperature}}
                         {{else}}
-
-                            Add your location to your profile
-                            to receive live weather conditions
-                            from Open-Meteo.
-
-                            <a href="/profile#edit-modal">
-                                Update location
-                            </a>
-
+                            Unavailable
                         {{end}}
 
-                    </p>
+                    </strong>
+
+
+                    <span>
+
+                        {{if .Weather.Available}}
+                            {{.Weather.Summary}}
+                        {{else}}
+                            Weather unavailable
+                        {{end}}
+
+                    </span>
 
 
                 </div>
 
 
-            </section>
+            </div>
+
+
+
+            <div class="weather-details">
+
+
+                <div>
+
+                    <span>
+                        Humidity
+                    </span>
+
+
+                    <strong>
+
+                        {{if .Weather.Available}}
+                            {{.Weather.Humidity}}
+                        {{else}}
+                            —
+                        {{end}}
+
+                    </strong>
+
+                </div>
+
+
+
+                <div>
+
+                    <span>
+                        Rain chance
+                    </span>
+
+
+                    <strong>
+
+                        {{if .Weather.Available}}
+                            {{.Weather.RainChance}}
+                        {{else}}
+                            —
+                        {{end}}
+
+                    </strong>
+
+                </div>
+
+
+
+                <div>
+
+                    <span>
+                        Conditions
+                    </span>
+
+
+                    <strong>
+
+                        {{if .Weather.Available}}
+                            {{.Weather.Conditions}}
+                        {{else}}
+                            Unavailable
+                        {{end}}
+
+                    </strong>
+
+                </div>
+
+
+            </div>
+
+
+
+            <div class="weather-recommendation">
+
+
+                <strong>
+                    Farm recommendation
+                </strong>
+
+
+                {{if .Weather.Available}}
+
+                    <span class="weather-recommendation-source">
+                        Based on current conditions
+                    </span>
+
+                {{end}}
+
+
+                <p>
+
+                    {{if .Weather.Available}}
+
+                        {{.Weather.Recommendation}}
+
+                    {{else}}
+
+                        Add your location to your profile
+                        to receive live weather conditions
+                        from Open-Meteo.
+
+                        <a href="/profile#edit-modal">
+                            Update location
+                        </a>
+
+                    {{end}}
+
+                </p>
+
+
+            </div>
 
 
         </section>
 
-    {{end}}
+
+    </section>
+
+{{end}}
 
 
 
-    <!-- =====================================================
-         FARMING-SPECIFIC QUICK OVERVIEW
-    ====================================================== -->
+<!-- =====================================================
+     FARMING-SPECIFIC QUICK OVERVIEW
+====================================================== -->
 
-    {{if not .IsBuyer}}
+{{if not .IsBuyer}}
 
-        <section class="panel farming-details">
+    <section
+        class="panel farming-details"
+        aria-labelledby="farming-management-title"
+    >
+
+
+        <div class="section-heading">
+
+
+            <div>
+
+                <p class="eyebrow">
+                    Farm Management
+                </p>
+
+
+                <h2 id="farming-management-title">
+                    Manage your farming activities
+                </h2>
+
+
+                <p class="section-description">
+                    Access tools based on the farming activities
+                    you selected during registration.
+                </p>
+
+            </div>
+
+
+        </div>
+
+
+
+        <div class="farming-detail-grid">
+
+
+            {{range .FarmingTypes}}
+
+
+                {{if eq . "Crop Farming"}}
+
+                    <a
+                        href="/storage"
+                        class="farming-detail-card"
+                    >
+
+                        <span
+                            class="farming-detail-icon"
+                            aria-hidden="true"
+                        >
+                            🌾
+                        </span>
+
+
+                        <div>
+
+                            <span class="farming-detail-label">
+                                Crop Farming
+                            </span>
+
+
+                            <h3>
+                                Manage crops
+                            </h3>
+
+
+                            <p>
+                                Manage crops, storage,
+                                product listings and
+                                crop health.
+                            </p>
+
+                        </div>
+
+                    </a>
+
+
+                {{else if eq . "Animal Farming"}}
+
+                    <a
+                        href="/animals"
+                        class="farming-detail-card"
+                    >
+
+                        <span
+                            class="farming-detail-icon"
+                            aria-hidden="true"
+                        >
+                            🐄
+                        </span>
+
+
+                        <div>
+
+                            <span class="farming-detail-label">
+                                Animal Farming
+                            </span>
+
+
+                            <h3>
+                                Manage animals
+                            </h3>
+
+
+                            <p>
+                                Track livestock,
+                                health, feeding,
+                                breeding and sales.
+                            </p>
+
+                        </div>
+
+                    </a>
+
+
+                {{else if eq . "Poultry Farming"}}
+
+                    <a
+                        href="/poultry"
+                        class="farming-detail-card"
+                    >
+
+                        <span
+                            class="farming-detail-icon"
+                            aria-hidden="true"
+                        >
+                            🐔
+                        </span>
+
+
+                        <div>
+
+                            <span class="farming-detail-label">
+                                Poultry Farming
+                            </span>
+
+
+                            <h3>
+                                Manage poultry
+                            </h3>
+
+
+                            <p>
+                                Track birds, eggs,
+                                feed, health and
+                                poultry sales.
+                            </p>
+
+                        </div>
+
+                    </a>
+
+
+                {{else if eq . "Fish Farming"}}
+
+                    <a
+                        href="/fish-farming"
+                        class="farming-detail-card"
+                    >
+
+                        <span
+                            class="farming-detail-icon"
+                            aria-hidden="true"
+                        >
+                            🐟
+                        </span>
+
+
+                        <div>
+
+                            <span class="farming-detail-label">
+                                Fish Farming
+                            </span>
+
+
+                            <h3>
+                                Manage fish farm
+                            </h3>
+
+
+                            <p>
+                                Manage ponds, fish stock,
+                                feeding, water quality
+                                and harvest.
+                            </p>
+
+                        </div>
+
+                    </a>
+
+
+                {{else if eq . "Apiculture"}}
+
+                    <a
+                        href="/beekeeping"
+                        class="farming-detail-card"
+                    >
+
+                        <span
+                            class="farming-detail-icon"
+                            aria-hidden="true"
+                        >
+                            🐝
+                        </span>
+
+
+                        <div>
+
+                            <span class="farming-detail-label">
+                                Apiculture
+                            </span>
+
+
+                            <h3>
+                                Manage beekeeping
+                            </h3>
+
+
+                            <p>
+                                Track colonies,
+                                honey production,
+                                hive health and sales.
+                            </p>
+
+                        </div>
+
+                    </a>
+
+
+                {{else if eq . "Pig Farming"}}
+
+                    <a
+                        href="/animals"
+                        class="farming-detail-card"
+                    >
+
+                        <span
+                            class="farming-detail-icon"
+                            aria-hidden="true"
+                        >
+                            🐖
+                        </span>
+
+
+                        <div>
+
+                            <span class="farming-detail-label">
+                                Pig Farming
+                            </span>
+
+
+                            <h3>
+                                Manage pigs
+                            </h3>
+
+
+                            <p>
+                                Track pigs, feeding,
+                                health, breeding
+                                and sales.
+                            </p>
+
+                        </div>
+
+                    </a>
+
+
+                {{else if eq . "Goat Farming"}}
+
+                    <a
+                        href="/animals"
+                        class="farming-detail-card"
+                    >
+
+                        <span
+                            class="farming-detail-icon"
+                            aria-hidden="true"
+                        >
+                            🐐
+                        </span>
+
+
+                        <div>
+
+                            <span class="farming-detail-label">
+                                Goat Farming
+                            </span>
+
+
+                            <h3>
+                                Manage goats
+                            </h3>
+
+
+                            <p>
+                                Track goats, feeding,
+                                health, breeding
+                                and sales.
+                            </p>
+
+                        </div>
+
+                    </a>
+
+
+                {{else if eq . "Sheep Farming"}}
+
+                    <a
+                        href="/animals"
+                        class="farming-detail-card"
+                    >
+
+                        <span
+                            class="farming-detail-icon"
+                            aria-hidden="true"
+                        >
+                            🐑
+                        </span>
+
+
+                        <div>
+
+                            <span class="farming-detail-label">
+                                Sheep Farming
+                            </span>
+
+
+                            <h3>
+                                Manage sheep
+                            </h3>
+
+
+                            <p>
+                                Track sheep, feeding,
+                                health, breeding
+                                and sales.
+                            </p>
+
+                        </div>
+
+                    </a>
+
+
+                {{else}}
+
+                    <a
+                        href="/profile"
+                        class="farming-detail-card"
+                    >
+
+                        <span
+                            class="farming-detail-icon"
+                            aria-hidden="true"
+                        >
+                            🌱
+                        </span>
+
+
+                        <div>
+
+                            <span class="farming-detail-label">
+                                {{.}}
+                            </span>
+
+
+                            <h3>
+                                Manage farming activity
+                            </h3>
+
+
+                            <p>
+                                Manage your {{.}}
+                                activities on Agro-Shield.
+                            </p>
+
+                        </div>
+
+                    </a>
+
+
+                {{end}}
+
+
+            {{end}}
+
+
+        </div>
+
+
+    </section>
+
+{{end}}
+
+
+
+<!-- =====================================================
+     AI INSIGHT + MARKET OPPORTUNITY
+====================================================== -->
+
+{{if not .IsBuyer}}
+
+    <section class="dashboard-grid">
+
+
+        <!-- =================================================
+             AI INSIGHT
+        ================================================= -->
+
+        <section
+            class="panel ai-insight"
+            aria-labelledby="produce-health-title"
+        >
 
 
             <div class="section-heading">
@@ -1098,739 +1591,486 @@
                 <div>
 
                     <p class="eyebrow">
-                        Farm Management
+                        AI insight
                     </p>
 
 
-                    <h2>
-                        Manage your farming activities
+                    <h2 id="produce-health-title">
+                        Farm health
                     </h2>
 
-
-                    <p class="section-description">
-                        Access tools based on the farming activities
-                        you selected during registration.
-                    </p>
-
                 </div>
 
 
-            </div>
-
-
-
-            <div class="farming-detail-grid">
-
-
-                {{range .FarmingTypes}}
-
-
-                    {{if eq . "Crop Farming"}}
-
-                        <a
-                            href="/storage"
-                            class="farming-detail-card"
-                        >
-
-                            <span class="farming-detail-icon">
-                                🌾
-                            </span>
-
-
-                            <div>
-
-                                <span class="farming-detail-label">
-                                    Crop Farming
-                                </span>
-
-
-                                <h3>
-                                    Manage crops
-                                </h3>
-
-
-                                <p>
-                                    Manage crops, storage,
-                                    produce listings and
-                                    crop health.
-                                </p>
-
-                            </div>
-
-                        </a>
-
-
-                    {{else if eq . "Animal Farming"}}
-
-                        <a
-                            href="/animals"
-                            class="farming-detail-card"
-                        >
-
-                            <span class="farming-detail-icon">
-                                🐄
-                            </span>
-
-
-                            <div>
-
-                                <span class="farming-detail-label">
-                                    Animal Farming
-                                </span>
-
-
-                                <h3>
-                                    Manage animals
-                                </h3>
-
-
-                                <p>
-                                    Track livestock,
-                                    health, feeding,
-                                    breeding and sales.
-                                </p>
-
-                            </div>
-
-                        </a>
-
-
-                    {{else if eq . "Poultry Farming"}}
-
-                        <a
-                            href="/poultry"
-                            class="farming-detail-card"
-                        >
-
-                            <span class="farming-detail-icon">
-                                🐔
-                            </span>
-
-
-                            <div>
-
-                                <span class="farming-detail-label">
-                                    Poultry Farming
-                                </span>
-
-
-                                <h3>
-                                    Manage poultry
-                                </h3>
-
-
-                                <p>
-                                    Track birds, eggs,
-                                    feed, health and
-                                    poultry sales.
-                                </p>
-
-                            </div>
-
-                        </a>
-
-
-                    {{else if eq . "Fish Farming"}}
-
-                        <a
-                            href="/fish-farming"
-                            class="farming-detail-card"
-                        >
-
-                            <span class="farming-detail-icon">
-                                🐟
-                            </span>
-
-
-                            <div>
-
-                                <span class="farming-detail-label">
-                                    Fish Farming
-                                </span>
-
-
-                                <h3>
-                                    Manage fish farm
-                                </h3>
-
-
-                                <p>
-                                    Manage ponds, fish stock,
-                                    feeding, water quality
-                                    and harvest.
-                                </p>
-
-                            </div>
-
-                        </a>
-
-
-                    {{else if eq . "Apiculture"}}
-
-                        <a
-                            href="/beekeeping"
-                            class="farming-detail-card"
-                        >
-
-                            <span class="farming-detail-icon">
-                                🐝
-                            </span>
-
-
-                            <div>
-
-                                <span class="farming-detail-label">
-                                    Apiculture
-                                </span>
-
-
-                                <h3>
-                                    Manage beekeeping
-                                </h3>
-
-
-                                <p>
-                                    Track colonies,
-                                    honey production,
-                                    hive health and sales.
-                                </p>
-
-                            </div>
-
-                        </a>
-
-
-                    {{else if eq . "Pig Farming"}}
-
-                        <a
-                            href="/animals"
-                            class="farming-detail-card"
-                        >
-
-                            <span class="farming-detail-icon">
-                                🐖
-                            </span>
-
-
-                            <div>
-
-                                <span class="farming-detail-label">
-                                    Pig Farming
-                                </span>
-
-
-                                <h3>
-                                    Manage pigs
-                                </h3>
-
-
-                                <p>
-                                    Track pigs, feeding,
-                                    health, breeding
-                                    and sales.
-                                </p>
-
-                            </div>
-
-                        </a>
-
-
-                    {{else if eq . "Goat Farming"}}
-
-                        <a
-                            href="/animals"
-                            class="farming-detail-card"
-                        >
-
-                            <span class="farming-detail-icon">
-                                🐐
-                            </span>
-
-
-                            <div>
-
-                                <span class="farming-detail-label">
-                                    Goat Farming
-                                </span>
-
-
-                                <h3>
-                                    Manage goats
-                                </h3>
-
-
-                                <p>
-                                    Track goats, feeding,
-                                    health, breeding
-                                    and sales.
-                                </p>
-
-                            </div>
-
-                        </a>
-
-
-                    {{else if eq . "Sheep Farming"}}
-
-                        <a
-                            href="/animals"
-                            class="farming-detail-card"
-                        >
-
-                            <span class="farming-detail-icon">
-                                🐑
-                            </span>
-
-
-                            <div>
-
-                                <span class="farming-detail-label">
-                                    Sheep Farming
-                                </span>
-
-
-                                <h3>
-                                    Manage sheep
-                                </h3>
-
-
-                                <p>
-                                    Track sheep, feeding,
-                                    health, breeding
-                                    and sales.
-                                </p>
-
-                            </div>
-
-                        </a>
-
-
-                    {{else}}
-
-                        <a
-                            href="/profile"
-                            class="farming-detail-card"
-                        >
-
-                            <span class="farming-detail-icon">
-                                🌱
-                            </span>
-
-
-                            <div>
-
-                                <span class="farming-detail-label">
-                                    {{.}}
-                                </span>
-
-
-                                <h3>
-                                    Manage farming activity
-                                </h3>
-
-
-                                <p>
-                                    Manage your {{.}}
-                                    activities on Agro-Shield.
-                                </p>
-
-                            </div>
-
-                        </a>
-
-
-                    {{end}}
-
-
-                {{end}}
-
-
-            </div>
-
-
-        </section>
-
-    {{end}}
-
-
-
-    <!-- =====================================================
-         AI INSIGHT + MARKET OPPORTUNITY
-    ====================================================== -->
-
-    {{if not .IsBuyer}}
-
-        <section class="dashboard-grid">
-
-
-            <!-- AI INSIGHT -->
-
-            <section class="panel ai-insight">
-
-
-                <div class="section-heading">
-
-
-                    <div>
-
-                        <p class="eyebrow">
-                            AI insight
-                        </p>
-
-
-                        <h2>
-                            Produce health
-                        </h2>
-
-                    </div>
-
-
-                    <a href="/ai-assistant">
-                        Open AI
-                    </a>
-
-
-                </div>
-
-
-
-                <div class="ai-diagnosis">
-
-
-                    {{with .LatestDiagnosis}}
-
-
-                        <div class="crop-icon">
-                            AI
-                        </div>
-
-
-                        <div class="diagnosis-content">
-
-
-                            <span class="diagnosis-label">
-
-                                Latest diagnosis summary ·
-                                {{.CreatedAt.Format "2 Jan 2006"}}
-
-                            </span>
-
-
-                            <h3>
-
-                                {{if .Category}}
-                                    {{.Category}}
-                                {{else}}
-                                    Produce health check
-                                {{end}}
-
-                            </h3>
-
-
-                            <p>
-                                {{.Result}}
-                            </p>
-
-
-                            <a
-                                class="diagnosis-full-link"
-                                href="/ai-diagnosis-history"
-                            >
-                                View full diagnosis →
-                            </a>
-
-
-                        </div>
-
-
-                    {{else}}
-
-
-                        <div class="crop-icon">
-                            AI
-                        </div>
-
-
-                        <div class="diagnosis-content">
-
-
-                            <span class="diagnosis-label">
-                                No diagnosis yet
-                            </span>
-
-
-                            <h3>
-                                Run your first produce health check
-                            </h3>
-
-
-                            <p>
-                                Describe a farming problem or upload
-                                media to receive an AI-assisted analysis.
-                            </p>
-
-
-                        </div>
-
-
-                    {{end}}
-
-
-                </div>
-
-
-
-                <a
-                    href="/ai-diagnosis-history"
-                    class="panel-action"
-                >
-
-                    {{if .LatestDiagnosis}}
-                        View diagnosis history
-                    {{else}}
-                        Start health check
-                    {{end}}
-
+                <a href="/ai-assistant">
+                    Open AI
                 </a>
 
 
-
-                {{if .ProduceDemandPreview}}
-
-
-                    <div class="market-insights-heading">
-
-                        <strong>
-                            Top market insights
-                        </strong>
+            </div>
 
 
-                        <a href="/market-insights">
-                            View all
-                        </a>
 
+            <div class="ai-diagnosis">
+
+
+                {{with .LatestDiagnosis}}
+
+
+                    <div
+                        class="crop-icon"
+                        aria-hidden="true"
+                    >
+                        AI
                     </div>
 
 
+                    <div class="diagnosis-content">
 
-                    {{range .ProduceDemandPreview}}
 
+                        <span class="diagnosis-label">
 
-                        <div class="produce-demand-summary">
-
-
-                            <strong>
-                                {{.ProduceType}}
-                            </strong>
-
-                            ·
-
-                            {{.Activity}}
-
-
-                            <span>
-                                Last 30 days ·
-                                {{.Views}} views ·
-                                {{.CartAdds}} cart adds ·
-                                {{.Negotiations}} negotiations ·
-                                {{.Orders}} orders
-                            </span>
-
-
-                            {{if .PriceAvailable}}
-
-                                <span>
-                                    Local prices:
-                                    ₦{{money0 .LocalPriceMin}}–₦{{money0 .LocalPriceMax}}
-                                    · median ₦{{money0 .LocalPriceMedian}}
-                                </span>
-
-                            {{end}}
-
-
-                            {{if .PricePosition}}
-
-                                <span>
-                                    Your average price:
-                                    ₦{{money0 .FarmerPrice}}
-                                    · {{.PricePosition}}
-                                    ({{printf "%+.0f%%" .PriceDifferencePercent}})
-                                </span>
-
-                            {{end}}
-
-
-                            {{if .StateListings}}
-
-                                <span>
-                                    State comparison:
-                                    {{.StateListings}} listings
-                                    · median ₦{{money0 .StatePriceMedian}}
-                                </span>
-
-                            {{end}}
-
-
-                            {{if .NearbyListings}}
-
-                                <span>
-                                    Nearby LGA comparison:
-                                    {{.NearbyListings}} listings
-                                    · median ₦{{money0 .NearbyPriceMedian}}
-                                </span>
-
-                            {{end}}
-
-
-                            {{if .NationalListings}}
-
-                                <span>
-                                    National comparison:
-                                    {{.NationalListings}} listings
-                                    · median ₦{{money0 .NationalPriceMedian}}
-                                </span>
-
-                            {{end}}
-
-
-                            {{if .ExternalPriceAvailable}}
-
-                                <span>
-                                    Verified external observations:
-                                    {{.ExternalListings}}
-                                    · median ₦{{money0 .ExternalPriceMedian}}
-                                </span>
-
-                            {{end}}
-
-
-                            <small>
-                                {{.Recommendation}}
-                            </small>
-
-
-                        </div>
-
-
-                    {{end}}
-
-
-                {{end}}
-
-
-            </section>
-
-
-
-            <!-- MARKET OPPORTUNITY -->
-
-            <section class="panel market-opportunity">
-
-
-                <div class="section-heading">
-
-
-                    <div>
-
-                        <p class="eyebrow">
-                            Marketplace
-                        </p>
-
-
-                        <h2>
-                            Market opportunity
-                        </h2>
-
-                    </div>
-
-
-                    <a href="/marketplace">
-                        Marketplace
-                    </a>
-
-
-                </div>
-
-
-
-                <div class="opportunity-content">
-
-
-                    <div class="opportunity-icon">
-                        ↗
-                    </div>
-
-
-                    <div>
-
-
-                        <span class="opportunity-label">
-
-                            {{if .Demand.ProduceType}}
-                                Your produce demand signal
-                            {{else}}
-                                Platform activity
-                            {{end}}
+                            Latest diagnosis summary ·
+                            {{.CreatedAt.Format "2 Jan 2006"}}
 
                         </span>
 
 
                         <h3>
 
-                            {{if .Demand.ProduceType}}
-
-                                {{.Demand.Activity}}
-
-                            {{else if or .MarketOrders30 .MarketNegotiations30}}
-
-                                Buyer activity detected in the last 30 days
-
+                            {{if .Category}}
+                                {{.Category}}
                             {{else}}
-
-                                No buyer activity recorded in the last 30 days
-
+                                Farm health check
                             {{end}}
 
                         </h3>
 
 
                         <p>
+                            {{.Result}}
+                        </p>
 
-                            {{if .Demand.ProduceType}}
 
-                                Based on recorded activity across
-                                your listings in the last 30 days.
+                        <a
+                            class="diagnosis-full-link"
+                            href="/ai-diagnosis-history"
+                        >
+                            View full diagnosis →
+                        </a>
 
-                            {{else}}
 
-                                Based on recorded Agro-Shield orders
-                                and negotiations in the last 30 days;
-                                this is not a market-wide forecast.
+                    </div>
 
-                            {{end}}
 
+                {{else}}
+
+
+                    <div
+                        class="crop-icon"
+                        aria-hidden="true"
+                    >
+                        AI
+                    </div>
+
+
+                    <div class="diagnosis-content">
+
+
+                        <span class="diagnosis-label">
+                            No diagnosis yet
+                        </span>
+
+
+                        <h3>
+                            Run your first farm health check
+                        </h3>
+
+
+                        <p>
+                            Describe a farming problem or upload
+                            media to receive an AI-assisted analysis.
                         </p>
 
 
                     </div>
 
 
+                {{end}}
+
+
+            </div>
+
+
+
+            <a
+                href="/ai-diagnosis-history"
+                class="panel-action"
+            >
+
+                {{if .LatestDiagnosis}}
+                    View diagnosis history
+                {{else}}
+                    Start health check
+                {{end}}
+
+            </a>
+
+
+
+            {{if .ProduceDemandPreview}}
+
+
+                <div class="market-insights-heading">
+
+                    <strong>
+                        Top market insights
+                    </strong>
+
+
+                    <a href="/market-insights">
+                        View all
+                    </a>
+
                 </div>
 
 
 
-                <div class="opportunity-stats">
+                {{range .ProduceDemandPreview}}
+
+
+                    <div class="produce-demand-summary">
+
+
+                        <strong>
+                            {{.ProduceType}}
+                        </strong>
+
+                        ·
+
+                        {{.Activity}}
+
+
+                        <span>
+                            Last 30 days ·
+                            {{.Views}} views ·
+                            {{.CartAdds}} cart adds ·
+                            {{.Negotiations}} negotiations ·
+                            {{.Orders}} orders
+                        </span>
+
+
+                        {{if .PriceAvailable}}
+
+                            <span>
+                                Local prices:
+                                ₦{{money0 .LocalPriceMin}}–₦{{money0 .LocalPriceMax}}
+                                · median ₦{{money0 .LocalPriceMedian}}
+                            </span>
+
+                        {{end}}
+
+
+                        {{if .PricePosition}}
+
+                            <span>
+                                Your average price:
+                                ₦{{money0 .FarmerPrice}}
+                                · {{.PricePosition}}
+                                ({{printf "%+.0f%%" .PriceDifferencePercent}})
+                            </span>
+
+                        {{end}}
+
+
+                        {{if .StateListings}}
+
+                            <span>
+                                State comparison:
+                                {{.StateListings}} listings
+                                · median ₦{{money0 .StatePriceMedian}}
+                            </span>
+
+                        {{end}}
+
+
+                        {{if .NearbyListings}}
+
+                            <span>
+                                Nearby LGA comparison:
+                                {{.NearbyListings}} listings
+                                · median ₦{{money0 .NearbyPriceMedian}}
+                            </span>
+
+                        {{end}}
+
+
+                        {{if .NationalListings}}
+
+                            <span>
+                                National comparison:
+                                {{.NationalListings}} listings
+                                · median ₦{{money0 .NationalPriceMedian}}
+                            </span>
+
+                        {{end}}
+
+
+                        {{if .ExternalPriceAvailable}}
+
+                            <span>
+                                Verified external observations:
+                                {{.ExternalListings}}
+                                · median ₦{{money0 .ExternalPriceMedian}}
+                            </span>
+
+                        {{end}}
+
+
+                        <small>
+                            {{.Recommendation}}
+                        </small>
+
+
+                    </div>
+
+
+                {{end}}
+
+
+            {{end}}
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             MARKET OPPORTUNITY
+        ================================================== -->
+
+        <section
+            class="panel market-opportunity"
+            aria-labelledby="market-opportunity-title"
+        >
+
+
+            <div class="section-heading">
+
+
+                <div>
+
+                    <p class="eyebrow">
+                        Marketplace
+                    </p>
+
+
+                    <h2 id="market-opportunity-title">
+                        Market opportunity
+                    </h2>
+
+                </div>
+
+
+                <a href="/marketplace">
+                    Marketplace
+                </a>
+
+
+            </div>
+
+
+
+            <div class="opportunity-content">
+
+
+                <div
+                    class="opportunity-icon"
+                    aria-hidden="true"
+                >
+                    ↗
+                </div>
+
+
+                <div>
+
+
+                    <span class="opportunity-label">
+
+                        {{if .Demand.ProduceType}}
+                            Your product demand signal
+                        {{else}}
+                            Platform activity
+                        {{end}}
+
+                    </span>
+
+
+                    <h3>
+
+                        {{if .Demand.ProduceType}}
+
+                            {{.Demand.Activity}}
+
+                        {{else if or .MarketOrders30 .MarketNegotiations30}}
+
+                            Buyer activity detected in the last 30 days
+
+                        {{else}}
+
+                            No buyer activity recorded in the last 30 days
+
+                        {{end}}
+
+                    </h3>
+
+
+                    <p>
+
+                        {{if .Demand.ProduceType}}
+
+                            Based on recorded activity across
+                            your product listings in the last
+                            30 days.
+
+                        {{else}}
+
+                            Based on recorded Agro-Shield orders
+                            and negotiations in the last 30 days;
+                            this is not a market-wide forecast.
+
+                        {{end}}
+
+                    </p>
+
+
+                </div>
+
+
+            </div>
+
+
+
+            <div class="opportunity-stats">
+
+
+                <div>
+
+                    <span>
+                        Your active listings
+                    </span>
+
+
+                    <strong>
+                        {{.MarketListings}}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Your listings with photos
+                    </span>
+
+
+                    <strong>
+                        {{.ListingsWithPhotos}}/{{.ListingsActive}}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Platform price range
+                    </span>
+
+
+                    <strong>
+
+                        {{if .MarketHasPrices}}
+
+                            ₦{{money0 .MarketPriceMin}}–₦{{money0 .MarketPriceMax}}
+
+                        {{else}}
+
+                            Unavailable
+
+                        {{end}}
+
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Median price / unit
+                    </span>
+
+
+                    <strong>
+
+                        {{if .MarketHasPrices}}
+
+                            ₦{{money0 .MarketPriceMedian}}
+
+                        {{else}}
+
+                            —
+
+                        {{end}}
+
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Your orders · last 30 days
+                    </span>
+
+
+                    <strong>
+                        {{.MarketOrders30}}
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Your negotiations · last 30 days
+                    </span>
+
+
+                    <strong>
+                        {{.MarketNegotiations30}}
+                    </strong>
+
+                </div>
+
+
+
+                {{if .Demand.ProduceType}}
 
 
                     <div>
 
                         <span>
-                            Your active listings
+                            Views · 30 days
                         </span>
 
 
                         <strong>
-                            {{.MarketListings}}
+                            {{.Demand.Views}}
                         </strong>
 
                     </div>
@@ -1839,12 +2079,12 @@
                     <div>
 
                         <span>
-                            Your listings with photos
+                            Cart adds · 30 days
                         </span>
 
 
                         <strong>
-                            {{.ListingsWithPhotos}}/{{.ListingsActive}}
+                            {{.Demand.CartAdds}}
                         </strong>
 
                     </div>
@@ -1853,19 +2093,103 @@
                     <div>
 
                         <span>
-                            Platform price range
+                            Units ordered · 30 days
+                        </span>
+
+
+                        <strong>
+                            {{printf "%.0f" .Demand.UnitsOrdered}}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Trend vs previous 30 days
+                        </span>
+
+
+                        <strong>
+                            {{printf "%+.0f%%" .Demand.TrendPercent}}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Platform searches · {{.Demand.ComparisonLocation}}
+                        </span>
+
+
+                        <strong>
+                            {{.Demand.Searches}}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Active negotiations
+                        </span>
+
+
+                        <strong>
+                            {{.Demand.NegotiationsActive}}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Accepted negotiations
+                        </span>
+
+
+                        <strong>
+                            {{.Demand.NegotiationsAccepted}}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Rejected negotiations
+                        </span>
+
+
+                        <strong>
+                            {{.Demand.NegotiationsRejected}}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Negotiation conversion
                         </span>
 
 
                         <strong>
 
-                            {{if .MarketHasPrices}}
+                            {{if or .Demand.NegotiationsActive .Demand.NegotiationsAccepted .Demand.NegotiationsRejected}}
 
-                                ₦{{money0 .MarketPriceMin}}–₦{{money0 .MarketPriceMax}}
+                                {{printf "%.0f%%" .Demand.NegotiationConversionRate}}
 
                             {{else}}
 
-                                Unavailable
+                                Awaiting activity
 
                             {{end}}
 
@@ -1877,15 +2201,39 @@
                     <div>
 
                         <span>
-                            Median price / unit
+                            Demand score
                         </span>
 
 
                         <strong>
 
-                            {{if .MarketHasPrices}}
+                            {{if or .Demand.Views .Demand.CartAdds .Demand.Orders .Demand.Negotiations}}
 
-                                ₦{{money0 .MarketPriceMedian}}
+                                {{printf "%.0f/100" .Demand.DemandScore}}
+
+                            {{else}}
+
+                                Awaiting activity
+
+                            {{end}}
+
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Average offer price
+                        </span>
+
+
+                        <strong>
+
+                            {{if .Demand.AverageOfferPrice}}
+
+                                ₦{{money0 .Demand.AverageOfferPrice}}
 
                             {{else}}
 
@@ -1901,12 +2249,12 @@
                     <div>
 
                         <span>
-                            Your orders · last 30 days
+                            Negotiated units · 30 days
                         </span>
 
 
                         <strong>
-                            {{.MarketOrders30}}
+                            {{printf "%.0f" .Demand.NegotiatedUnits}}
                         </strong>
 
                     </div>
@@ -1915,550 +2263,462 @@
                     <div>
 
                         <span>
-                            Your negotiations · last 30 days
+                            Sell-through · 30 days
                         </span>
 
 
                         <strong>
-                            {{.MarketNegotiations30}}
+
+                            {{if .Demand.LifecycleDataAvailable}}
+
+                                {{printf "%.0f%%" .Demand.SellThroughRate}}
+
+                            {{else}}
+
+                                Awaiting sales data
+
+                            {{end}}
+
                         </strong>
 
                     </div>
 
 
+                {{end}}
 
-                    {{if .Demand.ProduceType}}
 
+                {{if .Demand.TimeToFirstOrderHours}}
 
-                        <div>
+                    <div>
 
-                            <span>
-                                Views · 30 days
-                            </span>
+                        <span>
+                            Average time to first order
+                        </span>
 
 
-                            <strong>
-                                {{.Demand.Views}}
-                            </strong>
+                        <strong>
+                            {{printf "%.0f hours" .Demand.TimeToFirstOrderHours}}
+                        </strong>
 
-                        </div>
+                    </div>
 
+                {{end}}
 
-                        <div>
 
-                            <span>
-                                Cart adds · 30 days
-                            </span>
+                {{if .Demand.TimeToSellOutHours}}
 
+                    <div>
 
-                            <strong>
-                                {{.Demand.CartAdds}}
-                            </strong>
+                        <span>
+                            Average time to sell out
+                        </span>
 
-                        </div>
 
+                        <strong>
+                            {{printf "%.0f hours" .Demand.TimeToSellOutHours}}
+                        </strong>
 
-                        <div>
+                    </div>
 
-                            <span>
-                                Units ordered · 30 days
-                            </span>
-
-
-                            <strong>
-                                {{printf "%.0f" .Demand.UnitsOrdered}}
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Trend vs previous 30 days
-                            </span>
-
-
-                            <strong>
-                                {{printf "%+.0f%%" .Demand.TrendPercent}}
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Platform searches · {{.Demand.ComparisonLocation}}
-                            </span>
-
-
-                            <strong>
-                                {{.Demand.Searches}}
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Active negotiations
-                            </span>
-
-
-                            <strong>
-                                {{.Demand.NegotiationsActive}}
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Accepted negotiations
-                            </span>
-
-
-                            <strong>
-                                {{.Demand.NegotiationsAccepted}}
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Rejected negotiations
-                            </span>
-
-
-                            <strong>
-                                {{.Demand.NegotiationsRejected}}
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Negotiation conversion
-                            </span>
-
-
-                            <strong>
-
-                                {{if or .Demand.NegotiationsActive .Demand.NegotiationsAccepted .Demand.NegotiationsRejected}}
-
-                                    {{printf "%.0f%%" .Demand.NegotiationConversionRate}}
-
-                                {{else}}
-
-                                    Awaiting activity
-
-                                {{end}}
-
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Demand score
-                            </span>
-
-
-                            <strong>
-
-                                {{if or .Demand.Views .Demand.CartAdds .Demand.Orders .Demand.Negotiations}}
-
-                                    {{printf "%.0f/100" .Demand.DemandScore}}
-
-                                {{else}}
-
-                                    Awaiting activity
-
-                                {{end}}
-
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Average offer price
-                            </span>
-
-
-                            <strong>
-
-                                {{if .Demand.AverageOfferPrice}}
-
-                                    ₦{{money0 .Demand.AverageOfferPrice}}
-
-                                {{else}}
-
-                                    —
-
-                                {{end}}
-
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Negotiated units · 30 days
-                            </span>
-
-
-                            <strong>
-                                {{printf "%.0f" .Demand.NegotiatedUnits}}
-                            </strong>
-
-                        </div>
-
-
-                        <div>
-
-                            <span>
-                                Sell-through · 30 days
-                            </span>
-
-
-                            <strong>
-
-                                {{if .Demand.LifecycleDataAvailable}}
-
-                                    {{printf "%.0f%%" .Demand.SellThroughRate}}
-
-                                {{else}}
-
-                                    Awaiting sales data
-
-                                {{end}}
-
-                            </strong>
-
-                        </div>
-
-
-                    {{end}}
-
-
-                    {{if .Demand.TimeToFirstOrderHours}}
-
-                        <div>
-
-                            <span>
-                                Average time to first order
-                            </span>
-
-
-                            <strong>
-                                {{printf "%.0f hours" .Demand.TimeToFirstOrderHours}}
-                            </strong>
-
-                        </div>
-
-                    {{end}}
-
-
-                    {{if .Demand.TimeToSellOutHours}}
-
-                        <div>
-
-                            <span>
-                                Average time to sell out
-                            </span>
-
-
-                            <strong>
-                                {{printf "%.0f hours" .Demand.TimeToSellOutHours}}
-                            </strong>
-
-                        </div>
-
-                    {{end}}
-
-
-                </div>
-
-
-
-                <a
-                    href="/storage"
-                    class="panel-action"
-                >
-                    Manage listings in Storage
-                </a>
-
-
-            </section>
-
-
-        </section>
-
-    {{end}}
-
-
-
-    <!-- =====================================================
-         STORAGE OVERVIEW
-    ====================================================== -->
-
-    {{if not .IsBuyer}}
-
-        <section class="panel storage-overview">
-
-
-            <div class="section-heading">
-
-
-                <div>
-
-                    <p class="eyebrow">
-                        Inventory
-                    </p>
-
-
-                    <h2>
-                        Storage overview
-                    </h2>
-
-                </div>
-
-
-                <a href="/storage">
-                    Manage storage
-                </a>
+                {{end}}
 
 
             </div>
 
 
 
-            <div class="produce-list">
+            <a
+                href="/storage"
+                class="panel-action"
+            >
+                Manage listings in Storage
+            </a>
 
 
-                {{range .StorageCrops}}
+        </section>
 
 
-                    <div class="produce-row">
+    </section>
+
+{{end}}
 
 
-                        <div class="produce-info">
+
+<!-- =====================================================
+     STORAGE OVERVIEW
+====================================================== -->
+
+{{if not .IsBuyer}}
+
+    <section
+        class="panel storage-overview"
+        aria-labelledby="storage-overview-title"
+    >
 
 
-                            <span class="produce-icon">
+        <div class="section-heading">
+
+
+            <div>
+
+                <p class="eyebrow">
+                    Inventory
+                </p>
+
+
+                <h2 id="storage-overview-title">
+                    Storage overview
+                </h2>
+
+            </div>
+
+
+            <a href="/storage">
+                Manage storage
+            </a>
+
+
+        </div>
+
+
+
+        <div class="produce-list">
+
+
+            {{range .StorageCrops}}
+
+
+                <div class="produce-row">
+
+
+                    <div class="produce-info">
+
+
+                        <span
+                            class="produce-icon"
+                            aria-hidden="true"
+                        >
+
+                            {{if .ListedForSale}}
+                                🌾
+                            {{else}}
+                                📦
+                            {{end}}
+
+                        </span>
+
+
+                        <div>
+
+                            <h3>
+                                {{.Name}}
+                            </h3>
+
+
+                            <span>
 
                                 {{if .ListedForSale}}
-                                    🌾
+                                    Listed for sale
                                 {{else}}
-                                    📦
+                                    Stored stock
                                 {{end}}
 
                             </span>
 
-
-                            <div>
-
-                                <h3>
-                                    {{.Name}}
-                                </h3>
-
-
-                                <span>
-
-                                    {{if .ListedForSale}}
-                                        Listed for sale
-                                    {{else}}
-                                        Stored stock
-                                    {{end}}
-
-                                </span>
-
-                            </div>
-
-
                         </div>
 
 
-
-                        <div class="produce-quantity">
-
-
-                            <strong>
-                                {{printf "%.0f" .Quantity}}
-                            </strong>
-
-
-                            <span>
-                                {{.Unit}}
-                            </span>
-
-
-                        </div>
+                    </div>
 
 
 
-                        <span class="stock-status healthy">
+                    <div class="produce-quantity">
 
-                            {{if eq .Quantity 0.0}}
 
-                                Empty
+                        <strong>
+                            {{printf "%.0f" .Quantity}}
+                        </strong>
 
-                            {{else if .ListedForSale}}
 
-                                Listed
-
-                            {{else}}
-
-                                Stored
-
-                            {{end}}
-
+                        <span>
+                            {{.Unit}}
                         </span>
 
 
                     </div>
 
 
-                {{else}}
 
+                    <span class="stock-status healthy">
 
-                    <div class="empty-state">
+                        {{if eq .Quantity 0.0}}
 
-                        <p>
-                            No produce in storage yet.
-                        </p>
+                            Empty
 
+                        {{else if .ListedForSale}}
 
-                        <a href="/storage">
-                            Add your first product
-                        </a>
+                            Listed
 
-                    </div>
+                        {{else}}
 
+                            Stored
 
-                {{end}}
+                        {{end}}
 
+                    </span>
 
-            </div>
-
-
-        </section>
-
-    {{end}}
-
-
-
-    <!-- =====================================================
-         PRIORITIES + NOTIFICATIONS
-    ====================================================== -->
-
-    <section class="dashboard-grid">
-
-
-        <!-- PRIORITIES -->
-
-        <section class="panel priorities">
-
-
-            <div class="section-heading">
-
-
-                <div>
-
-                    <p class="eyebrow">
-                        Focus
-                    </p>
-
-
-                    <h2>
-                        Today's priorities
-                    </h2>
 
                 </div>
-
-
-            </div>
-
-
-
-            {{if .Priorities}}
-
-
-                {{range .Priorities}}
-
-
-                    <article class="priority priority-{{.Tone}}">
-
-
-                        <div>
-
-
-                            <span class="priority-label">
-                                {{.Label}}
-                            </span>
-
-
-                            <h3>
-                                {{.Title}}
-                            </h3>
-
-
-                            <p>
-                                {{.Detail}}
-                            </p>
-
-
-                        </div>
-
-
-                        <a href="{{.Href}}">
-                            {{.Action}}
-                        </a>
-
-
-                    </article>
-
-
-                {{end}}
 
 
             {{else}}
 
 
-                <article class="priority priority-success">
+                <div class="empty-state">
+
+                    <p>
+                        No products in storage yet.
+                    </p>
+
+
+                    <a href="/storage">
+                        Add your first product
+                    </a>
+
+                </div>
+
+
+            {{end}}
+
+
+        </div>
+
+
+    </section>
+
+{{end}}
+
+
+
+<!-- =====================================================
+     PRIORITIES
+====================================================== -->
+
+<section class="dashboard-grid">
+
+
+    <section
+        class="panel priorities"
+        aria-labelledby="priorities-title"
+    >
+
+
+        <div class="section-heading">
+
+
+            <div>
+
+                <p class="eyebrow">
+                    Focus
+                </p>
+
+
+                <h2 id="priorities-title">
+                    Today's priorities
+                </h2>
+
+            </div>
+
+
+        </div>
+
+
+
+        {{if .Priorities}}
+
+
+            {{range .Priorities}}
+
+
+                <article class="priority priority-{{.Tone}}">
 
 
                     <div>
 
 
                         <span class="priority-label">
-                            On track
+                            {{.Label}}
                         </span>
 
 
                         <h3>
-                            Your account has no urgent actions
+                            {{.Title}}
                         </h3>
 
 
                         <p>
-                            Use the marketplace and your account
-                            tools to keep momentum going.
+                            {{.Detail}}
                         </p>
+
+
+                    </div>
+
+
+                    <a href="{{.Href}}">
+                        {{.Action}}
+                    </a>
+
+
+                </article>
+
+
+            {{end}}
+
+
+        {{else}}
+
+
+            <article class="priority priority-success">
+
+
+                <div>
+
+
+                    <span class="priority-label">
+                        On track
+                    </span>
+
+
+                    <h3>
+                        Your account has no urgent actions
+                    </h3>
+
+
+                    <p>
+                        Use the marketplace and your account
+                        tools to keep momentum going.
+                    </p>
+
+
+                </div>
+
+
+            </article>
+
+
+        {{end}}
+
+
+    </section>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     RECENT ACTIVITY
+====================================================== -->
+
+<section
+    class="panel activity"
+    aria-labelledby="recent-activity-title"
+>
+
+
+    <div class="section-heading">
+
+
+        <div>
+
+            <p class="eyebrow">
+                Latest
+            </p>
+
+
+            <h2 id="recent-activity-title">
+                Recent activity
+            </h2>
+
+        </div>
+
+
+        <a href="{{if .IsBuyer}}/profile{{else}}/sales{{end}}">
+            View all
+        </a>
+
+
+    </div>
+
+
+
+    {{if .RecentOrders}}
+
+
+        <div class="activity-list">
+
+
+            {{range .RecentOrders}}
+
+
+                <article class="activity-row">
+
+
+                    <div
+                        class="activity-mark"
+                        aria-hidden="true"
+                    >
+                    </div>
+
+
+
+                    <div class="activity-main">
+
+
+                        <h3>
+                            {{.ProductName}}
+                        </h3>
+
+
+                        <p>
+
+
+                            {{if $.IsBuyer}}
+
+                                From {{.SellerName}}
+
+                            {{else}}
+
+                                Purchased by {{.BuyerName}}
+
+                            {{end}}
+
+
+                            ·
+
+
+                            {{printf "%.0f" .Quantity}}
+                            units
+
+
+                        </p>
+
+
+                    </div>
+
+
+
+                    <div class="activity-value">
+
+
+                        <strong>
+                            ₦{{money .TotalPrice}}
+                        </strong>
+
+
+                        <span>
+                            {{.Status}}
+                        </span>
 
 
                     </div>
@@ -2470,470 +2730,375 @@
             {{end}}
 
 
-        </section>
+        </div>
 
 
-    </section>
+    {{else}}
 
 
-
-    <!-- =====================================================
-         RECENT ACTIVITY
-    ====================================================== -->
-
-    <section class="panel activity">
+        <div class="empty-state">
 
 
-        <div class="section-heading">
+            <h3>
+                No activity yet
+            </h3>
 
 
-            <div>
-
-                <p class="eyebrow">
-                    Latest
-                </p>
+            <p>
 
 
-                <h2>
-                    Recent activity
-                </h2>
+                {{if .IsBuyer}}
 
-            </div>
+                    Your completed purchases will appear here.
+
+                {{else}}
+
+                    Add a product, publish a listing,
+                    and complete your first sale to see
+                    performance here.
+
+                {{end}}
 
 
-            <a href="{{if .IsBuyer}}/profile{{else}}/sales{{end}}">
-                View all
-            </a>
+            </p>
 
 
         </div>
 
 
-
-        {{if .RecentOrders}}
-
-
-            <div class="activity-list">
+    {{end}}
 
 
-                {{range .RecentOrders}}
-
-
-                    <article class="activity-row">
-
-
-                        <div class="activity-mark">
-                        </div>
+</section>
 
 
 
-                        <div class="activity-main">
+<!-- =====================================================
+     TRUST / PLATFORM STATUS
+====================================================== -->
+
+<section
+    class="trust-strip"
+    aria-label="Agro-Shield platform features"
+>
 
 
-                            <h3>
-                                {{.CropName}}
-                            </h3>
+    <div class="trust-item">
 
 
-                            <p>
+        <span
+            class="trust-icon"
+            aria-hidden="true"
+        >
+            ✓
+        </span>
 
 
-                                {{if $.IsBuyer}}
+        <div>
 
-                                    From {{.SellerName}}
-
-                                {{else}}
-
-                                    Purchased by {{.BuyerName}}
-
-                                {{end}}
+            <strong>
+                Verified marketplace
+            </strong>
 
 
-                                ·
+            <span>
+                Built for trusted agricultural trade
+            </span>
+
+        </div>
 
 
-                                {{printf "%.0f" .Quantity}}
-                                units
-
-
-                            </p>
-
-
-                        </div>
+    </div>
 
 
 
-                        <div class="activity-value">
+    <div class="trust-item">
 
 
-                            <strong>
-                                ₦{{money .TotalPrice}}
-                            </strong>
+        <span
+            class="trust-icon"
+            aria-hidden="true"
+        >
+            AI
+        </span>
 
 
-                            <span>
-                                {{.Status}}
-                            </span>
+        <div>
+
+            <strong>
+                AI-assisted farm health
+            </strong>
 
 
-                        </div>
+            <span>
+                Get insights before problems grow
+            </span>
+
+        </div>
 
 
-                    </article>
+    </div>
 
 
-                {{end}}
+
+    <div class="trust-item">
 
 
-            </div>
+        <span
+            class="trust-icon"
+            aria-hidden="true"
+        >
+            🔒
+        </span>
+
+
+        <div>
+
+            <strong>
+                Secure transactions
+            </strong>
+
+
+            <span>
+                Your marketplace activity is protected
+            </span>
+
+        </div>
+
+
+    </div>
+
+
+</section>
+
+
+
+<!-- =====================================================
+     QUICK ACTIONS
+====================================================== -->
+
+<section
+    class="quick-actions"
+    aria-labelledby="quick-actions-title"
+>
+
+
+    <div class="section-heading">
+
+
+        <div>
+
+            <p class="eyebrow">
+                Shortcuts
+            </p>
+
+
+            <h2 id="quick-actions-title">
+                Continue working
+            </h2>
+
+        </div>
+
+
+    </div>
+
+
+
+    <div class="action-grid">
+
+
+        {{if .IsBuyer}}
+
+
+            <a
+                href="/marketplace"
+                class="action-card"
+            >
+
+                <span>
+                    Market
+                </span>
+
+
+                <h3>
+                    Explore agricultural products
+                </h3>
+
+
+                <p>
+                    Browse available products from
+                    farmers and agricultural sellers.
+                </p>
+
+            </a>
+
+
+
+            <a
+                href="/profile"
+                class="action-card"
+            >
+
+                <span>
+                    Orders
+                </span>
+
+
+                <h3>
+                    View purchases
+                </h3>
+
+
+                <p>
+                    Review your orders and transactions.
+                </p>
+
+            </a>
+
+
+
+            <a
+                href="/profile"
+                class="action-card"
+            >
+
+                <span>
+                    Account
+                </span>
+
+
+                <h3>
+                    Manage profile
+                </h3>
+
+
+                <p>
+                    Update your account and preferences.
+                </p>
+
+            </a>
 
 
         {{else}}
 
 
-            <div class="empty-state">
+            <a
+                href="/storage"
+                class="action-card"
+            >
+
+                <span>
+                    Storage
+                </span>
 
 
                 <h3>
-                    No activity yet
+                    Manage products
                 </h3>
 
 
                 <p>
-
-
-                    {{if .IsBuyer}}
-
-                        Your completed purchases will appear here.
-
-                    {{else}}
-
-                        Add a product, publish a listing,
-                        and complete your first sale to see
-                        performance here.
-
-                    {{end}}
-
-
+                    Register stock and update
+                    product availability.
                 </p>
 
+            </a>
 
-            </div>
+
+
+            <a
+                href="/marketplace"
+                class="action-card"
+            >
+
+                <span>
+                    Market
+                </span>
+
+
+                <h3>
+                    List products
+                </h3>
+
+
+                <p>
+                    Put your agricultural products
+                    in front of buyers.
+                </p>
+
+            </a>
+
+
+
+            <a
+                href="/ai-assistant"
+                class="action-card"
+            >
+
+                <span>
+                    Farm health
+                </span>
+
+
+                <h3>
+                    Ask the AI assistant
+                </h3>
+
+
+                <p>
+                    Analyse a farm problem, image,
+                    or get agricultural advice.
+                </p>
+
+            </a>
+
+
+
+            <a
+                href="/marketplace"
+                class="action-card"
+            >
+
+                <span>
+                    Sales
+                </span>
+
+
+                <h3>
+                    Manage negotiations
+                </h3>
+
+
+                <p>
+                    Review offers and negotiate
+                    with buyers.
+                </p>
+
+            </a>
 
 
         {{end}}
 
 
-    </section>
+    </div>
 
 
-
-    <!-- =====================================================
-         TRUST / PLATFORM STATUS
-    ====================================================== -->
-
-    <section class="trust-strip">
-
-
-        <div class="trust-item">
-
-
-            <span class="trust-icon">
-                ✓
-            </span>
-
-
-            <div>
-
-                <strong>
-                    Verified marketplace
-                </strong>
-
-
-                <span>
-                    Built for trusted agricultural trade
-                </span>
-
-            </div>
-
-
-        </div>
-
-
-
-        <div class="trust-item">
-
-
-            <span class="trust-icon">
-                AI
-            </span>
-
-
-            <div>
-
-                <strong>
-                    AI-assisted farm health
-                </strong>
-
-
-                <span>
-                    Get insights before problems grow
-                </span>
-
-            </div>
-
-
-        </div>
-
-
-
-        <div class="trust-item">
-
-
-            <span class="trust-icon">
-                🔒
-            </span>
-
-
-            <div>
-
-                <strong>
-                    Secure transactions
-                </strong>
-
-
-                <span>
-                    Your marketplace activity is protected
-                </span>
-
-            </div>
-
-
-        </div>
-
-
-    </section>
-
-
-
-    <!-- =====================================================
-         QUICK ACTIONS
-    ====================================================== -->
-
-    <section class="quick-actions">
-
-
-        <div class="section-heading">
-
-
-            <div>
-
-                <p class="eyebrow">
-                    Shortcuts
-                </p>
-
-
-                <h2>
-                    Continue working
-                </h2>
-
-            </div>
-
-
-        </div>
-
-
-
-        <div class="action-grid">
-
-
-            {{if .IsBuyer}}
-
-
-                <a
-                    href="/marketplace"
-                    class="action-card"
-                >
-
-                    <span>
-                        Market
-                    </span>
-
-
-                    <h3>
-                        Explore produce
-                    </h3>
-
-
-                    <p>
-                        Browse fresh listings from farmers.
-                    </p>
-
-                </a>
-
-
-
-                <a
-                    href="/profile"
-                    class="action-card"
-                >
-
-                    <span>
-                        Orders
-                    </span>
-
-
-                    <h3>
-                        View purchases
-                    </h3>
-
-
-                    <p>
-                        Review your orders and transactions.
-                    </p>
-
-                </a>
-
-
-
-                <a
-                    href="/profile"
-                    class="action-card"
-                >
-
-                    <span>
-                        Account
-                    </span>
-
-
-                    <h3>
-                        Manage profile
-                    </h3>
-
-
-                    <p>
-                        Update your account and preferences.
-                    </p>
-
-                </a>
-
-
-            {{else}}
-
-
-                <a
-                    href="/storage"
-                    class="action-card"
-                >
-
-                    <span>
-                        Storage
-                    </span>
-
-
-                    <h3>
-                        Manage produce
-                    </h3>
-
-
-                    <p>
-                        Register stock and update availability.
-                    </p>
-
-                </a>
-
-
-
-                <a
-                    href="/marketplace"
-                    class="action-card"
-                >
-
-                    <span>
-                        Market
-                    </span>
-
-
-                    <h3>
-                        List produce
-                    </h3>
-
-
-                    <p>
-                        Put your farm products in front of buyers.
-                    </p>
-
-                </a>
-
-
-
-                <a
-                    href="/ai-assistant"
-                    class="action-card"
-                >
-
-                    <span>
-                        Farm health
-                    </span>
-
-
-                    <h3>
-                        Ask the AI assistant
-                    </h3>
-
-
-                    <p>
-                        Analyse a farm problem, image,
-                        or get agricultural advice.
-                    </p>
-
-                </a>
-
-
-
-                <a
-                    href="/marketplace"
-                    class="action-card"
-                >
-
-                    <span>
-                        Sales
-                    </span>
-
-
-                    <h3>
-                        Manage negotiations
-                    </h3>
-
-
-                    <p>
-                        Review offers and negotiate with buyers.
-                    </p>
-
-                </a>
-
-
-            {{end}}
-
-
-        </div>
-
-
-    </section>
-
+</section>
+```
 
 </main>
-
-
 
 <!-- =========================================================
      DASHBOARD JAVASCRIPT
 ========================================================== -->
 
-<script src="/static/js/dashboard.js"></script>
+<script
+    src="/static/js/dashboard.js?v=20260904"
+></script>
 
-<script src="/static/js/navigation.js"></script>
-
+<script
+    src="/static/js/navigation.js?v=20260904"
+></script>
 
 </body>
 

@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
 
     <meta
@@ -16,25 +18,102 @@
         {{end}}
         - Agro-Shield
     </title>
-    <link rel="stylesheet" href="/static/css/style.css">
 
-    <link rel="stylesheet" href="/static/css/chat-thread.css">
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/chat-thread.css?v=20260904"
+    >
+
 </head>
+
 
 <body>
 
+
+<!-- ============================================================
+     NAVIGATION
+     ============================================================ -->
+
 <header class="navbar">
-    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+
+    <a
+        class="logo"
+        href="/dashboard"
+        aria-label="Agro-Shield Dashboard"
+    >
+        <img
+            src="/static/assets/logo/Agro-Shield_logo.png"
+            alt="Agro-Shield"
+        >
+    </a>
+
+
     <nav aria-label="Main navigation">
-        <a href="/dashboard">Dashboard</a><a href="/chat" aria-current="page">Chat</a><a href="/storage">Storage</a><a href="/marketplace">Marketplace</a><a href="/negotiations">Negotiations</a><a href="/cart">Cart</a><a href="/ai-assistant">AI Assistant</a><a href="/profile">Profile</a><a href="/notifications">Notifications</a><a href="/logout">Logout</a>
+
+        <a href="/dashboard">
+            Dashboard
+        </a>
+
+        <a
+            href="/chat"
+            aria-current="page"
+        >
+            Chat
+        </a>
+
+        <a href="/storage">
+            Storage
+        </a>
+
+        <a href="/marketplace">
+            Marketplace
+        </a>
+
+        <a href="/negotiations">
+            Negotiations
+        </a>
+
+        <a href="/cart">
+            Cart
+        </a>
+
+        <a href="/ai-assistant">
+            AI Assistant
+        </a>
+
+        <a href="/profile">
+            Profile
+        </a>
+
+        <a href="/notifications">
+            Notifications
+        </a>
+
+        <a href="/logout">
+            Logout
+        </a>
+
     </nav>
+
 </header>
+
+
+
+<!-- ============================================================
+     CHAT CONTAINER
+     ============================================================ -->
 
 <div class="chat-container">
 
-    <!-- =====================================================
+
+    <!-- ============================================================
          CHAT HEADER
-         ===================================================== -->
+         ============================================================ -->
 
     <header class="chat-header">
 
@@ -44,28 +123,84 @@
                 href="/chat"
                 class="back-button"
                 title="Back to chats"
+                aria-label="Back to chats"
             >
                 ←
             </a>
 
+
             <div class="chat-title">
 
                 <h2 class="chat-heading">
+
                     {{if eq .Conversation.Type "group"}}
+
                         {{.Conversation.Name}}
+
                     {{else}}
-                        {{range .Members}}{{if ne .UserID $.Farmer.ID}}<a class="chat-profile-link" href="/profile?id={{.UserID}}">{{if .PhotoURL}}<img class="thread-avatar" src="{{.PhotoURL}}" alt="{{.FullName}} profile picture">{{else}}<span class="thread-avatar">👤</span>{{end}}{{.FullName}}</a>{{end}}{{end}}
+
+                        {{range .Members}}
+
+                            {{if ne .UserID $.User.ID}}
+
+                                <a
+                                    class="chat-profile-link"
+                                    href="/profile?id={{.UserID}}"
+                                >
+
+                                    {{if .PhotoURL}}
+
+                                        <img
+                                            class="thread-avatar"
+                                            src="{{.PhotoURL}}"
+                                            alt="{{.FullName}} profile picture"
+                                        >
+
+                                    {{else}}
+
+                                        <span
+                                            class="thread-avatar"
+                                            role="img"
+                                            aria-label="Profile picture unavailable"
+                                        >
+                                            👤
+                                        </span>
+
+                                    {{end}}
+
+                                    {{.FullName}}
+
+                                </a>
+
+                            {{end}}
+
+                        {{end}}
+
                     {{end}}
+
                 </h2>
+
 
                 <span class="chat-type">
 
                     {{if eq .Conversation.Type "group"}}
+
                         Group conversation
+
                     {{else}}
+
                         Private conversation
+
                     {{end}}
-                    <span class="chat-status"><i></i> Active conversation</span>
+
+
+                    <span class="chat-status">
+
+                        <i aria-hidden="true"></i>
+
+                        Active conversation
+
+                    </span>
 
                 </span>
 
@@ -76,25 +211,56 @@
     </header>
 
 
-    <!-- =====================================================
-         MEMBERS
-         ===================================================== -->
+
+    <!-- ============================================================
+         GROUP MEMBERS
+         ============================================================ -->
 
     {{if eq .Conversation.Type "group"}}
 
-    <section class="members-section">
+    <section
+        class="members-section"
+        aria-label="Group members"
+    >
 
         <div class="members-title">
             Group Members
         </div>
 
+
         <div class="members">
 
             {{range .Members}}
 
-                <a class="member" href="/profile?id={{.UserID}}">
-                    {{if .PhotoURL}}<img src="{{.PhotoURL}}" alt="">{{else}}<span class="member-avatar">👤</span>{{end}}
-                    <span>{{.FullName}}</span>
+                <a
+                    class="member"
+                    href="/profile?id={{.UserID}}"
+                >
+
+                    {{if .PhotoURL}}
+
+                        <img
+                            src="{{.PhotoURL}}"
+                            alt="{{.FullName}} profile picture"
+                        >
+
+                    {{else}}
+
+                        <span
+                            class="member-avatar"
+                            role="img"
+                            aria-label="Profile picture unavailable"
+                        >
+                            👤
+                        </span>
+
+                    {{end}}
+
+
+                    <span>
+                        {{.FullName}}
+                    </span>
+
                 </a>
 
             {{end}}
@@ -106,36 +272,83 @@
     {{end}}
 
 
-    <!-- =====================================================
-         MESSAGES
-         ===================================================== -->
 
-    <main class="messages" id="messages">
+    <!-- ============================================================
+         MESSAGES
+         ============================================================ -->
+
+    <main
+        class="messages"
+        id="messages"
+        aria-label="Conversation messages"
+    >
 
         {{if .Messages}}
 
             {{range .Messages}}
+
                 {{$message := .}}
+
 
                 <div
                     class="message
-                    {{if eq .SenderID $.Farmer.ID}}
+                    {{if eq .SenderID $.User.ID}}
                         mine
                     {{else}}
                         theirs
                     {{end}}"
                 >
 
-                    {{if ne .SenderID $.Farmer.ID}}
 
-                        {{range $.Members}}{{if eq .UserID $message.SenderID}}
-                        <a class="sender" href="/profile?id={{.UserID}}">
-                            {{if .PhotoURL}}<img src="{{.PhotoURL}}" alt="">{{else}}<span>👤</span>{{end}}
-                            {{.FullName}}
-                        </a>
-                        {{end}}{{end}}
+                    <!-- =================================================
+                         MESSAGE SENDER
+                         ================================================= -->
+
+                    {{if ne .SenderID $.User.ID}}
+
+                        {{range $.Members}}
+
+                            {{if eq .UserID $message.SenderID}}
+
+                                <a
+                                    class="sender"
+                                    href="/profile?id={{.UserID}}"
+                                >
+
+                                    {{if .PhotoURL}}
+
+                                        <img
+                                            src="{{.PhotoURL}}"
+                                            alt="{{.FullName}} profile picture"
+                                        >
+
+                                    {{else}}
+
+                                        <span
+                                            role="img"
+                                            aria-label="Profile picture unavailable"
+                                        >
+                                            👤
+                                        </span>
+
+                                    {{end}}
+
+
+                                    {{.FullName}}
+
+                                </a>
+
+                            {{end}}
+
+                        {{end}}
 
                     {{end}}
+
+
+
+                    <!-- =================================================
+                         MESSAGE CONTENT
+                         ================================================= -->
 
                     <div class="message-bubble">
 
@@ -143,10 +356,39 @@
 
                     </div>
 
+
+
+                    <!-- =================================================
+                         MESSAGE TIME / RECEIPT
+                         ================================================= -->
+
                     <div class="message-time">
 
-                        <time class="local-time" datetime="{{.CreatedAt.UTC.Format "2006-01-02T15:04:05Z07:00"}}">{{.CreatedAt.Format "02 Jan 2006 15:04"}}</time>
-						{{if eq .SenderID $.Farmer.ID}}<span class="message-receipt">{{if .Seen}}✓✓ Seen{{else}}✓ Sent{{end}}</span>{{end}}
+                        <time
+                            class="local-time"
+                            datetime="{{.CreatedAt.UTC.Format "2006-01-02T15:04:05Z07:00"}}"
+                        >
+                            {{.CreatedAt.Format "02 Jan 2006 15:04"}}
+                        </time>
+
+
+                        {{if eq .SenderID $.User.ID}}
+
+                            <span class="message-receipt">
+
+                                {{if .Seen}}
+
+                                    ✓✓ Seen
+
+                                {{else}}
+
+                                    ✓ Sent
+
+                                {{end}}
+
+                            </span>
+
+                        {{end}}
 
                     </div>
 
@@ -154,11 +396,19 @@
 
             {{end}}
 
+
         {{else}}
+
+
+            <!-- =================================================
+                 EMPTY CHAT
+                 ================================================= -->
 
             <div class="empty-chat">
 
-                <h3>No messages yet</h3>
+                <h3>
+                    No messages yet
+                </h3>
 
                 <p>
                     Start the conversation.
@@ -166,14 +416,16 @@
 
             </div>
 
+
         {{end}}
 
     </main>
 
 
-    <!-- =====================================================
+
+    <!-- ============================================================
          SEND MESSAGE
-         ===================================================== -->
+         ============================================================ -->
 
     <form
         class="message-form"
@@ -181,14 +433,24 @@
         action="/chat/send"
     >
 
-            <input
+        <input
             type="hidden"
             name="conversation_id"
             value="{{.Conversation.ID}}"
         >
 
+
+        <label
+            for="message-input"
+            class="visually-hidden"
+        >
+            Message
+        </label>
+
+
         <input
             type="text"
+            id="message-input"
             name="message"
             class="message-input"
             placeholder="Type a message..."
@@ -198,22 +460,41 @@
             aria-label="Message"
         >
 
+
         <button
             type="submit"
             class="send-button"
+            aria-label="Send message"
         >
-            <span>Send</span>
+
+            <span>
+                Send
+            </span>
+
         </button>
 
     </form>
-	<div id="typing-status" class="typing-status" aria-live="polite"></div>
+
+
+
+    <!-- ============================================================
+         TYPING STATUS
+         ============================================================ -->
+
+    <div
+        id="typing-status"
+        class="typing-status"
+        aria-live="polite"
+    ></div>
+
 
 </div>
 
 
-<!-- =========================================================
+
+<!-- ============================================================
      AUTO-SCROLL TO LATEST MESSAGE
-     ========================================================= -->
+     ============================================================ -->
 
 <script>
 
@@ -225,14 +506,46 @@
 
 </script>
 
-<script src="/static/js/chat-thread.js" defer></script>
+
+
+<!-- ============================================================
+     CHAT JAVASCRIPT
+     ============================================================ -->
+
+<script
+    src="/static/js/chat-thread.js"
+    defer
+></script>
+
+
 <script>
-document.querySelectorAll('.local-time').forEach((el) => {
-    const date = new Date(el.dateTime);
-    if (!Number.isNaN(date.getTime())) el.textContent = date.toLocaleString([], {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
-});
+
+    document.querySelectorAll(".local-time").forEach((element) => {
+
+        const date = new Date(element.dateTime);
+
+        if (!Number.isNaN(date.getTime())) {
+
+            element.textContent = date.toLocaleString([], {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+
+        }
+
+    });
+
 </script>
 
-<script src="/static/js/navigation.js"></script>
+
+<script
+    src="/static/js/navigation.js"
+></script>
+
+
 </body>
+
 </html>

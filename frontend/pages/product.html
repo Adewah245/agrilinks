@@ -3,26 +3,48 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <title>{{.Crop.Name}} - Agro-Shield</title>
+    <meta
+        name="description"
+        content="View agricultural product details on Agro-Shield."
+    >
 
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/product.css">
+    <title>{{.Product.Name}} - Agro-Shield</title>
+
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css?v=20260904"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/product.css?v=20260904"
+    >
 </head>
 
 <body>
 
 <header class="navbar">
 
-    <a class="logo" href="/dashboard">
+    <a
+        class="logo"
+        href="/dashboard"
+        aria-label="Agro-Shield Dashboard"
+    >
         <img
-            src="/static/assets/logo/Agro-Shield_logo.png"
+            src="/static/assets/logo/Agro-Shield_logo.png?v=20260904"
             alt="Agro-Shield"
         >
     </a>
 
-    <nav aria-label="Main navigation">
+
+    <nav
+        aria-label="Main navigation"
+    >
 
         <a href="/dashboard">
             Dashboard
@@ -43,6 +65,10 @@
             Negotiations
         </a>
 
+        <a href="/chat">
+            Chat
+        </a>
+
         <a href="/cart">
             Cart
         </a>
@@ -55,9 +81,45 @@
             Profile
         </a>
 
-        <a href="/notifications">
-            Notifications
+        <!--
+            Notification bell.
+
+            The unread count can be supplied by the backend when
+            this page's template data includes UnreadCount.
+
+            The actual bell animation will be implemented globally
+            in CSS so that every page can use the same behavior.
+        -->
+        <a
+            href="/notifications"
+            class="notification-link"
+            aria-label="Notifications"
+        >
+
+            <span
+                class="notification-bell"
+                aria-hidden="true"
+            >
+                🔔
+            </span>
+
+            <span class="notification-label">
+                Notifications
+            </span>
+
+            {{if gt .UnreadCount 0}}
+
+            <span
+                class="notification-badge"
+                aria-label="{{.UnreadCount}} unread notifications"
+            >
+                {{.UnreadCount}}
+            </span>
+
+            {{end}}
+
         </a>
+
 
         <a href="/logout">
             Logout
@@ -70,22 +132,44 @@
 
 <main class="product-page">
 
-    <section class="product-card">
+    <section
+        class="product-card"
+        aria-labelledby="product-name"
+    >
 
         <!-- =====================================================
              PRODUCT NAME
              ===================================================== -->
 
-        <h1 class="product-name">
-            {{.Crop.Name}}
+        <h1
+            id="product-name"
+            class="product-name"
+        >
+            {{.Product.Name}}
         </h1>
+
+
+        <!-- =====================================================
+             PRODUCT DESCRIPTION
+             ===================================================== -->
+
+        {{if .Product.Description}}
+
+        <p class="product-description">
+            {{.Product.Description}}
+        </p>
+
+        {{end}}
 
 
         <!-- =====================================================
              PRODUCT IMAGE GALLERY
              ===================================================== -->
 
-        <div class="product-gallery">
+        <div
+            class="product-gallery"
+            aria-label="Product images"
+        >
 
             {{if .Images}}
 
@@ -96,7 +180,7 @@
                         <img
                             class="product-image"
                             src="{{.ImageURL}}"
-                            alt="{{$.Crop.Name}}"
+                            alt="{{$.Product.Name}}"
                             loading="lazy"
                         >
 
@@ -106,17 +190,22 @@
 
             {{else}}
 
-                {{if .Crop.ImageURL}}
+                {{if .Product.Images}}
 
-                    <div class="product-gallery-item">
+                    {{range .Product.Images}}
 
-                        <img
-                            class="product-image"
-                            src="{{.Crop.ImageURL}}"
-                            alt="{{.Crop.Name}}"
-                        >
+                        <div class="product-gallery-item">
 
-                    </div>
+                            <img
+                                class="product-image"
+                                src="{{.ImageURL}}"
+                                alt="{{$.Product.Name}}"
+                                loading="lazy"
+                            >
+
+                        </div>
+
+                    {{end}}
 
                 {{else}}
 
@@ -141,8 +230,8 @@
 
         <p class="product-price">
 
-            ₦{{money0 .Crop.PricePerUnit}}
-            / {{.Crop.Unit}}
+            ₦{{money0 .Product.Price}}
+            / {{.Product.Unit}}
 
         </p>
 
@@ -153,6 +242,28 @@
 
         <div class="product-details">
 
+
+            <!-- =================================================
+                 CATEGORY
+                 ================================================= -->
+
+            <div class="product-detail-box">
+
+                <span class="product-detail-label">
+                    Category
+                </span>
+
+                <span class="product-detail-value">
+                    {{.Product.Category}}
+                </span>
+
+            </div>
+
+
+            <!-- =================================================
+                 AVAILABLE QUANTITY
+                 ================================================= -->
+
             <div class="product-detail-box">
 
                 <span class="product-detail-label">
@@ -160,11 +271,16 @@
                 </span>
 
                 <span class="product-detail-value">
-                    {{.Crop.Quantity}} {{.Crop.Unit}}
+                    {{.Product.Quantity}}
+                    {{.Product.Unit}}
                 </span>
 
             </div>
 
+
+            <!-- =================================================
+                 PRICE PER UNIT
+                 ================================================= -->
 
             <div class="product-detail-box">
 
@@ -173,12 +289,18 @@
                 </span>
 
                 <span class="product-detail-value">
-                    ₦{{money0 .Crop.PricePerUnit}}
-                    / {{.Crop.Unit}}
+
+                    ₦{{money0 .Product.Price}}
+                    / {{.Product.Unit}}
+
                 </span>
 
             </div>
 
+
+            <!-- =================================================
+                 LOCATION
+                 ================================================= -->
 
             <div class="product-detail-box">
 
@@ -188,18 +310,21 @@
 
                 <span class="product-detail-value">
 
-                    {{if .Crop.Location}}
+                    {{if .Product.Location}}
 
                         <a
                             class="map-location-link"
-                            href="https://www.google.com/maps/search/?api=1&query={{urlquery .Crop.Location}}"
+                            href="https://www.google.com/maps/search/?api=1&query={{urlquery .Product.Location}}"
                             target="_blank"
-                            rel="noopener"
+                            rel="noopener noreferrer"
                         >
-                            {{.Crop.Location}}
+
+                            {{.Product.Location}}
+
                             <span>
                                 ↗ View on map
                             </span>
+
                         </a>
 
                     {{else}}
@@ -213,6 +338,31 @@
             </div>
 
 
+            <!-- =================================================
+                 COMMUNITY
+                 ================================================= -->
+
+            {{if .Product.Community}}
+
+            <div class="product-detail-box">
+
+                <span class="product-detail-label">
+                    Community
+                </span>
+
+                <span class="product-detail-value">
+                    {{.Product.Community}}
+                </span>
+
+            </div>
+
+            {{end}}
+
+
+            <!-- =================================================
+                 SELLER
+                 ================================================= -->
+
             <div class="product-detail-box">
 
                 <span class="product-detail-label">
@@ -221,28 +371,39 @@
 
                 <span class="product-detail-value seller-product">
 
-                    {{if .Crop.SellerPhotoURL}}
+                    {{if .Product.SellerPhotoURL}}
 
                         <img
-                            src="{{.Crop.SellerPhotoURL}}"
-                            alt="{{.Crop.SellerName}}"
+                            src="{{.Product.SellerPhotoURL}}"
+                            alt="{{.Product.SellerName}}"
                             class="seller-product-photo"
+                            loading="lazy"
                         >
 
                     {{else}}
 
-                        <span class="seller-placeholder">
+                        <span
+                            class="seller-placeholder"
+                            aria-hidden="true"
+                        >
                             👤
                         </span>
 
                     {{end}}
 
+
                     <span>
-                        {{if .Crop.SellerName}}
-                            {{.Crop.SellerName}}
+
+                        {{if .Product.SellerName}}
+
+                            {{.Product.SellerName}}
+
                         {{else}}
-                            Farmer
+
+                            Seller
+
                         {{end}}
+
                     </span>
 
                 </span>
@@ -258,10 +419,26 @@
 
         <div class="product-status-section">
 
-            {{if .Crop.ListedForSale}}
+            {{if eq .Product.Status "active"}}
 
-                <span class="product-status available">
-                    Available for Sale
+                {{if gt .Product.Quantity 0}}
+
+                    <span class="product-status available">
+                        Available for Sale
+                    </span>
+
+                {{else}}
+
+                    <span class="product-status not-available">
+                        Sold Out
+                    </span>
+
+                {{end}}
+
+            {{else if eq .Product.Status "sold_out"}}
+
+                <span class="product-status not-available">
+                    Sold Out
                 </span>
 
             {{else}}
@@ -276,7 +453,7 @@
 
 
         <!-- =====================================================
-             BACK TO MARKETPLACE
+             PRODUCT ACTIONS
              ===================================================== -->
 
         <div class="product-button-group">
@@ -295,8 +472,13 @@
 </main>
 
 
-<script src="/static/js/product.js"></script>
-<script src="/static/js/navigation.js"></script>
+<script
+    src="/static/js/product.js?v=20260904"
+></script>
+
+<script
+    src="/static/js/navigation.js?v=20260904"
+></script>
 
 </body>
 

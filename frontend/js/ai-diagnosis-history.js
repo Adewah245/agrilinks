@@ -1,373 +1,171 @@
-// =========================================
-// AI DIAGNOSIS HISTORY
-// =========================================
+document.addEventListener("DOMContentLoaded", () => {
+    /* ============================================================
+       ELEMENTS
+       ============================================================ */
+
+    const searchInput = document.getElementById("history-search");
+    const categoryFilter = document.getElementById("category-filter");
+    const resultCount = document.getElementById("result-count");
+    const diagnosisList = document.getElementById("diagnosis-list");
+    const cards = Array.from(document.querySelectorAll(".diagnosis-card"));
+    const noResults = document.getElementById("no-search-results");
+
+    // Modal Elements
+    const modal = document.getElementById("result-modal");
+    const modalOverlay = document.getElementById("modal-overlay");
+    const modalClose = document.getElementById("modal-close");
+    const modalTitle = document.getElementById("modal-title");
+    const modalDate = document.getElementById("modal-date");
+    const modalCategory = document.getElementById("modal-category");
+    const modalDescription = document.getElementById("modal-description");
+    const modalResult = document.getElementById("modal-result");
+
+    let lastFocusedElement = null;
 
 
-// -----------------------------------------
-// ELEMENTS
-// -----------------------------------------
+    /* ============================================================
+       SEARCH & CATEGORY FILTERING
+       ============================================================ */
 
-const searchInput =
-    document.getElementById("history-search");
-
-const categoryFilter =
-    document.getElementById("category-filter");
-
-const diagnosisCards =
-    document.querySelectorAll(".diagnosis-card");
-
-const resultCount =
-    document.getElementById("result-count");
-
-const noSearchResults =
-    document.getElementById("no-search-results");
-
-document.querySelectorAll(".delete-diagnosis-form").forEach(form => {
-    form.addEventListener("submit", event => {
-        if (!window.confirm("Delete this AI diagnosis permanently?")) {
-            event.preventDefault();
-        }
-    });
-});
-
-
-// -----------------------------------------
-// FILTER HISTORY
-// -----------------------------------------
-
-function filterHistory() {
-
-    const searchTerm =
-        searchInput.value
-            .trim()
-            .toLowerCase();
-
-    const selectedCategory =
-        categoryFilter.value;
-
-    let visibleCount = 0;
-
-
-    diagnosisCards.forEach(card => {
-
-        const category =
-            card.dataset.category || "";
-
-        const searchableText =
-            card.dataset.search || "";
-
-
-        const matchesSearch =
-            searchableText
-                .toLowerCase()
-                .includes(searchTerm);
-
-
-        const matchesCategory =
-            selectedCategory === "all" ||
-            category === selectedCategory;
-
-
-        if (matchesSearch && matchesCategory) {
-
-            card.style.display = "";
-
-            visibleCount++;
-
-        } else {
-
-            card.style.display = "none";
-
+    function filterDiagnoses() {
+        if (!cards.length) {
+            if (resultCount) resultCount.textContent = "0";
+            return;
         }
 
-    });
-
-
-    // Update count
-
-    resultCount.textContent =
-        visibleCount.toLocaleString();
-
-
-    // Show empty search result
-
-    if (noSearchResults) {
-
-        if (visibleCount === 0) {
-
-            noSearchResults.hidden = false;
-
-        } else {
-
-            noSearchResults.hidden = true;
-
-        }
-
-    }
-
-}
-
-
-// -----------------------------------------
-// EVENT LISTENERS
-// -----------------------------------------
-
-if (searchInput) {
-
-    searchInput.addEventListener(
-        "input",
-        filterHistory
-    );
-
-}
-
-
-if (categoryFilter) {
-
-    categoryFilter.addEventListener(
-        "change",
-        filterHistory
-    );
-
-}
-
-
-
-// =========================================
-// RESULT MODAL
-// =========================================
-
-const modal =
-    document.getElementById("result-modal");
-
-const modalOverlay =
-    document.getElementById("modal-overlay");
-
-const modalClose =
-    document.getElementById("modal-close");
-
-const modalTitle =
-    document.getElementById("modal-title");
-
-const modalDate =
-    document.getElementById("modal-date");
-
-const modalCategory =
-    document.getElementById("modal-category");
-
-const modalDescription =
-    document.getElementById("modal-description");
-
-const modalResult =
-    document.getElementById("modal-result");
-
-
-const viewButtons =
-    document.querySelectorAll(
-        ".view-result-button"
-    );
-
-
-// -----------------------------------------
-// OPEN MODAL
-// -----------------------------------------
-
-function openResultModal(card) {
-
-    const category =
-        card.dataset.category || "";
-
-
-    const categoryElement =
-        card.querySelector(
-            ".diagnosis-category h2"
-        );
-
-
-    const dateElement =
-        card.querySelector(
-            ".diagnosis-category time"
-        );
-
-
-    const descriptionElement =
-        card.querySelector(
-            ".diagnosis-description p"
-        );
-
-
-    const resultElement =
-        card.querySelector(
-            ".result-content"
-        );
-
-
-    modalTitle.textContent =
-        categoryElement
-            ? categoryElement.textContent.trim()
-            : "AI Diagnosis";
-
-
-    modalDate.textContent =
-        dateElement
-            ? dateElement.textContent.trim()
-            : "";
-
-
-    modalCategory.textContent =
-        category;
-
-
-    modalDescription.textContent =
-        descriptionElement
-            ? descriptionElement.textContent.trim()
-            : "No description was provided.";
-
-
-    modalResult.textContent =
-        resultElement
-            ? resultElement.textContent.trim()
-            : "";
-
-
-    modal.hidden = false;
-
-    document.body.classList.add(
-        "modal-open"
-    );
-
-}
-
-
-// -----------------------------------------
-// CLOSE MODAL
-// -----------------------------------------
-
-function closeResultModal() {
-
-    modal.hidden = true;
-
-    document.body.classList.remove(
-        "modal-open"
-    );
-
-}
-
-
-// -----------------------------------------
-// VIEW RESULT BUTTONS
-// -----------------------------------------
-
-viewButtons.forEach(button => {
-
-    button.addEventListener(
-        "click",
-        () => {
-
-            const card =
-                button.closest(
-                    ".diagnosis-card"
-                );
-
-            if (card) {
-
-                openResultModal(card);
-
+        const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+        const selectedCategory = categoryFilter ? categoryFilter.value : "all";
+        let visibleCount = 0;
+
+        cards.forEach((card) => {
+            const cardCategory = card.getAttribute("data-category") || "";
+            const searchContext = (card.getAttribute("data-search") || "").toLowerCase();
+
+            // Category match check
+            const matchesCategory =
+                selectedCategory === "all" ||
+                cardCategory.toLowerCase() === selectedCategory.toLowerCase();
+
+            // Search query match check
+            const matchesSearch =
+                query === "" || searchContext.includes(query);
+
+            // Toggle card visibility
+            if (matchesCategory && matchesSearch) {
+                card.hidden = false;
+                visibleCount++;
+            } else {
+                card.hidden = true;
             }
+        });
 
-        }
-    );
-
-});
-
-
-// -----------------------------------------
-// CLOSE EVENTS
-// -----------------------------------------
-
-if (modalClose) {
-
-    modalClose.addEventListener(
-        "click",
-        closeResultModal
-    );
-
-}
-
-
-if (modalOverlay) {
-
-    modalOverlay.addEventListener(
-        "click",
-        closeResultModal
-    );
-
-}
-
-
-// -----------------------------------------
-// ESCAPE KEY
-// -----------------------------------------
-
-document.addEventListener(
-    "keydown",
-    event => {
-
-        if (
-            event.key === "Escape" &&
-            modal &&
-            !modal.hidden
-        ) {
-
-            closeResultModal();
-
+        // Update result counter in UI
+        if (resultCount) {
+            resultCount.textContent = String(visibleCount);
         }
 
+        // Display or hide the "No diagnoses found" search state
+        if (noResults) {
+            noResults.hidden = visibleCount > 0;
+        }
     }
-);
+
+    searchInput?.addEventListener("input", filterDiagnoses);
+    categoryFilter?.addEventListener("change", filterDiagnoses);
+
+    // Initial count calculation on page load
+    filterDiagnoses();
 
 
-// -----------------------------------------
-// PREVENT BACKGROUND SCROLL
-// -----------------------------------------
+    /* ============================================================
+       MODAL INSPECTION
+       ============================================================ */
 
-const originalBodyOverflow =
-    document.body.style.overflow;
-
-
-const observer =
-    new MutationObserver(() => {
-
-        if (modal.hidden) {
-
-            document.body.style.overflow =
-                originalBodyOverflow;
-
-        } else {
-
-            document.body.style.overflow =
-                "hidden";
-
+    function openModal(card) {
+        if (!modal || !card) {
+            return;
         }
 
+        lastFocusedElement = document.activeElement;
+
+        // Extract information directly from the targeted card DOM elements
+        const cardId = card.querySelector(".diagnosis-id")?.textContent.trim() || "";
+        const categoryHeading = card.querySelector(".diagnosis-category h2")?.textContent.trim() || "N/A";
+        const dateFormatted = card.querySelector(".diagnosis-card-header time")?.textContent.trim() || "";
+        const descriptionText = card.querySelector(".diagnosis-description p")?.textContent.trim() || "No description provided.";
+        const resultHTML = card.querySelector(".result-content")?.innerHTML || "";
+
+        // Populate modal sections
+        if (modalTitle) modalTitle.textContent = `Diagnosis ${cardId}`;
+        if (modalDate) modalDate.textContent = dateFormatted;
+        if (modalCategory) modalCategory.textContent = categoryHeading;
+        if (modalDescription) modalDescription.textContent = descriptionText;
+        if (modalResult) modalResult.innerHTML = resultHTML;
+
+        // Show modal and lock background scrolling
+        modal.hidden = false;
+        modal.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+
+        if (modalClose) {
+            modalClose.focus();
+        }
+    }
+
+    function closeModal() {
+        if (!modal) {
+            return;
+        }
+
+        modal.hidden = true;
+        modal.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+
+        // Restore keyboard focus to the triggering button
+        if (lastFocusedElement) {
+            lastFocusedElement.focus();
+        }
+    }
+
+    // Event delegation for "View Full Result" buttons
+    diagnosisList?.addEventListener("click", (event) => {
+        const viewBtn = event.target.closest(".view-result-button");
+
+        if (viewBtn) {
+            const card = viewBtn.closest(".diagnosis-card");
+            openModal(card);
+        }
+    });
+
+    modalClose?.addEventListener("click", closeModal);
+    modalOverlay?.addEventListener("click", closeModal);
+
+    // Close modal on Escape key press
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && modal && !modal.hidden) {
+            closeModal();
+        }
     });
 
 
-if (modal) {
+    /* ============================================================
+       DELETE FORM CONFIRMATION
+       ============================================================ */
 
-    observer.observe(
-        modal,
-        {
-            attributes: true,
-            attributeFilter: ["hidden"]
-        }
-    );
+    const deleteForms = document.querySelectorAll(".delete-diagnosis-form");
 
-}
+    deleteForms.forEach((form) => {
+        form.addEventListener("submit", (event) => {
+            const card = form.closest(".diagnosis-card");
+            const diagnosisId = card?.querySelector(".diagnosis-id")?.textContent.trim() || "";
 
+            const confirmed = window.confirm(
+                `Are you sure you want to delete diagnosis ${diagnosisId}? This record will be permanently removed.`
+            );
 
-// =========================================
-// INITIAL COUNT
-// =========================================
-
-filterHistory();
+            if (!confirmed) {
+                event.preventDefault();
+            }
+        });
+    });
+});

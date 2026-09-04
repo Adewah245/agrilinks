@@ -1,13 +1,446 @@
-:root{color-scheme:light;}
-*{box-sizing:border-box}
-body{margin:0;background:#f5f7f6;color:#17231c;font-family:Arial,Helvetica,sans-serif}
-.cart-header,.cart-container{width:min(1180px,calc(100% - 40px));margin:0 auto}
-.cart-header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:42px 0 26px}
-.cart-header h1{margin:0 0 8px;font-size:clamp(2rem,4vw,3rem);letter-spacing:-.04em}.cart-header p{margin:0;color:#66756c}
-.back-button,.marketplace-button{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700}
-.back-button{border:1px solid #cfe0d3;color:#166534;background:#fff}.back-button:hover{background:#ecf7ef}
-.error-message{width:min(1180px,calc(100% - 40px));margin:0 auto 18px;padding:14px 16px;border-radius:10px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
-.cart-container{padding:10px 0 70px}.cart-items{display:grid;gap:18px}.cart-item{display:grid;grid-template-columns:150px minmax(220px,1.3fr) minmax(180px,1fr) minmax(180px,1fr);gap:22px;align-items:start;padding:22px;background:#fff;border:1px solid #e1e9e3;border-radius:16px;box-shadow:0 8px 24px rgba(24,61,38,.06)}
-.cart-image img,.no-image{width:150px;height:150px;object-fit:cover;border-radius:12px}.no-image{display:grid;place-items:center;background:#edf3ee;color:#738078;font-size:.9rem}.cart-product h2{margin:0 0 14px;font-size:1.35rem}.cart-product p,.seller-information p,.buyer-information p,.negotiation-information p{margin:8px 0;color:#66756c;line-height:1.45}.cart-product strong,.negotiation-information strong{color:#17231c}.total-price{font-size:1.1rem;color:#166534!important}.seller-information,.buyer-information,.negotiation-information{padding:14px;border-left:1px solid #e8eee9}.seller-information h3,.buyer-information h3{margin:0 0 10px;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:#166534}.profile-image{width:42px;height:42px;object-fit:cover;border-radius:50%;display:block;margin-bottom:8px}.remove-form{grid-column:2/-1}.remove-button{border:0;border-radius:8px;padding:10px 15px;background:#fff0f0;color:#b42318;font-weight:700;cursor:pointer}.remove-button:hover{background:#fee2e2}.cart-summary{margin-top:22px;padding:22px 26px;border-radius:16px;background:#eaf7ea;border:1px solid #b7dfbd}.cart-summary h2{margin:0 0 12px;color:#166534}.cart-summary p{margin:8px 0;color:#44554a}.empty-cart{text-align:center;padding:80px 20px;background:#fff;border:1px dashed #b8cdbd;border-radius:16px}.empty-cart h2{margin:0 0 10px}.empty-cart p{color:#66756c;margin-bottom:24px}.marketplace-button{background:#166534;color:#fff}.marketplace-button:hover{background:#14532d}
-@media(max-width:850px){.cart-item{grid-template-columns:110px 1fr}.cart-image img,.no-image{width:110px;height:110px}.seller-information,.buyer-information,.negotiation-information{grid-column:2;border-left:0;border-top:1px solid #e8eee9;padding:14px 0 0}.remove-form{grid-column:1/-1}}
-@media(max-width:560px){.cart-header{align-items:flex-start;flex-direction:column}.cart-header,.cart-container,.error-message{width:min(100% - 28px,1180px)}.cart-item{grid-template-columns:1fr}.cart-image img,.no-image{width:100%;height:190px}.seller-information,.buyer-information,.negotiation-information,.remove-form{grid-column:1}}
+/* ============================================================
+   CART PAGE LAYOUT
+   ============================================================ */
+
+.cart-header {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 60px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 20px;
+}
+
+.cart-header h1 {
+    margin: 0 0 8px;
+    font-size: 36px;
+    letter-spacing: -0.02em;
+    color: #111827;
+}
+
+.cart-header p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 16px;
+}
+
+.back-button {
+    color: #008000;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.back-button:hover {
+    background: #eef8ee;
+    color: #006400;
+}
+
+.back-button:focus-visible {
+    outline: 2px solid #008000;
+    outline-offset: 2px;
+}
+
+
+/* ============================================================
+   ALERT & ERROR MESSAGES
+   ============================================================ */
+
+.error-message {
+    max-width: 1200px;
+    margin: 0 auto 20px;
+    padding: 14px 20px;
+    background: #fef2f2;
+    border-left: 4px solid #dc2626;
+    border-radius: 6px;
+    color: #991b1b;
+    font-weight: 500;
+    font-size: 15px;
+}
+
+
+/* ============================================================
+   MAIN CONTAINER & GRID
+   ============================================================ */
+
+.cart-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 60px 80px;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 30px;
+    align-items: start;
+}
+
+/* Fallback for empty state layout */
+.cart-container:has(.empty-cart) {
+    grid-template-columns: 1fr;
+}
+
+
+/* ============================================================
+   CART ITEM CARD
+   ============================================================ */
+
+.cart-items {
+    display: grid;
+    gap: 24px;
+}
+
+.cart-item {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    display: grid;
+    grid-template-columns: 120px 1fr 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+    position: relative;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cart-item:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+
+/* ============================================================
+   PRODUCT IMAGE
+   ============================================================ */
+
+.cart-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #f0f0f0;
+}
+
+.cart-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.cart-image .no-image {
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+
+/* ============================================================
+   PRODUCT DETAILS
+   ============================================================ */
+
+.cart-product h2 {
+    margin: 0 0 10px;
+    font-size: 20px;
+    color: #111827;
+}
+
+.cart-product p {
+    margin: 0 0 6px;
+    color: #4b5563;
+    font-size: 14px;
+}
+
+.cart-product p strong {
+    color: #111827;
+}
+
+.cart-product .total-price {
+    margin-top: 12px;
+    font-size: 16px;
+    color: #008000;
+}
+
+.cart-product .total-price strong {
+    color: #008000;
+    font-size: 18px;
+}
+
+
+/* ============================================================
+   SELLER & BUYER CARDS
+   ============================================================ */
+
+.seller-information,
+.buyer-information {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 14px;
+    border: 1px solid #f3f4f6;
+}
+
+.seller-information h3,
+.buyer-information h3 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+}
+
+.profile-image {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-bottom: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.seller-information p,
+.buyer-information p {
+    margin: 0 0 4px;
+    font-size: 13px;
+    color: #4b5563;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.seller-information p strong,
+.buyer-information p strong {
+    color: #111827;
+}
+
+
+/* ============================================================
+   NEGOTIATION META
+   ============================================================ */
+
+.negotiation-information {
+    grid-column: 2 / -1;
+    display: flex;
+    gap: 20px;
+    padding-top: 14px;
+    margin-top: 10px;
+    border-top: 1px dashed #e5e7eb;
+}
+
+.negotiation-information p {
+    margin: 0;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.negotiation-information p strong {
+    color: #374151;
+}
+
+
+/* ============================================================
+   REMOVE FORM & BUTTON
+   ============================================================ */
+
+.remove-form {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    margin: 0;
+}
+
+.remove-button {
+    background: transparent;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.remove-button:hover {
+    background: #fee2e2;
+    border-color: #f87171;
+}
+
+.remove-button:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+}
+
+
+/* ============================================================
+   CART SUMMARY SIDEBAR
+   ============================================================ */
+
+.cart-summary {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    position: sticky;
+    top: 20px;
+}
+
+.cart-summary h2 {
+    margin: 0 0 20px;
+    font-size: 20px;
+    color: #111827;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eeeeee;
+}
+
+.cart-summary p {
+    display: flex;
+    justify-content: space-between;
+    margin: 0 0 14px;
+    font-size: 15px;
+    color: #4b5563;
+}
+
+.cart-summary p strong {
+    color: #111827;
+}
+
+.cart-summary p:nth-of-type(2) {
+    font-size: 18px;
+    color: #111827;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.cart-summary p:nth-of-type(2) strong {
+    color: #008000;
+}
+
+.cart-summary p:last-child {
+    display: block;
+    margin-top: 18px;
+    font-size: 13px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+
+/* ============================================================
+   EMPTY CART STATE
+   ============================================================ */
+
+.empty-cart {
+    text-align: center;
+    padding: 80px 30px;
+    background: #ffffff;
+    border-radius: 14px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f0f0f0;
+}
+
+.empty-cart h2 {
+    margin: 0 0 10px;
+    font-size: 24px;
+    color: #111827;
+}
+
+.empty-cart p {
+    max-width: 500px;
+    margin: 0 auto 25px;
+    color: #6b7280;
+    line-height: 1.6;
+}
+
+.marketplace-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    background: #008000;
+    color: #ffffff;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.marketplace-button:hover {
+    background: #006400;
+    transform: translateY(-2px);
+}
+
+.marketplace-button:focus-visible {
+    outline: 3px solid rgba(0, 128, 0, 0.4);
+    outline-offset: 2px;
+}
+
+
+/* ============================================================
+   RESPONSIVE DESIGN
+   ============================================================ */
+
+@media (max-width: 1024px) {
+    .cart-container {
+        grid-template-columns: 1fr;
+        padding: 0 30px 60px;
+    }
+
+    .cart-header {
+        padding: 30px 30px 20px;
+    }
+
+    .cart-summary {
+        position: static;
+    }
+
+    .cart-item {
+        grid-template-columns: 120px 1fr 1fr;
+    }
+
+    .buyer-information {
+        display: none; /* Hide redundant buyer info on medium screens */
+    }
+}
+
+@media (max-width: 680px) {
+    .cart-header {
+        padding: 20px 18px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cart-container {
+        padding: 0 18px 40px;
+    }
+
+    .cart-item {
+        grid-template-columns: 1fr;
+        padding: 18px;
+    }
+
+    .cart-image {
+        width: 100%;
+        height: 180px;
+    }
+
+    .negotiation-information {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .remove-form {
+        position: static;
+        margin-top: 15px;
+        text-align: right;
+    }
+
+    .remove-button {
+        width: 100%;
+        padding: 10px;
+    }
+}

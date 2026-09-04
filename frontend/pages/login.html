@@ -2,12 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Login to Agro-Shield to manage your farm, agricultural products, marketplace activities, and farming tools."
+    >
 
     <title>Login | Agro-Shield</title>
 
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/login.css">
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css?v=20260904"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/login.css?v=20260904"
+    >
 
     <!-- Font Awesome -->
     <link
@@ -29,7 +44,7 @@
             id="auth-background"
             class="background-image"
             src="/static/assets/images/login-image1.jpeg"
-            alt="Farmer"
+            alt="Agricultural worker"
         >
 
         <div class="overlay"></div>
@@ -40,8 +55,9 @@
 
             <p>
                 Sign in to continue managing your farm,
-                monitor produce, access the marketplace,
-                and use AI-powered farming assistance.
+                monitor agricultural products, connect with
+                buyers, access the marketplace, and use
+                AI-powered agricultural assistance.
             </p>
 
         </div>
@@ -54,97 +70,155 @@
     ========================== -->
     <div class="auth-right">
 
-        <!-- Logo / Brand Area -->
+        <!-- =========================
+             LOGO / BRAND AREA
+        ========================== -->
         <div class="brand-area">
 
             <!-- Green upward-opening shape -->
-            <div class="brand-roof"></div>
+            <div
+                class="brand-roof"
+                aria-hidden="true"
+            ></div>
 
             <!-- Agro-Shield logo -->
             <img
                 class="auth-brand"
                 src="/static/assets/logo/Agro-Shield_logo.png"
-                alt="Agro-Shield"
+                alt="Agro-Shield logo"
             >
 
         </div>
 
 
-        <!-- Login Form -->
-        <form id="login-form" method="POST" action="/login">
+        <!-- =========================
+             LOGIN FORM
+        ========================== -->
+        <form
+            id="login-form"
+            method="POST"
+            action="/login"
+            novalidate
+        >
 
             <h2>Login</h2>
 
             {{if .Error}}
-            <p class="message">{{.Error}}</p>
+            <p
+                class="message"
+                role="alert"
+                aria-live="polite"
+            >
+                {{.Error}}
+            </p>
             {{end}}
 
 
-            <!-- Phone Number -->
+            <!-- =========================
+                 PHONE NUMBER
+            ========================== -->
             <label for="phone">
                 Phone Number
             </label>
 
             <div class="input-wrapper">
 
-                <i class="fa-solid fa-phone input-icon"></i>
+                <i
+                    class="fa-solid fa-phone input-icon"
+                    aria-hidden="true"
+                ></i>
 
                 <input
                     type="tel"
                     id="phone"
                     name="phone"
                     placeholder="Enter your phone number"
+                    autocomplete="tel"
+                    inputmode="tel"
+                    maxlength="20"
                     required
+                    aria-required="true"
                 >
 
             </div>
 
 
-            <!-- Password -->
+            <!-- =========================
+                 PASSWORD
+            ========================== -->
             <label for="password">
                 Password
             </label>
 
             <div class="password-wrapper">
 
-                <i class="fa-solid fa-lock input-icon"></i>
+                <i
+                    class="fa-solid fa-lock input-icon"
+                    aria-hidden="true"
+                ></i>
 
                 <input
                     type="password"
                     id="password"
                     name="password"
                     placeholder="Enter your password"
+                    autocomplete="current-password"
+                    minlength="8"
+                    maxlength="128"
                     required
+                    aria-required="true"
                 >
 
-                <i
-                    class="fa-solid fa-eye toggle-password"
+                <button
+                    type="button"
+                    class="toggle-password"
                     id="toggle-password"
-                ></i>
+                    aria-label="Show password"
+                    aria-pressed="false"
+                >
+                    <i
+                        class="fa-solid fa-eye"
+                        aria-hidden="true"
+                    ></i>
+                </button>
 
             </div>
 
 
-            <!-- Submit -->
-            <button type="submit">
+            <!-- =========================
+                 SUBMIT
+            ========================== -->
+            <button
+                type="submit"
+                aria-label="Sign in to Agro-Shield"
+            >
                 Sign In
             </button>
 
 
-            <!-- Forgot Password -->
+            <!-- =========================
+                 FORGOT PASSWORD
+            ========================== -->
             <p class="forgot-password">
+
                 <a href="/forgot-password">
                     Forgot password?
                 </a>
+
             </p>
 
 
-            <!-- Register -->
+            <!-- =========================
+                 REGISTER
+            ========================== -->
             <p class="register-link">
+
                 Don't have an account?
+
                 <a href="/register">
                     Create one
                 </a>
+
             </p>
 
         </form>
@@ -154,7 +228,7 @@
 </div>
 
 
-<script src="/static/js/login.js"></script>
+<script src="/static/js/login.js?v=20260904"></script>
 
 </body>
 </html>

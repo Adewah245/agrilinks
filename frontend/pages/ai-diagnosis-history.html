@@ -19,7 +19,7 @@
 
     <link
         rel="stylesheet"
-        href="/static/css/ai-diagnosis-history.css"
+        href="/static/css/ai-diagnosis-history.css?v=20260904"
     >
 
 </head>
@@ -34,8 +34,15 @@
 
 <header class="navbar">
 
-    <a class="logo" href="/dashboard">
-        <img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield">
+    <a
+        class="logo"
+        href="/dashboard"
+        aria-label="Agro-Shield Dashboard"
+    >
+        <img
+            src="/static/assets/logo/Agro-Shield_logo.png"
+            alt="Agro-Shield"
+        >
     </a>
 
 
@@ -50,16 +57,31 @@
         </a>
 
         <a href="/marketplace">
-            Marketplace</a>
-            <a href="/negotiations">
-    Negotiations
-</a>
+            Marketplace
+        </a>
 
-<a href="/ai-assistant" aria-current="page">
-    AI Assistant
-</a>
+        <a href="/negotiations">
+            Negotiations
+        </a>
 
-        <a href="/notifications">Notifications</a>
+        <a href="/cart">
+            Cart
+        </a>
+
+        <a href="/chat">
+            Chat
+        </a>
+
+        <a
+            href="/ai-assistant"
+            aria-current="page"
+        >
+            AI Assistant
+        </a>
+
+        <a href="/notifications">
+            Notifications
+        </a>
 
         <a href="/profile">
             Profile
@@ -82,7 +104,9 @@
 <main class="diagnosis-history">
 
 
-    <!-- PAGE HEADER -->
+    <!-- =========================================
+         PAGE HEADER
+    ========================================== -->
 
     <section class="page-header">
 
@@ -122,11 +146,24 @@
          FILTER BAR
     ========================================== -->
 
-    <section class="history-controls">
+    <section
+        class="history-controls"
+        aria-label="Diagnosis history filters"
+    >
 
         <div class="search-wrapper">
 
-            <span class="search-icon">
+            <label
+                for="history-search"
+                class="visually-hidden"
+            >
+                Search diagnosis history
+            </label>
+
+            <span
+                class="search-icon"
+                aria-hidden="true"
+            >
                 🔍
             </span>
 
@@ -135,6 +172,7 @@
                 id="history-search"
                 placeholder="Search diagnosis history..."
                 autocomplete="off"
+                aria-label="Search diagnosis history"
             >
 
         </div>
@@ -146,7 +184,10 @@
                 Category
             </label>
 
-            <select id="category-filter">
+            <select
+                id="category-filter"
+                aria-label="Filter diagnoses by farming category"
+            >
 
                 <option value="all">
                     All Categories
@@ -168,16 +209,60 @@
                     🐐 Goats
                 </option>
 
+                <option value="Sheep">
+                    🐑 Sheep
+                </option>
+
+                <option value="Cattle">
+                    🐄 Cattle
+                </option>
+
+                <option value="Pigs">
+                    🐖 Pigs
+                </option>
+
                 <option value="Fish">
-                    🐟 Fish
+                    🐟 Fish / Aquaculture
+                </option>
+
+                <option value="Beekeeping">
+                    🐝 Beekeeping
                 </option>
 
                 <option value="Pests/Insects">
-                    🐛 Pests/Insects
+                    🐛 Pests / Insects
                 </option>
 
                 <option value="Plant Problems">
                     🌱 Plant Problems
+                </option>
+
+                <option value="Animal Health">
+                    🩺 Animal Health
+                </option>
+
+                <option value="Fish Health">
+                    🐟 Fish Health
+                </option>
+
+                <option value="Feed and Nutrition">
+                    🌾 Feed and Nutrition
+                </option>
+
+                <option value="Storage">
+                    🏠 Agricultural Storage
+                </option>
+
+                <option value="Weather and Climate">
+                    🌦️ Weather and Climate
+                </option>
+
+                <option value="Farm Management">
+                    📋 Farm Management
+                </option>
+
+                <option value="Market and Pricing">
+                    💰 Market and Pricing
                 </option>
 
                 <option value="General Farming Questions">
@@ -196,7 +281,10 @@
          RESULT COUNT
     ========================================== -->
 
-    <div class="history-summary">
+    <div
+        class="history-summary"
+        aria-live="polite"
+    >
 
         <span>
             Your AI consultations
@@ -214,7 +302,10 @@
          HISTORY
     ========================================== -->
 
-    <section class="history-container">
+    <section
+        class="history-container"
+        aria-label="AI diagnosis history"
+    >
 
 
         {{if .History}}
@@ -236,13 +327,18 @@
             >
 
 
-                <!-- CARD HEADER -->
+                <!-- =====================================
+                     CARD HEADER
+                ====================================== -->
 
                 <div class="diagnosis-card-header">
 
                     <div class="diagnosis-category">
 
-                        <span class="category-icon">
+                        <span
+                            class="category-icon"
+                            aria-hidden="true"
+                        >
 
                             {{if eq .Category "Crops"}}
                             🌾
@@ -256,14 +352,47 @@
                             {{else if eq .Category "Goats"}}
                             🐐
 
+                            {{else if eq .Category "Sheep"}}
+                            🐑
+
+                            {{else if eq .Category "Cattle"}}
+                            🐄
+
+                            {{else if eq .Category "Pigs"}}
+                            🐖
+
                             {{else if eq .Category "Fish"}}
                             🐟
+
+                            {{else if eq .Category "Beekeeping"}}
+                            🐝
 
                             {{else if eq .Category "Pests/Insects"}}
                             🐛
 
                             {{else if eq .Category "Plant Problems"}}
                             🌱
+
+                            {{else if eq .Category "Animal Health"}}
+                            🩺
+
+                            {{else if eq .Category "Fish Health"}}
+                            🐟
+
+                            {{else if eq .Category "Feed and Nutrition"}}
+                            🌾
+
+                            {{else if eq .Category "Storage"}}
+                            🏠
+
+                            {{else if eq .Category "Weather and Climate"}}
+                            🌦️
+
+                            {{else if eq .Category "Farm Management"}}
+                            📋
+
+                            {{else if eq .Category "Market and Pricing"}}
+                            💰
 
                             {{else}}
                             📝
@@ -279,7 +408,9 @@
                                 {{.Category}}
                             </h2>
 
-                            <time>
+                            <time
+                                datetime="{{.CreatedAt.Format "2006-01-02T15:04:05Z07:00"}}"
+                            >
                                 {{.CreatedAt.Format "02 Jan 2006, 03:04 PM"}}
                             </time>
 
@@ -288,7 +419,10 @@
                     </div>
 
 
-                    <span class="diagnosis-id">
+                    <span
+                        class="diagnosis-id"
+                        aria-label="Diagnosis ID {{.ID}}"
+                    >
                         #{{.ID}}
                     </span>
 
@@ -296,7 +430,9 @@
 
 
 
-                <!-- DESCRIPTION -->
+                <!-- =====================================
+                     DESCRIPTION
+                ====================================== -->
 
                 <div class="diagnosis-description">
 
@@ -322,7 +458,9 @@
 
 
 
-                <!-- RESULT -->
+                <!-- =====================================
+                     RESULT
+                ====================================== -->
 
                 <div class="diagnosis-result">
 
@@ -345,27 +483,49 @@
 
 
 
-                <!-- CARD FOOTER -->
+                <!-- =====================================
+                     CARD FOOTER
+                ====================================== -->
 
                 <div class="diagnosis-card-footer">
 
-                    <span class="diagnosis-date">
-
+                    <time
+                        class="diagnosis-date"
+                        datetime="{{.CreatedAt.Format "2006-01-02"}}"
+                    >
                         {{.CreatedAt.Format "02 Jan 2006"}}
-
-                    </span>
+                    </time>
 
 
                     <button
                         type="button"
                         class="view-result-button"
+                        aria-label="View full result for diagnosis #{{.ID}}"
                     >
                         View Full Result
                     </button>
 
-                    <form method="POST" action="/ai-diagnosis-history" class="delete-diagnosis-form">
-                        <input type="hidden" name="id" value="{{.ID}}">
-                        <button type="submit" class="delete-diagnosis-button">Delete</button>
+
+                    <form
+                        method="POST"
+                        action="/ai-diagnosis-history"
+                        class="delete-diagnosis-form"
+                    >
+
+                        <input
+                            type="hidden"
+                            name="id"
+                            value="{{.ID}}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="delete-diagnosis-button"
+                            aria-label="Delete diagnosis #{{.ID}}"
+                        >
+                            Delete
+                        </button>
+
                     </form>
 
                 </div>
@@ -380,15 +540,21 @@
         </div>
 
 
-        <!-- NO SEARCH RESULTS -->
+        <!-- =========================================
+             NO SEARCH RESULTS
+        ========================================== -->
 
         <div
             id="no-search-results"
             class="no-results"
             hidden
+            role="status"
         >
 
-            <div class="no-results-icon">
+            <div
+                class="no-results-icon"
+                aria-hidden="true"
+            >
                 🔍
             </div>
 
@@ -406,11 +572,16 @@
         {{else}}
 
 
-        <!-- EMPTY HISTORY -->
+        <!-- =========================================
+             EMPTY HISTORY
+        ========================================== -->
 
         <div class="empty-history">
 
-            <div class="empty-history-icon">
+            <div
+                class="empty-history-icon"
+                aria-hidden="true"
+            >
                 🤖
             </div>
 
@@ -420,7 +591,7 @@
 
             <p>
                 You haven't used Agro-Shield AI for a diagnosis yet.
-                Start your first consultation to get expert farming
+                Start your first consultation to get agricultural
                 assistance.
             </p>
 
@@ -452,11 +623,13 @@
     class="result-modal"
     id="result-modal"
     hidden
+    aria-hidden="true"
 >
 
     <div
         class="modal-overlay"
         id="modal-overlay"
+        aria-hidden="true"
     ></div>
 
 
@@ -465,6 +638,7 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
+        aria-describedby="modal-date"
     >
 
         <button
@@ -472,6 +646,7 @@
             class="modal-close"
             id="modal-close"
             aria-label="Close diagnosis result"
+            title="Close"
         >
             ×
         </button>
@@ -479,7 +654,10 @@
 
         <div class="modal-header">
 
-            <span class="modal-icon">
+            <span
+                class="modal-icon"
+                aria-hidden="true"
+            >
                 🤖
             </span>
 
@@ -541,9 +719,18 @@
 
 
 
-<script src="/static/js/ai-diagnosis-history.js"></script>
+<!-- =========================================
+     JAVASCRIPT
+========================================= -->
 
-<script src="/static/js/navigation.js"></script>
+<script
+    src="/static/js/ai-diagnosis-history.js?v=20260904"
+></script>
+
+<script
+    src="/static/js/navigation.js"
+></script>
+
 </body>
 
 </html>

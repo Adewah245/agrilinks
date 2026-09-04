@@ -8,163 +8,332 @@
         content="width=device-width, initial-scale=1.0"
     >
 
+    <meta
+        name="description"
+        content="Agro-Shield notifications"
+    >
+
     <title>Notifications - Agro-Shield</title>
 
     <link
         rel="stylesheet"
-        href="/static/css/style.css"
+        href="/static/css/style.css?v=20260904"
     >
-    <link rel="stylesheet" href="/static/css/notifications.css">
+
+    <link
+        rel="stylesheet"
+        href="/static/css/notifications.css?v=20260904"
+    >
 </head>
 
 <body>
 
 <header class="navbar">
-    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
-    <nav aria-label="Main navigation">
-        <a href="/dashboard">Dashboard</a><a href="/storage">Storage</a><a href="/marketplace">Marketplace</a><a href="/negotiations">Negotiations</a><a href="/cart">Cart</a><a href="/ai-assistant">AI Assistant</a><a href="/profile">Profile</a><a href="/notifications" aria-current="page">Notifications</a><a href="/logout">Logout</a>
-    </nav>
+    <div class="navbar-container">
+
+        <a
+            href="/dashboard"
+            class="navbar-brand"
+            aria-label="Agro-Shield Dashboard"
+        >
+            <img
+                src="/static/assets/logo.png?v=20260904"
+                alt="Agro-Shield logo"
+                class="navbar-logo"
+            >
+
+            <span class="navbar-title">
+                Agro-Shield
+            </span>
+        </a>
+
+        <nav
+            class="navbar-menu"
+            aria-label="Main navigation"
+        >
+
+            <a
+                href="/dashboard"
+                class="nav-link"
+            >
+                Dashboard
+            </a>
+
+            <a
+                href="/storage"
+                class="nav-link"
+            >
+                Storage
+            </a>
+
+            <a
+                href="/marketplace"
+                class="nav-link"
+            >
+                Marketplace
+            </a>
+
+            <a
+                href="/negotiations"
+                class="nav-link"
+            >
+                Negotiations
+            </a>
+
+            <a
+                href="/chat"
+                class="nav-link"
+            >
+                Chat
+            </a>
+
+            <a
+                href="/cart"
+                class="nav-link"
+            >
+                Cart
+            </a>
+
+            <a
+                href="/ai-assistant"
+                class="nav-link"
+            >
+                AI Assistant
+            </a>
+
+            <a
+                href="/profile"
+                class="nav-link"
+            >
+                Profile
+            </a>
+
+            <a
+                href="/notifications"
+                class="nav-link notification-link"
+                aria-current="page"
+                aria-label="Notifications"
+            >
+                <span
+                    class="notification-bell"
+                    aria-hidden="true"
+                >
+                    🔔
+                </span>
+
+                <span class="notification-label">
+                    Notifications
+                </span>
+
+                {{if gt .UnreadCount 0}}
+                <span
+                    class="notification-badge"
+                    aria-label="{{.UnreadCount}} unread notifications"
+                >
+                    {{.UnreadCount}}
+                </span>
+                {{end}}
+            </a>
+
+            <a
+                href="/logout"
+                class="nav-link logout-link"
+            >
+                Logout
+            </a>
+
+        </nav>
+
+    </div>
 </header>
 
-    <!-- =====================================================
-         NOTIFICATIONS CONTAINER
-         ===================================================== -->
 
-    <main class="notifications-container">
+<main class="notifications-page">
 
-        <!-- =================================================
-             PAGE HEADER
-             ================================================= -->
+    <section
+        class="notifications-container"
+        aria-labelledby="notifications-title"
+    >
 
         <div class="notifications-header">
 
             <div>
-                <h1 class="notifications-title">
-                    🔔 Notifications
-
-                    {{if gt .UnreadCount 0}}
-                        <span class="unread-count">
-                            {{.UnreadCount}}
-                        </span>
-                    {{end}}
+                <h1 id="notifications-title">
+                    Notifications
                 </h1>
 
-                <p>
-                    Stay updated with activity on your Agro-Shield account.
+                <p class="notifications-subtitle">
+                    Stay updated with important activities on Agro-Shield.
                 </p>
             </div>
 
-            <!-- =============================================
-                 MARK ALL AS READ
-                 ============================================= -->
-
             {{if gt .UnreadCount 0}}
-                <form
-                    method="POST"
-                    action="/notifications/read-all"
-                >
-                    <button
-                        type="submit"
-                        class="mark-all-button"
-                    >
-                        Mark all as read
-                    </button>
-                </form>
+            <div
+                class="notification-summary"
+                aria-live="polite"
+            >
+                <span class="notification-summary-count">
+                    {{.UnreadCount}}
+                </span>
+
+                <span class="notification-summary-text">
+                    unread notification{{if ne .UnreadCount 1}}s{{end}}
+                </span>
+            </div>
             {{end}}
 
         </div>
 
-        <!-- =================================================
-             NOTIFICATION LIST
-             ================================================= -->
 
         {{if .Notifications}}
 
-            <div class="notification-list">
+        <section
+            class="notification-list"
+            aria-label="Your notifications"
+        >
 
-                {{range .Notifications}}
+            {{range .Notifications}}
 
-                    <article
-                        class="notification-card {{if .IsRead}}read{{else}}unread{{end}}"
+            <article
+                class="notification-card {{if not .IsRead}}notification-unread{{end}}"
+                data-notification-id="{{.ID}}"
+            >
+
+                <div class="notification-icon-wrapper">
+
+                    <span
+                        class="notification-card-icon"
+                        aria-hidden="true"
                     >
+                        🔔
+                    </span>
 
-                        <div class="notification-top">
+                </div>
 
-                            <h2 class="notification-title">
-                                {{.Title}}
-                            </h2>
 
-                            <span class="notification-type">
-                                {{.Type}}
-                            </span>
+                <div class="notification-content">
 
-                        </div>
+                    <div class="notification-card-header">
 
-                        <p class="notification-message">
-                            {{.Message}}
-                        </p>
-
-                        <div class="notification-date">
-                            {{.CreatedAt.Format "02 Jan 2006, 03:04 PM"}}
-                        </div>
-
-                        <!-- =================================
-                             MARK ONE AS READ
-                             ================================= -->
+                        <h2 class="notification-title">
+                            {{.Title}}
+                        </h2>
 
                         {{if not .IsRead}}
-
-                            <div class="notification-actions">
-
-                                <form
-                                    method="POST"
-                                    action="/notifications/read?id={{.ID}}"
-                                >
-
-                                    <button
-                                        type="submit"
-                                        class="mark-read-button"
-                                    >
-                                        Mark as read
-                                    </button>
-
-                                </form>
-
-                            </div>
-
+                        <span
+                            class="notification-unread-indicator"
+                            aria-label="Unread notification"
+                        >
+                            New
+                        </span>
                         {{end}}
 
-                    </article>
+                    </div>
 
-                {{end}}
 
-            </div>
+                    {{if .Type}}
+                    <span class="notification-type">
+                        {{.Type}}
+                    </span>
+                    {{end}}
+
+
+                    <p class="notification-message">
+                        {{.Message}}
+                    </p>
+
+
+                    <time
+                        class="notification-date"
+                        datetime="{{.CreatedAt}}"
+                    >
+                        {{.CreatedAt}}
+                    </time>
+
+                </div>
+
+
+                <div class="notification-actions">
+
+                    {{if not .IsRead}}
+
+                    <form
+                        method="POST"
+                        action="/notifications/read"
+                        class="notification-action-form"
+                    >
+                        <input
+                            type="hidden"
+                            name="notification_id"
+                            value="{{.ID}}"
+                        >
+
+                        <button
+                            type="submit"
+                            class="notification-action-button"
+                            aria-label="Mark notification as read"
+                        >
+                            Mark as read
+                        </button>
+                    </form>
+
+                    {{end}}
+
+                </div>
+
+            </article>
+
+            {{end}}
+
+        </section>
 
         {{else}}
 
-            <!-- =============================================
-                 EMPTY STATE
-                 ============================================= -->
+        <section
+            class="notifications-empty"
+            aria-live="polite"
+        >
 
-            <div class="empty-notifications">
-
-                <div class="empty-notifications-icon">
-                    🔔
-                </div>
-
-                <h2>No notifications yet</h2>
-
-                <p>
-                    You will see important updates about your
-                    negotiations, orders, and Agro-Shield activity here.
-                </p>
-
+            <div
+                class="notifications-empty-icon"
+                aria-hidden="true"
+            >
+                🔔
             </div>
+
+            <h2>
+                No notifications yet
+            </h2>
+
+            <p>
+                When there is an important update about your products,
+                marketplace activity, negotiations, orders, messages,
+                or other Agro-Shield activities, it will appear here.
+            </p>
+
+            <a
+                href="/dashboard"
+                class="btn btn-primary"
+            >
+                Go to Dashboard
+            </a>
+
+        </section>
 
         {{end}}
 
-    </main>
+    </section>
 
-<script src="/static/js/navigation.js"></script>
+</main>
+
+
+<footer class="site-footer">
+
+    <p>
+        &copy; 2026 Agro-Shield. Supporting smarter agriculture.
+    </p>
+
+</footer>
+
 </body>
 </html>

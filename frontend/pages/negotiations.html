@@ -1,62 +1,331 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="View and manage your agricultural product negotiations on Agro-Shield."
+    >
+
     <title>Negotiations | Agro-Shield</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/negotiation.css">
+
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css?v=20260904"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/negotiation.css?v=20260904"
+    >
 </head>
+
+
 <body>
 
+<!-- =========================
+     STICKY NAVIGATION HEADER
+========================== -->
 <header class="navbar">
-    <a class="logo" href="/dashboard"><img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield"></a>
+
+    <a
+        class="logo"
+        href="/dashboard"
+        aria-label="Agro-Shield dashboard"
+    >
+        <img
+            src="/static/assets/logo/Agro-Shield_logo.png"
+            alt="Agro-Shield logo"
+        >
+    </a>
+
+
     <nav aria-label="Main navigation">
-    <a href="/dashboard">Dashboard</a>
-<a href="/storage">Storage</a>
-<a href="/marketplace">Marketplace</a>
-<a href="/negotiations" aria-current="page">Negotiations</a>
-<a href="/chat">Chat</a>
-<a href="/ai-assistant">AI Assistant</a>
-<a href="/cart">🛒</a>
-<a href="/notifications">Notifications</a>
-<a href="/profile">Profile</a>
-<a href="/logout">Logout</a>
+
+        <a href="/dashboard">
+            Dashboard
+        </a>
+
+        <a href="/storage">
+            Storage
+        </a>
+
+        <a href="/marketplace">
+            Marketplace
+        </a>
+
+        <a
+            href="/negotiations"
+            aria-current="page"
+        >
+            Negotiations
+        </a>
+
+        <a href="/chat">
+            Chat
+        </a>
+
+        <a
+            href="/cart"
+            aria-label="Shopping cart"
+        >
+            🛒
+        </a>
+
+        <a href="/ai-assistant">
+            AI Assistant
+        </a>
+
+        <a href="/profile">
+            Profile
+        </a>
+
+        <a href="/notifications">
+            Notifications
+        </a>
+
+        <a href="/logout">
+            Logout
+        </a>
+
     </nav>
+
 </header>
+
 
 <main class="negotiations">
 
-    <h1>My Negotiations</h1>
-    <p>Price negotiations you've started or received, with buyers and sellers.</p>
+    <!-- =========================
+         PAGE HEADER
+    ========================== -->
+    <section
+        class="dashboard-header"
+        aria-labelledby="negotiations-title"
+    >
 
-    <table>
-        <thead>
-            <tr>
-                <th>Crop</th>
-                <th>With</th>
-                <th>Status</th>
-                <th>Rounds Used</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {{range .Negotiations}}
-            <tr>
-                <td>{{.CropName}}</td>
-                <td class="negotiation-person">{{if eq .BuyerID $.UserID}}{{if .SellerPhotoURL}}<img src="{{.SellerPhotoURL}}" alt="">{{else}}👤{{end}}{{.SellerName}}{{else}}{{if .BuyerPhotoURL}}<img src="{{.BuyerPhotoURL}}" alt="">{{else}}👤{{end}}{{.BuyerName}}{{end}}</td>
-                <td><span class="status status-{{.Status}}">{{.Status}}</span></td>
-                <td>{{.RoundCount}}/{{.MaxRounds}}</td>
-                <td><a class="open-chat-btn" href="/negotiation?id={{.ID}}">Open chat</a></td>
-            </tr>
-            {{else}}
-            <tr><td colspan="5">No negotiations yet. Start one from a Marketplace listing.</td></tr>
-            {{end}}
-        </tbody>
-    </table>
+        <div class="dashboard-intro">
+
+            <p class="eyebrow">
+                Agricultural Commerce
+            </p>
+
+            <h1 id="negotiations-title">
+                My Negotiations
+            </h1>
+
+            <p>
+                Price negotiations you have started or received
+                with buyers and sellers.
+            </p>
+
+        </div>
+
+    </section>
+
+
+    <!-- =========================
+         NEGOTIATIONS TABLE
+    ========================== -->
+    <section
+        class="panel"
+        aria-label="My negotiations"
+    >
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th scope="col">
+                            Product
+                        </th>
+
+                        <th scope="col">
+                            With
+                        </th>
+
+                        <th scope="col">
+                            Status
+                        </th>
+
+                        <th scope="col">
+                            Rounds Used
+                        </th>
+
+                        <th scope="col">
+                            <span class="sr-only">
+                                Actions
+                            </span>
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {{range .Negotiations}}
+
+                    <tr>
+
+                        <!-- =========================
+                             PRODUCT
+                        ========================== -->
+                        <td>
+                            {{.ProductName}}
+                        </td>
+
+
+                        <!-- =========================
+                             OTHER PARTICIPANT
+                        ========================== -->
+                        <td class="negotiation-person">
+
+                            {{if eq .BuyerID $.UserID}}
+
+                                {{if .SellerPhotoURL}}
+
+                                <img
+                                    src="{{.SellerPhotoURL}}"
+                                    alt=""
+                                    loading="lazy"
+                                >
+
+                                {{else}}
+
+                                <span
+                                    aria-hidden="true"
+                                >
+                                    👤
+                                </span>
+
+                                {{end}}
+
+                                {{.SellerName}}
+
+                            {{else}}
+
+                                {{if .BuyerPhotoURL}}
+
+                                <img
+                                    src="{{.BuyerPhotoURL}}"
+                                    alt=""
+                                    loading="lazy"
+                                >
+
+                                {{else}}
+
+                                <span
+                                    aria-hidden="true"
+                                >
+                                    👤
+                                </span>
+
+                                {{end}}
+
+                                {{.BuyerName}}
+
+                            {{end}}
+
+                        </td>
+
+
+                        <!-- =========================
+                             STATUS
+                        ========================== -->
+                        <td>
+
+                            <span
+                                class="status status-{{.Status}}"
+                            >
+                                {{.Status}}
+                            </span>
+
+                        </td>
+
+
+                        <!-- =========================
+                             ROUNDS
+                        ========================== -->
+                        <td>
+                            {{.RoundCount}}/{{.MaxRounds}}
+                        </td>
+
+
+                        <!-- =========================
+                             OPEN NEGOTIATION
+                        ========================== -->
+                        <td>
+
+                            <a
+                                class="open-chat-btn"
+                                href="/negotiation?id={{.ID}}"
+                                aria-label="Open negotiation for {{.ProductName}}"
+                            >
+                                Open Chat
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+
+                    {{else}}
+
+                    <!-- =========================
+                         EMPTY STATE
+                    ========================== -->
+                    <tr>
+
+                        <td colspan="5">
+
+                            <div class="empty-state">
+
+                                <p>
+                                    No negotiations yet.
+                                    Start a negotiation from
+                                    a Marketplace listing.
+                                </p>
+
+                                <a
+                                    href="/marketplace"
+                                    class="primary-btn"
+                                >
+                                    Browse Marketplace
+                                </a>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {{end}}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
 
 </main>
 
-<script src="/static/js/navigation.js"></script>
+
+<script src="/static/js/navigation.js?v=20260904"></script>
+
 </body>
+
 </html>

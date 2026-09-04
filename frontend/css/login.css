@@ -12,6 +12,7 @@ html,
 body {
     width: 100%;
     min-height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 
@@ -21,15 +22,9 @@ body {
 
 .auth-container {
     display: grid;
-
-    /*
-        Target design:
-        Left = approximately 42%
-        Right = approximately 58%
-    */
     grid-template-columns: 42% 58%;
-
     min-height: 100vh;
+    width: 100%;
 }
 
 
@@ -39,83 +34,57 @@ body {
 
 .auth-left {
     position: relative;
-
     overflow: hidden;
-
     background: #1b7d3a;
-
-    color: white;
-
+    color: #ffffff;
     display: flex;
     flex-direction: column;
     justify-content: center;
-
     padding: 80px;
 }
 
-
 /* Background image */
-
 .background-image {
     position: absolute;
-
     top: 0;
     left: 0;
-
     width: 100%;
     height: 100%;
-
     object-fit: cover;
-
     z-index: 0;
+    transition: opacity 0.3s ease;
 }
 
-
 /* Green image overlay */
-
 .overlay {
     position: absolute;
-
     top: 0;
     left: 0;
-
     width: 100%;
     height: 100%;
-
     background: rgba(0, 100, 0, 0.75);
-
     z-index: 1;
 }
 
-
 /* Left text */
-
 .left-content {
     position: relative;
-
     max-width: 560px;
-
     z-index: 2;
 }
 
-
 .auth-left h1 {
     font-size: clamp(42px, 4vw, 62px);
-
     line-height: 1.1;
-
     margin-bottom: 25px;
-
     font-weight: 700;
 }
 
-
 .auth-left p {
     font-size: 21px;
-
     line-height: 1.7;
-
     max-width: 540px;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 
@@ -125,20 +94,14 @@ body {
 
 .auth-right {
     position: relative;
-
     min-height: auto;
-
     display: flex;
     flex-direction: column;
-
     justify-content: center;
     align-items: center;
-
     background: #f7f8f7;
-
     padding: 25px 40px;
-
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 
@@ -148,22 +111,14 @@ body {
 
 .brand-area {
     position: relative;
-
     width: 100%;
-
     max-width: 760px;
-
     height: 290px;
-
     display: flex;
-
     justify-content: center;
     align-items: center;
-
     flex-shrink: 0;
-
     margin-bottom: -10px;
-
     z-index: 1;
 }
 
@@ -174,25 +129,12 @@ body {
 
 .brand-roof {
     position: absolute;
-
-    /*
-        The shape is intentionally much
-        wider than the logo.
-    */
-
     width: 780px;
+    max-width: 100vw;
     height: 310px;
-
     top: -20px;
-
     left: 50%;
-
     transform: translateX(-50%);
-
-    /*
-        Creates the large upward-opening
-        geometric roof shape.
-    */
     clip-path: polygon(
         50% 0%,
         100% 82%,
@@ -201,33 +143,19 @@ body {
         0% 85%,
         0% 82%
     );
-
     background: #4caf50;
-
     z-index: 0;
 }
 
-
-/*
-    Inner lighter line.
-
-    This gives the shape the second,
-    subtle line visible in your reference.
-*/
-
 .brand-roof::after {
     content: "";
-
     position: absolute;
-
     width: 750px;
+    max-width: 98vw;
     height: 290px;
-
     top: 12px;
     left: 50%;
-
     transform: translateX(-50%);
-
     clip-path: polygon(
         50% 0%,
         100% 82%,
@@ -236,7 +164,6 @@ body {
         0% 84%,
         0% 82%
     );
-
     background: #e7f0e7;
 }
 
@@ -247,25 +174,13 @@ body {
 
 .auth-brand {
     position: relative;
-
     width: 250px;
     max-width: 70%;
-
     height: auto;
-
     object-fit: contain;
-
     z-index: 2;
-
-    /*
-        Moves the logo slightly downward
-        from the peak.
-    */
     margin-top: 25px;
-
-    filter: drop-shadow(
-        0 5px 8px rgba(0, 0, 0, 0.08)
-    );
+    filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.08));
 }
 
 
@@ -275,22 +190,13 @@ body {
 
 .auth-right form {
     position: relative;
-
     width: 100%;
-
     max-width: 570px;
-
     background: #ffffff;
-
     padding: 52px 46px 48px;
-
     border-radius: 20px;
-
     border: 1px solid rgba(0, 0, 0, 0.03);
-
-    box-shadow:
-        0 12px 35px rgba(0, 0, 0, 0.08);
-
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
     z-index: 3;
 }
 
@@ -301,35 +207,20 @@ body {
 
 .auth-right form h2 {
     text-align: center;
-
     color: #123d20;
-
     font-size: 42px;
-
     line-height: 1.2;
-
     margin-bottom: 38px;
-
     font-weight: 700;
 }
 
-
-/*
-    Small green line underneath Login
-*/
-
 .auth-right form h2::after {
     content: "";
-
     display: block;
-
     width: 65px;
     height: 3px;
-
     margin: 14px auto 0;
-
     background: #43a047;
-
     border-radius: 10px;
 }
 
@@ -340,15 +231,10 @@ body {
 
 .auth-right form label {
     display: block;
-
     margin-top: 22px;
-
     margin-bottom: 9px;
-
     color: #202020;
-
     font-size: 17px;
-
     font-weight: 600;
 }
 
@@ -360,7 +246,6 @@ body {
 .input-wrapper,
 .password-wrapper {
     position: relative;
-
     width: 100%;
 }
 
@@ -372,43 +257,26 @@ body {
 .input-wrapper input,
 .password-wrapper input {
     width: 100%;
-
     height: 62px;
-
     padding: 0 50px 0 58px;
-
     border: 1.5px solid #d7dcd8;
-
     border-radius: 13px;
-
     background: #ffffff;
-
-    color: #222;
-
+    color: #222222;
     font-size: 16px;
-
-    transition:
-        border-color 0.2s ease,
-        box-shadow 0.2s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-
 
 .input-wrapper input::placeholder,
 .password-wrapper input::placeholder {
     color: #a5aaa6;
 }
 
-
-/* Focus */
-
 .input-wrapper input:focus,
 .password-wrapper input:focus {
     outline: none;
-
     border-color: #4caf50;
-
-    box-shadow:
-        0 0 0 3px rgba(76, 175, 80, 0.12);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.12);
 }
 
 
@@ -418,60 +286,53 @@ body {
 
 .input-icon {
     position: absolute;
-
     left: 15px;
-
     top: 50%;
-
     transform: translateY(-50%);
-
     width: 34px;
     height: 34px;
-
     display: flex;
-
     justify-content: center;
     align-items: center;
-
     background: #eef7ee;
-
     border-radius: 9px;
-
     color: #398d3f;
-
     font-size: 15px;
-
     z-index: 2;
-
     pointer-events: none;
 }
 
 
 /* =========================================
-   PASSWORD EYE
+   PASSWORD EYE (BUTTON RESET)
 ========================================= */
 
 .toggle-password {
     position: absolute;
-
     right: 17px;
-
     top: 50%;
-
     transform: translateY(-50%);
-
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 4px;
     color: #398d3f;
-
     font-size: 19px;
-
     cursor: pointer;
-
     z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: color 0.2s ease;
 }
-
 
 .toggle-password:hover {
     color: #236c2d;
+}
+
+.toggle-password:focus-visible {
+    outline: 2px solid #4caf50;
 }
 
 
@@ -479,52 +340,32 @@ body {
    SIGN IN BUTTON
 ========================================= */
 
-.auth-right form button {
+.auth-right form button[type="submit"] {
     width: 100%;
-
     height: 62px;
-
     margin-top: 32px;
-
     padding: 0 20px;
-
     border: none;
-
     border-radius: 13px;
-
     background: #248c2b;
-
     color: #ffffff;
-
     font-size: 19px;
-
     font-weight: 600;
-
     cursor: pointer;
-
-    transition:
-        background 0.2s ease,
-        transform 0.15s ease,
-        box-shadow 0.2s ease;
+    transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
 }
 
-
-.auth-right form button:hover {
+.auth-right form button[type="submit"]:hover {
     background: #1d7424;
-
-    box-shadow:
-        0 7px 18px rgba(36, 140, 43, 0.22);
+    box-shadow: 0 7px 18px rgba(36, 140, 43, 0.22);
 }
 
-
-.auth-right form button:active {
+.auth-right form button[type="submit"]:active {
     transform: translateY(1px);
 }
 
-
-.auth-right form button:disabled {
+.auth-right form button[type="submit"]:disabled {
     opacity: 0.7;
-
     cursor: not-allowed;
 }
 
@@ -537,37 +378,25 @@ body {
     text-align: center;
 }
 
-
-/* Forgot password */
-
 .forgot-password {
     margin-top: 32px;
 }
 
-
 .forgot-password a,
 .register-link a {
     color: #27852d;
-
     text-decoration: underline;
-
     font-weight: 500;
 }
-
 
 .forgot-password a:hover,
 .register-link a:hover {
     color: #185e1e;
 }
 
-
-/* Register */
-
 .register-link {
     margin-top: 34px;
-
-    color: #333;
-
+    color: #333333;
     font-size: 16px;
 }
 
@@ -578,11 +407,8 @@ body {
 
 .auth-right form .message {
     margin-bottom: 15px;
-
     color: #d32f2f;
-
     text-align: center;
-
     font-weight: 600;
 }
 
@@ -592,20 +418,17 @@ body {
 ========================================= */
 
 @media (max-width: 1000px) {
-
     .auth-container {
         grid-template-columns: 1fr;
     }
 
     .auth-left {
         min-height: 400px;
-
         padding: 60px;
     }
 
     .auth-right {
         min-height: auto;
-
         padding: 50px 25px 70px;
     }
 
@@ -620,7 +443,6 @@ body {
     .brand-roof::after {
         width: 670px;
     }
-
 }
 
 
@@ -629,12 +451,9 @@ body {
 ========================================= */
 
 @media (max-width: 600px) {
-
     .auth-left {
         min-height: 350px;
-
         padding: 40px 30px;
-
         justify-content: flex-end;
     }
 
@@ -644,66 +463,49 @@ body {
 
     .auth-left p {
         font-size: 17px;
-
         line-height: 1.6;
     }
-
 
     .auth-right {
         padding: 20px 18px 50px;
     }
 
-
     .brand-area {
         height: 220px;
     }
 
-
     .brand-roof {
         width: 560px;
-
         height: 240px;
     }
 
-
     .brand-roof::after {
         width: 535px;
-
         height: 225px;
     }
 
-
     .auth-brand {
         width: 205px;
-
         margin-top: 25px;
     }
 
-
     .auth-right form {
         padding: 38px 25px 35px;
-
         border-radius: 16px;
     }
 
-
     .auth-right form h2 {
         font-size: 34px;
-
         margin-bottom: 30px;
     }
-
 
     .input-wrapper input,
     .password-wrapper input {
         height: 57px;
-
         font-size: 15px;
     }
 
-
-    .auth-right form button {
+    .auth-right form button[type="submit"] {
         height: 57px;
     }
-
 }

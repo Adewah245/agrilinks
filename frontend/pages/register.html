@@ -1,616 +1,866 @@
 <!DOCTYPE html>
-
 <html lang="en">
 
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Create Account | Agro-Shield</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-<link rel="stylesheet" href="/static/css/style.css">
-<link rel="stylesheet" href="/static/css/register.css">
-<link rel="stylesheet" href="/static/css/register-extra.css">
+    <meta
+        name="description"
+        content="Create an Agro-Shield account and connect with agricultural markets, farmers, buyers, organizations, services, training, and opportunities across Nigeria."
+    >
 
-<link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
->
+    <title>Create Account | Agro-Shield</title>
+
+
+    <link
+        rel="stylesheet"
+        href="/static/css/style.css?v=20260904"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/register.css?v=20260904"
+    >
+
+    <link
+        rel="stylesheet"
+        href="/static/css/register-extra.css?v=20260904"
+    >
+
+
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
 
 </head>
+
 
 <body>
 
 <main class="auth-container">
 
-<!-- =====================================================
-     LEFT SIDE
-====================================================== -->
 
-<section class="auth-left">
+    <!-- =========================================================
+         LEFT SIDE
+    ========================================================== -->
 
-    <h1>Join Agro-Shield</h1>
+    <section class="auth-left">
 
-    <p>
-        Create your Agro-Shield account to connect with
-        farmers, buyers, organizations, markets, training,
-        agricultural information, and other opportunities
-        across Nigeria.
-    </p>
-
-</section>
+        <h1>
+            Join Agro-Shield
+        </h1>
 
 
-<!-- =====================================================
-     RIGHT SIDE
-====================================================== -->
-
-<section class="auth-right">
-
-    <div class="auth-form-wrapper">
-
-        <!-- BRAND -->
-
-        <img
-            class="auth-brand"
-            src="/static/assets/logo/Agro-Shield_logo.png"
-            alt="Agro-Shield"
-        >
+        <p>
+            Create your Agro-Shield account and connect with
+            agricultural markets, farmers, buyers, organizations,
+            services, training, information, and opportunities
+            across Nigeria.
+        </p>
 
 
-        <!-- =================================================
-             REGISTRATION FORM
-        ================================================== -->
+        <div class="auth-benefits">
 
-        <form
-            id="register-form"
-            action="/register"
-            method="POST"
-            enctype="multipart/form-data"
-        >
+            <div class="auth-benefit">
 
-            <h2>Create Your Account</h2>
+                <span
+                    class="auth-benefit-icon"
+                    aria-hidden="true"
+                >
+                    🌾
+                </span>
 
+                <div>
 
-            <!-- =================================================
-                 1. PURPOSE
-            ================================================== -->
+                    <h2>
+                        Connect to Agriculture
+                    </h2>
 
-            <section class="form-section purpose-section">
-
-                <h3>How do you want to use Agro-Shield?</h3>
-
-                <p class="field-help">
-                    Select one or both options.
-                </p>
-
-                <div class="purpose-options">
-
-                    <label class="purpose-option">
-
-                        <input
-                            type="checkbox"
-                            name="purpose"
-                            value="sell"
-                        >
-
-                        <span>
-                            🌾 I want to sell produce
-                        </span>
-
-                    </label>
-
-
-                    <label class="purpose-option">
-
-                        <input
-                            type="checkbox"
-                            name="purpose"
-                            value="buy"
-                        >
-
-                        <span>
-                            🛒 I want to buy produce
-                        </span>
-
-                    </label>
+                    <p>
+                        Connect with people and opportunities
+                        across the agricultural value chain.
+                    </p>
 
                 </div>
 
-            </section>
+            </div>
+
+
+            <div class="auth-benefit">
+
+                <span
+                    class="auth-benefit-icon"
+                    aria-hidden="true"
+                >
+                    🛒
+                </span>
+
+                <div>
+
+                    <h2>
+                        Buy & Sell
+                    </h2>
+
+                    <p>
+                        Discover agricultural products and
+                        connect with potential buyers and sellers.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="auth-benefit">
+
+                <span
+                    class="auth-benefit-icon"
+                    aria-hidden="true"
+                >
+                    🤖
+                </span>
+
+                <div>
+
+                    <h2>
+                        Get Agricultural Support
+                    </h2>
+
+                    <p>
+                        Access agricultural information,
+                        AI assistance, weather insights,
+                        and other useful services.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =========================================================
+         RIGHT SIDE
+    ========================================================== -->
+
+    <section class="auth-right">
+
+        <div class="auth-form-wrapper">
 
 
             <!-- =================================================
-                 2. FARMING ACTIVITIES
+                 BRAND
             ================================================== -->
 
-            <section
-                class="form-section farm-type-section"
-                id="farm-type-section"
+            <img
+                class="auth-brand"
+                src="/static/assets/logo/Agro-Shield_logo.png?v=20260904"
+                alt="Agro-Shield"
             >
 
-                <h3>What type of farming do you do?</h3>
-
-                <p class="field-help">
-                    Select all farming activities that apply to you.
-                </p>
-
-                <div class="farm-options">
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="crop"
-                        >
-
-                        <span>
-                            🌱 Crop Farming
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="livestock"
-                        >
-
-                        <span>
-                            🐄 Livestock Farming
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="poultry"
-                        >
-
-                        <span>
-                            🐓 Poultry Farming
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="fishery"
-                        >
-
-                        <span>
-                            🐟 Fish Farming
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="beekeeping"
-                        >
-
-                        <span>
-                            🐝 Beekeeping
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="other"
-                        >
-
-                        <span>
-                            🌍 Other Farming
-                        </span>
-
-                    </label>
-
-                </div>
-
-            </section>
-
 
             <!-- =================================================
-                 3. PERSONAL INFORMATION
+                 REGISTRATION FORM
             ================================================== -->
 
-            <section class="form-section personal-information">
+            <form
+                id="register-form"
+                action="/register"
+                method="POST"
+                enctype="multipart/form-data"
+            >
 
-                <h3>Personal Information</h3>
+
+                <h2>
+                    Create Your Account
+                </h2>
 
 
-                <!-- NAME -->
+                <!-- =================================================
+                     1. ACCOUNT PURPOSE
+                ================================================== -->
 
-                <div class="row">
+                <section
+                    class="form-section purpose-section"
+                    aria-labelledby="purpose-heading"
+                >
+
+                    <h3 id="purpose-heading">
+                        How do you want to use Agro-Shield?
+                    </h3>
+
+
+                    <p class="field-help">
+                        Select the activities that apply to you.
+                        You can select both options.
+                    </p>
+
+
+                    <div class="purpose-options">
+
+
+                        <label class="purpose-option">
+
+                            <input
+                                type="checkbox"
+                                name="purpose"
+                                value="sell"
+                            >
+
+                            <span>
+                                🌾 I want to sell agricultural products
+                            </span>
+
+                        </label>
+
+
+                        <label class="purpose-option">
+
+                            <input
+                                type="checkbox"
+                                name="purpose"
+                                value="buy"
+                            >
+
+                            <span>
+                                🛒 I want to buy agricultural products
+                            </span>
+
+                        </label>
+
+
+                    </div>
+
+                </section>
+
+
+
+                <!-- =================================================
+                     2. FARMING ACTIVITIES
+                ================================================== -->
+
+                <section
+                    class="form-section farm-type-section"
+                    id="farm-type-section"
+                    aria-labelledby="farm-type-heading"
+                >
+
+                    <h3 id="farm-type-heading">
+                        What type of farming do you do?
+                    </h3>
+
+
+                    <p class="field-help">
+                        Select all agricultural activities that
+                        apply to you.
+                    </p>
+
+
+                    <div class="farm-options">
+
+
+                        <label class="farm-option">
+
+                            <input
+                                type="checkbox"
+                                name="farm_type"
+                                value="crop"
+                            >
+
+                            <span>
+                                🌱 Crop Farming
+                            </span>
+
+                        </label>
+
+
+                        <label class="farm-option">
+
+                            <input
+                                type="checkbox"
+                                name="farm_type"
+                                value="livestock"
+                            >
+
+                            <span>
+                                🐄 Livestock Farming
+                            </span>
+
+                        </label>
+
+
+                        <label class="farm-option">
+
+                            <input
+                                type="checkbox"
+                                name="farm_type"
+                                value="poultry"
+                            >
+
+                            <span>
+                                🐓 Poultry Farming
+                            </span>
+
+                        </label>
+
+
+                        <label class="farm-option">
+
+                            <input
+                                type="checkbox"
+                                name="farm_type"
+                                value="fishery"
+                            >
+
+                            <span>
+                                🐟 Fish Farming / Aquaculture
+                            </span>
+
+                        </label>
+
+
+                        <label class="farm-option">
+
+                            <input
+                                type="checkbox"
+                                name="farm_type"
+                                value="beekeeping"
+                            >
+
+                            <span>
+                                🐝 Beekeeping
+                            </span>
+
+                        </label>
+
+
+                        <label class="farm-option">
+
+                            <input
+                                type="checkbox"
+                                name="farm_type"
+                                value="other"
+                            >
+
+                            <span>
+                                🌍 Other Agricultural Activity
+                            </span>
+
+                        </label>
+
+
+                    </div>
+
+                </section>
+
+
+
+                <!-- =================================================
+                     3. PERSONAL INFORMATION
+                ================================================== -->
+
+                <section
+                    class="form-section personal-information"
+                    aria-labelledby="personal-information-heading"
+                >
+
+                    <h3 id="personal-information-heading">
+                        Personal Information
+                    </h3>
+
+
+                    <!-- =================================================
+                         FIRST AND LAST NAME
+                    ================================================== -->
+
+                    <div class="row">
+
+
+                        <div class="form-group">
+
+                            <label for="first-name">
+                                First Name
+                            </label>
+
+                            <input
+                                name="first-name"
+                                id="first-name"
+                                type="text"
+                                placeholder="Enter your first name"
+                                autocomplete="given-name"
+                                maxlength="100"
+                                required
+                            >
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label for="last-name">
+                                Last Name
+                            </label>
+
+                            <input
+                                name="last-name"
+                                id="last-name"
+                                type="text"
+                                placeholder="Enter your last name"
+                                autocomplete="family-name"
+                                maxlength="100"
+                                required
+                            >
+
+                        </div>
+
+
+                    </div>
+
+
+
+                    <!-- =================================================
+                         EMAIL
+                    ================================================== -->
 
                     <div class="form-group">
 
-                        <label for="first-name">
-                            First Name
+                        <label for="email">
+                            Email Address
                         </label>
 
                         <input
-                            name="first-name"
-                            id="first-name"
-                            type="text"
-                            placeholder="Enter your first name"
-                            autocomplete="given-name"
+                            name="email"
+                            id="email"
+                            type="email"
+                            placeholder="Enter your email"
+                            autocomplete="email"
+                            maxlength="255"
                             required
                         >
 
                     </div>
 
+
+
+                    <!-- =================================================
+                         PHONE
+                    ================================================== -->
 
                     <div class="form-group">
 
-                        <label for="last-name">
-                            Last Name
+                        <label for="phone">
+                            Phone Number
                         </label>
 
                         <input
-                            name="last-name"
-                            id="last-name"
-                            type="text"
-                            placeholder="Enter your last name"
-                            autocomplete="family-name"
+                            name="phone"
+                            id="phone"
+                            type="tel"
+                            inputmode="tel"
+                            placeholder="Enter phone number"
+                            autocomplete="tel"
+                            maxlength="20"
                             required
                         >
 
                     </div>
 
-                </div>
 
 
-                <!-- EMAIL -->
+                    <!-- =================================================
+                         NIN
+                    ================================================== -->
 
-                <div class="form-group">
+                    <div class="form-group">
 
-                    <label for="email">
-                        Email Address
-                    </label>
+                        <label for="nin">
 
-                    <input
-                        name="email"
-                        id="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        autocomplete="email"
-                        required
-                    >
+                            National Identification Number (NIN)
 
-                </div>
+                            <span class="optional-label">
+                                (Optional)
+                            </span>
+
+                        </label>
 
 
-                <!-- PHONE -->
-
-                <div class="form-group">
-
-                    <label for="phone">
-                        Phone Number
-                    </label>
-
-                    <input
-                        name="phone"
-                        id="phone"
-                        type="tel"
-                        placeholder="Enter phone number"
-                        autocomplete="tel"
-                        required
-                    >
-
-                </div>
+                        <input
+                            name="nin"
+                            id="nin"
+                            type="text"
+                            inputmode="numeric"
+                            autocomplete="off"
+                            placeholder="Enter your NIN"
+                            maxlength="11"
+                        >
 
 
-                <!-- NIN -->
+                        <p class="field-help">
+                            NIN is optional for now and may be used
+                            for future identity verification.
+                        </p>
 
-                <div class="form-group">
+                    </div>
 
-                    <label for="nin">
 
-                        National Identification Number (NIN)
+                </section>
 
-                        <span class="optional-label">
-                            (Optional)
-                        </span>
 
-                    </label>
 
-                    <input
-                        name="nin"
-                        id="nin"
-                        type="text"
-                        inputmode="numeric"
-                        autocomplete="off"
-                        placeholder="Enter your NIN"
-                        maxlength="11"
-                    >
+                <!-- =================================================
+                     4. LOCATION
+                ================================================== -->
+
+                <section
+                    class="form-section location-section"
+                    aria-labelledby="location-heading"
+                >
+
+                    <h3 id="location-heading">
+                        Where are you located?
+                    </h3>
+
 
                     <p class="field-help">
-                        NIN is optional for now and may be used
-                        for future identity verification.
+                        Your location helps Agro-Shield connect you
+                        with relevant agricultural opportunities,
+                        markets, services, and people near you.
                     </p>
 
-                </div>
-
-            </section>
 
 
-            <!-- =================================================
-                 4. LOCATION
-            ================================================== -->
+                    <!-- =================================================
+                         COUNTRY
+                    ================================================== -->
 
-            <section class="form-section location-section">
+                    <div class="form-group">
 
-                <h3>Where are you located?</h3>
+                        <label for="country">
+                            Country
+                        </label>
 
-                <p class="field-help">
-                    Your location helps Agro-Shield connect you
-                    with relevant agricultural opportunities,
-                    markets, services, and people near you.
+
+                        <select
+                            name="country"
+                            id="country"
+                            autocomplete="country-name"
+                            required
+                        >
+
+                            <option value="">
+                                Select your country
+                            </option>
+
+
+                            <option
+                                value="Nigeria"
+                                selected
+                            >
+                                Nigeria
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- =================================================
+                         STATE
+                    ================================================== -->
+
+                    <div class="form-group">
+
+                        <label for="state">
+                            State
+                        </label>
+
+
+                        <select
+                            name="state"
+                            id="state"
+                            autocomplete="address-level1"
+                            required
+                        >
+
+                            <option value="">
+                                Select your state
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- =================================================
+                         LGA
+                    ================================================== -->
+
+                    <div class="form-group">
+
+                        <label for="lga">
+                            Local Government Area (LGA)
+                        </label>
+
+
+                        <select
+                            name="lga"
+                            id="lga"
+                            autocomplete="address-level2"
+                            required
+                            disabled
+                        >
+
+                            <option value="">
+                                Select your LGA
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+
+                    <!-- =================================================
+                         COMMUNITY
+                    ================================================== -->
+
+                    <div class="form-group">
+
+                        <label for="community">
+                            Community / Town
+                        </label>
+
+
+                        <input
+                            name="community"
+                            id="community"
+                            type="text"
+                            placeholder="Enter your community or town"
+                            autocomplete="address-level3"
+                            maxlength="150"
+                            required
+                        >
+
+                    </div>
+
+
+                </section>
+
+
+
+                <!-- =================================================
+                     5. SECURITY
+                ================================================== -->
+
+                <section
+                    class="form-section security-section"
+                    aria-labelledby="security-heading"
+                >
+
+                    <h3 id="security-heading">
+                        Secure Your Account
+                    </h3>
+
+
+
+                    <!-- =================================================
+                         PASSWORD
+                    ================================================== -->
+
+                    <div class="form-group">
+
+                        <label for="password">
+                            Password
+                        </label>
+
+
+                        <div class="password-wrapper">
+
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                placeholder="Create a password"
+                                autocomplete="new-password"
+                                minlength="8"
+                                maxlength="128"
+                                required
+                            >
+
+
+                            <button
+                                type="button"
+                                class="toggle-password"
+                                id="toggle-password"
+                                aria-label="Show password"
+                                aria-controls="password"
+                                aria-pressed="false"
+                            >
+
+                                <i
+                                    class="fa-solid fa-eye"
+                                    aria-hidden="true"
+                                ></i>
+
+                            </button>
+
+                        </div>
+
+
+                        <p class="field-help">
+                            Password must be at least 8 characters.
+                        </p>
+
+                    </div>
+
+
+
+                    <!-- =================================================
+                         CONFIRM PASSWORD
+                    ================================================== -->
+
+                    <div class="form-group">
+
+                        <label for="confirm-password">
+                            Confirm Password
+                        </label>
+
+
+                        <div class="password-wrapper">
+
+                            <input
+                                id="confirm-password"
+                                name="confirm-password"
+                                type="password"
+                                placeholder="Confirm your password"
+                                autocomplete="new-password"
+                                minlength="8"
+                                maxlength="128"
+                                required
+                            >
+
+
+                            <button
+                                type="button"
+                                class="toggle-password"
+                                id="toggle-confirm-password"
+                                aria-label="Show confirm password"
+                                aria-controls="confirm-password"
+                                aria-pressed="false"
+                            >
+
+                                <i
+                                    class="fa-solid fa-eye"
+                                    aria-hidden="true"
+                                ></i>
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                </section>
+
+
+
+                <!-- =================================================
+                     6. PROFILE PICTURE
+                ================================================== -->
+
+                <section
+                    class="form-section profile-section"
+                    aria-labelledby="profile-heading"
+                >
+
+                    <h3 id="profile-heading">
+                        Your Profile
+                    </h3>
+
+
+                    <div class="form-group profile-upload">
+
+                        <label for="profile-picture">
+                            Profile Picture
+                        </label>
+
+
+                        <input
+                            type="file"
+                            name="profile_picture"
+                            id="profile-picture"
+                            accept="image/jpeg,image/png,image/webp"
+                            required
+                        >
+
+
+                        <p class="field-help">
+                            Upload a clear profile picture in
+                            JPG, PNG, or WebP format.
+                        </p>
+
+                    </div>
+
+                </section>
+
+
+
+                <!-- =================================================
+                     7. CREATE ACCOUNT
+                ================================================== -->
+
+                <button
+                    type="submit"
+                    id="register-submit"
+                >
+                    Create Account
+                </button>
+
+
+
+                <!-- =================================================
+                     LOGIN
+                ================================================== -->
+
+                <p class="auth-footer">
+
+                    Already have an account?
+
+                    <a href="/login">
+                        Login
+                    </a>
+
                 </p>
 
 
-                <!-- COUNTRY -->
+            </form>
 
-                <div class="form-group">
+        </div>
 
-                    <label for="country">
-                        Country
-                    </label>
-
-                    <select
-                        name="country"
-                        id="country"
-                        required
-                    >
-
-                        <option value="">
-                            Select your country
-                        </option>
-
-                        <option value="Nigeria" selected>
-                            Nigeria
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <!-- STATE -->
-
-                <div class="form-group">
-
-                    <label for="state">
-                        State
-                    </label>
-
-                    <select
-                        name="state"
-                        id="state"
-                        required
-                    >
-
-                        <option value="">
-                            Select your state
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <!-- LGA -->
-
-                <div class="form-group">
-
-                    <label for="lga">
-                        Local Government Area (LGA)
-                    </label>
-
-                    <select
-                        name="lga"
-                        id="lga"
-                        required
-                        disabled
-                    >
-
-                        <option value="">
-                            Select your LGA
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <!-- COMMUNITY -->
-
-                <div class="form-group">
-
-                    <label for="community">
-                        Community / Town
-                    </label>
-
-                    <input
-                        name="community"
-                        id="community"
-                        type="text"
-                        placeholder="Enter your community or town"
-                        autocomplete="address-level3"
-                        required
-                    >
-
-                </div>
-
-            </section>
-
-
-            <!-- =================================================
-                 5. SECURITY
-            ================================================== -->
-
-            <section class="form-section security-section">
-
-                <h3>Secure Your Account</h3>
-
-
-                <!-- PASSWORD -->
-
-                <div class="form-group">
-
-                    <label for="password">
-                        Password
-                    </label>
-
-                    <div class="password-wrapper">
-
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            placeholder="Create a password"
-                            autocomplete="new-password"
-                            minlength="8"
-                            required
-                        >
-
-                        <i
-                            class="fa-solid fa-eye toggle-password"
-                            id="toggle-password"
-                            aria-label="Show password"
-                        ></i>
-
-                    </div>
-
-                    <p class="field-help">
-                        Password must be at least 8 characters.
-                    </p>
-
-                </div>
-
-
-                <!-- CONFIRM PASSWORD -->
-
-                <div class="form-group">
-
-                    <label for="confirm-password">
-                        Confirm Password
-                    </label>
-
-                    <div class="password-wrapper">
-
-                        <input
-                            id="confirm-password"
-                            name="confirm-password"
-                            type="password"
-                            placeholder="Confirm your password"
-                            autocomplete="new-password"
-                            minlength="8"
-                            required
-                        >
-
-                        <i
-                            class="fa-solid fa-eye toggle-password"
-                            id="toggle-confirm-password"
-                            aria-label="Show confirm password"
-                        ></i>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            <!-- =================================================
-                 6. PROFILE PICTURE
-            ================================================== -->
-
-            <section class="form-section profile-section">
-
-                <h3>Your Profile</h3>
-
-                <div class="form-group profile-upload">
-
-                    <label for="profile-picture">
-                        Profile Picture
-                    </label>
-
-                    <input
-                        type="file"
-                        name="profile_picture"
-                        id="profile-picture"
-                        accept="image/*"
-                        required
-                    >
-
-                    <p class="field-help">
-                        Please upload a clear profile picture.
-                    </p>
-
-                </div>
-
-            </section>
-
-
-            <!-- =================================================
-                 7. SUBMIT
-            ================================================== -->
-
-            <button
-                type="submit"
-                id="register-submit"
-            >
-                Create Account
-            </button>
-
-
-            <!-- LOGIN -->
-
-            <p class="auth-footer">
-
-                Already have an account?
-
-                <a href="/login">
-                    Login
-                </a>
-
-            </p>
-
-        </form>
-
-    </div>
-
-</section>
-```
+    </section>
 
 </main>
 
-<!-- REGISTER JAVASCRIPT -->
 
-<script src="/static/js/register.js"></script>
+
+<!-- =============================================================
+     REGISTER JAVASCRIPT
+============================================================== -->
+
+<script src="/static/js/register.js?v=20260904"></script>
 
 </body>
 
