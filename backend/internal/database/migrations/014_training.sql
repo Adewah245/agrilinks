@@ -3,6 +3,7 @@
 -- Migration 006: Training & Farmer Education
 -- ============================================
 
+
 -- ============================================
 -- TRAINING COURSES
 -- ============================================
@@ -21,7 +22,7 @@ CREATE TABLE IF NOT EXISTS training_courses (
 
     category TEXT NOT NULL,
 
-    farming_type TEXT,
+    farming_type_id INTEGER,
 
     level TEXT NOT NULL DEFAULT 'beginner',
 
@@ -33,15 +34,50 @@ CREATE TABLE IF NOT EXISTS training_courses (
 
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+
     CONSTRAINT fk_training_courses_organization
         FOREIGN KEY (organization_id)
         REFERENCES organizations(id)
         ON DELETE CASCADE,
 
+
     CONSTRAINT fk_training_courses_creator
         FOREIGN KEY (created_by)
         REFERENCES users(id)
         ON DELETE CASCADE,
+
+
+    CONSTRAINT fk_training_courses_farming_type
+        FOREIGN KEY (farming_type_id)
+        REFERENCES farming_types(id)
+        ON DELETE SET NULL,
+
+
+    CONSTRAINT training_courses_title_nonblank
+        CHECK (
+            BTRIM(title) <> ''
+        ),
+
+
+    CONSTRAINT training_courses_category_nonblank
+        CHECK (
+            BTRIM(category) <> ''
+        ),
+
+
+    CONSTRAINT training_courses_description_check
+        CHECK (
+            description IS NULL
+            OR BTRIM(description) <> ''
+        ),
+
+
+    CONSTRAINT training_courses_thumbnail_check
+        CHECK (
+            thumbnail_url IS NULL
+            OR BTRIM(thumbnail_url) <> ''
+        ),
+
 
     CONSTRAINT training_courses_level_check
         CHECK (
@@ -51,6 +87,7 @@ CREATE TABLE IF NOT EXISTS training_courses (
                 'advanced'
             )
         ),
+
 
     CONSTRAINT training_courses_status_check
         CHECK (
@@ -62,17 +99,26 @@ CREATE TABLE IF NOT EXISTS training_courses (
         )
 );
 
-CREATE INDEX IF NOT EXISTS idx_training_courses_organization
+
+CREATE INDEX IF NOT EXISTS idx_training_courses_organization_id
 ON training_courses(organization_id);
+
+
+CREATE INDEX IF NOT EXISTS idx_training_courses_created_by
+ON training_courses(created_by);
+
 
 CREATE INDEX IF NOT EXISTS idx_training_courses_category
 ON training_courses(category);
 
-CREATE INDEX IF NOT EXISTS idx_training_courses_farming_type
-ON training_courses(farming_type);
+
+CREATE INDEX IF NOT EXISTS idx_training_courses_farming_type_id
+ON training_courses(farming_type_id);
+
 
 CREATE INDEX IF NOT EXISTS idx_training_courses_status
 ON training_courses(status);
+
 
 
 -- ============================================
@@ -101,20 +147,68 @@ CREATE TABLE IF NOT EXISTS training_lessons (
 
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+
     CONSTRAINT fk_training_lessons_course
         FOREIGN KEY (course_id)
         REFERENCES training_courses(id)
         ON DELETE CASCADE,
 
+
+    CONSTRAINT training_lessons_title_nonblank
+        CHECK (
+            BTRIM(title) <> ''
+        ),
+
+
+    CONSTRAINT training_lessons_description_check
+        CHECK (
+            description IS NULL
+            OR BTRIM(description) <> ''
+        ),
+
+
+    CONSTRAINT training_lessons_content_check
+        CHECK (
+            content IS NULL
+            OR BTRIM(content) <> ''
+        ),
+
+
+    CONSTRAINT training_lessons_video_url_check
+        CHECK (
+            video_url IS NULL
+            OR BTRIM(video_url) <> ''
+        ),
+
+
+    CONSTRAINT training_lessons_document_url_check
+        CHECK (
+            document_url IS NULL
+            OR BTRIM(document_url) <> ''
+        ),
+
+
     CONSTRAINT training_lessons_order_check
-        CHECK (lesson_order > 0)
+        CHECK (
+            lesson_order > 0
+        ),
+
+
+    CONSTRAINT unique_training_lesson_order
+        UNIQUE (
+            course_id,
+            lesson_order
+        )
 );
 
-CREATE INDEX IF NOT EXISTS idx_training_lessons_course
+
+CREATE INDEX IF NOT EXISTS idx_training_lessons_course_id
 ON training_lessons(course_id);
+
 
 CREATE INDEX IF NOT EXISTS idx_training_lessons_order
 ON training_lessons(course_id, lesson_order);
+
 
 
 -- ============================================
@@ -137,15 +231,18 @@ CREATE TABLE IF NOT EXISTS training_enrollments (
 
     completed_at TIMESTAMP,
 
+
     CONSTRAINT fk_training_enrollments_course
         FOREIGN KEY (course_id)
         REFERENCES training_courses(id)
         ON DELETE CASCADE,
 
+
     CONSTRAINT fk_training_enrollments_user
         FOREIGN KEY (user_id)
         REFERENCES users(id)
         ON DELETE CASCADE,
+
 
     CONSTRAINT training_enrollments_status_check
         CHECK (
@@ -156,21 +253,54 @@ CREATE TABLE IF NOT EXISTS training_enrollments (
             )
         ),
 
+
     CONSTRAINT training_enrollments_progress_check
         CHECK (
             progress >= 0
             AND progress <= 100
         ),
 
+
+    CONSTRAINT training_enrollments_completion_check
+        CHECK (
+            (
+                status = 'completed'
+                AND progress = 100
+                AND completed_at IS NOT NULL
+            )
+            OR
+            (
+                status <> 'completed'
+            )
+        ),
+
+
+    CONSTRAINT training_enrollments_completed_at_check
+        CHECK (
+            completed_at IS NULL
+            OR completed_at >= enrolled_at
+        ),
+
+
     CONSTRAINT unique_training_enrollment
-        UNIQUE (course_id, user_id)
+        UNIQUE (
+            course_id,
+            user_id
+        )
 );
 
-CREATE INDEX IF NOT EXISTS idx_training_enrollments_course
+
+CREATE INDEX IF NOT EXISTS idx_training_enrollments_course_id
 ON training_enrollments(course_id);
 
-CREATE INDEX IF NOT EXISTS idx_training_enrollments_user
+
+CREATE INDEX IF NOT EXISTS idx_training_enrollments_user_id
 ON training_enrollments(user_id);
+
 
 CREATE INDEX IF NOT EXISTS idx_training_enrollments_status
 ON training_enrollments(status);
+
+
+CREATE INDEX IF NOT EXISTS idx_training_enrollments_user_status
+ON training_enrollments(user_id, status);

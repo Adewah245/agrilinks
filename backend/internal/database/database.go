@@ -24,7 +24,9 @@ import (
 
 func ConnectDB() (*sql.DB, error) {
 
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		log.Println("ℹ️ .env file not loaded; using environment variables")
+	}
 
 	databaseURL := os.Getenv("DATABASE_URL")
 
@@ -38,6 +40,7 @@ func ConnectDB() (*sql.DB, error) {
 	}
 
 	if err := db.Ping(); err != nil {
+		db.Close()
 		return nil, err
 	}
 
