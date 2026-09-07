@@ -1,6 +1,6 @@
 -- =============================================================
 -- AGRO-SHIELD
--- Migration 010: Payments & Transactions
+-- Migration 011: Payments & Transactions
 --
 -- Defines:
 --   1. Payment transactions
@@ -24,6 +24,15 @@
 -- Payments are financial records.
 -- Therefore financial amounts use NUMERIC instead of
 -- DOUBLE PRECISION to avoid floating-point rounding problems.
+--
+-- IMPORTANT MIGRATION DEPENDENCY:
+--
+-- orders is created later in migration 021_order.sql.
+--
+-- Therefore this migration intentionally does NOT create the
+-- foreign key from transactions.order_id to orders(id).
+--
+-- The foreign key will be added after the orders table exists.
 -- =============================================================
 
 
@@ -38,9 +47,11 @@ CREATE TABLE IF NOT EXISTS transactions (
     -- =========================================================
     -- Order
     --
-    -- Multiple transaction records may eventually belong to one
-    -- order because payment attempts can fail and be retried.
-    -- Therefore order_id is intentionally NOT UNIQUE.
+    -- Multiple transaction records may belong to one order
+    -- because payment attempts can fail and be retried.
+    --
+    -- The foreign key to orders(id) is added later after the
+    -- orders table has been created by migration 021.
     -- =========================================================
     order_id INTEGER NOT NULL,
 
@@ -52,7 +63,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     -- =========================================================
     -- Seller
     --
-    -- Must follow the same ownership model used by products:
+    -- Follows the same ownership model used by products:
     --
     --   user
     --   organization
@@ -95,13 +106,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- =========================================================
-    -- Relationships
+    -- Buyer Relationship
     -- =========================================================
-    CONSTRAINT fk_transactions_order
-        FOREIGN KEY (order_id)
-        REFERENCES orders(id)
-        ON DELETE CASCADE,
-
     CONSTRAINT fk_transactions_buyer
         FOREIGN KEY (buyer_id)
         REFERENCES users(id)

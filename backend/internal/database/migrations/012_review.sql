@@ -1,6 +1,20 @@
 -- ============================================
 -- AGRO-SHIELD
--- Migration 011: Reviews & Trust System
+-- Migration 012: Reviews & Trust System
+-- ============================================
+--
+-- Defines:
+--   1. Product reviews
+--   2. User/organization reviews
+--   3. Verification / trust badges
+--
+-- IMPORTANT MIGRATION DEPENDENCY:
+--
+-- orders is created later in migration 021_order.sql.
+--
+-- Therefore the order_id columns are created here, but the
+-- foreign keys pointing to orders(id) are intentionally added
+-- later after the orders table exists.
 -- ============================================
 
 
@@ -39,10 +53,8 @@ CREATE TABLE IF NOT EXISTS product_reviews (
         ON DELETE CASCADE,
 
 
-    CONSTRAINT fk_product_reviews_order
-        FOREIGN KEY (order_id)
-        REFERENCES orders(id)
-        ON DELETE CASCADE,
+    -- The foreign key to orders(id) is intentionally omitted.
+    -- It will be added after migration 021 creates orders.
 
 
     CONSTRAINT product_reviews_rating_check
@@ -118,10 +130,8 @@ CREATE TABLE IF NOT EXISTS user_reviews (
         ON DELETE CASCADE,
 
 
-    CONSTRAINT fk_user_reviews_order
-        FOREIGN KEY (order_id)
-        REFERENCES orders(id)
-        ON DELETE CASCADE,
+    -- The foreign key to orders(id) is intentionally omitted.
+    -- It will be added after migration 021 creates orders.
 
 
     CONSTRAINT user_reviews_reviewed_type_check
