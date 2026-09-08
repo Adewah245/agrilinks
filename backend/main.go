@@ -56,6 +56,7 @@ func main() {
 	// - Events and news
 	// - Logistics and delivery
 	// - Training
+	// - Learning
 	// - Notifications
 	// - Payments
 	// - Reviews
@@ -126,8 +127,8 @@ func main() {
 	//
 	// Products can therefore belong to:
 	//
-	// User
-	// Organisation
+	// - User
+	// - Organisation
 	// ------------------------------------------------------------
 
 	productRepo := repository.NewProductRepository(db)
@@ -197,8 +198,39 @@ func main() {
 	notificationRepo :=
 		repository.NewNotificationRepository(db)
 
+	// ------------------------------------------------------------
+	// MARKET EVENT REPOSITORY
+	//
+	// Handles market-related events and intelligence.
+	// ------------------------------------------------------------
+
 	marketEventRepo :=
 		repository.NewMarketEventRepository(db)
+
+	// ============================================================
+	// LEARNING REPOSITORY
+	//
+	// Handles the Agro-Shield Learning system.
+	//
+	// Learning includes:
+	//
+	// - Farming types
+	// - User learning interests
+	// - Learning journeys
+	// - Learning messages
+	// - Learning checkpoints
+	//
+	// Flow:
+	//
+	// LearningService
+	//       ↓
+	// LearningRepository
+	//       ↓
+	// PostgreSQL
+	// ============================================================
+
+	learningRepo :=
+		repository.NewLearningRepository(db)
 
 	// ============================================================
 	// CHAT REPOSITORIES
@@ -291,6 +323,7 @@ func main() {
 		negotiationMsgRepo,
 		notificationRepo,
 		marketEventRepo,
+		learningRepo,
 
 		// --------------------------------------------------------
 		// CHAT REPOSITORIES

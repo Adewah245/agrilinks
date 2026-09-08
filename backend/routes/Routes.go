@@ -1,17 +1,31 @@
 package routes
 
 import (
+	"net/http"
+
 	"backend/handlers"
 	app "backend/internal"
 	"backend/internal/services"
 	"backend/middleware"
 	"backend/ussd"
-	"net/http"
 )
 
 func RegisterRoutes(container *app.Container) {
-	// USSD gateways post menu selections to this provider-neutral endpoint.
-	ussdHandler := ussd.NewHandler(container.UserRepo, container.Product, services.NewWeatherService(), container.Order, container.Notification)
+
+	// ========================================================
+	// USSD
+	// ========================================================
+
+	// USSD gateways post menu selections to this
+	// provider-neutral endpoint.
+	ussdHandler := ussd.NewHandler(
+		container.UserRepo,
+		container.Product,
+		services.NewWeatherService(),
+		container.Order,
+		container.Notification,
+	)
+
 	http.Handle("/ussd", ussdHandler)
 
 	// ========================================================
@@ -25,6 +39,7 @@ func RegisterRoutes(container *app.Container) {
 			http.FileServer(http.Dir("../frontend")),
 		),
 	)
+
 	// ========================================================
 	// LOCATION API
 	// ========================================================
@@ -42,6 +57,7 @@ func RegisterRoutes(container *app.Container) {
 		"/api/states/",
 		locationHandler.GetLGAsHandler,
 	)
+
 	// ========================================================
 	// HOME
 	// ========================================================
@@ -138,7 +154,201 @@ func RegisterRoutes(container *app.Container) {
 		"/market-insights",
 		middleware.OnlyPath(
 			"/market-insights",
-			middleware.OnlyGet(middleware.RequireAuth(container.UserRepo, dashboardHandler.MarketInsights)),
+			middleware.OnlyGet(
+				middleware.RequireAuth(
+					container.UserRepo,
+					dashboardHandler.MarketInsights,
+				),
+			),
+		),
+	)
+
+	// ========================================================
+	// LEARNING
+	// ========================================================
+	//
+	// Learning is available to EVERY authenticated user.
+	//
+	// It is NOT a separate user role.
+	//
+	// Examples:
+	//
+	// Buyer       → can learn
+	// Farmer      → can learn
+	// Organisation → can learn
+	// Ministry    → can learn
+	//
+	// Learning journey:
+	//
+	// /learn
+	//     ↓
+	// Choose farming type
+	//     ↓
+	// /learn/start
+	//     ↓
+	// Learning Journey
+	//     ↓
+	// Lessons / Checkpoints / Messages / Progress
+	//
+	// ========================================================
+
+	learningHandler := handlers.NewLearningHandler(
+		container.Learning,
+	)
+
+	// --------------------------------------------------------
+	// LEARNING HOME
+	//
+	// GET /learn
+	//
+	// Shows:
+	//
+	// - Available farming types
+	// - User's farming interests
+	// - Current learning journey
+	// --------------------------------------------------------
+
+	http.HandleFunc(
+		"/learn",
+		middleware.OnlyPath(
+			"/learn",
+			middleware.OnlyGet(
+				middleware.RequireAuth(
+					container.UserRepo,
+					learningHandler.LearningHome,
+				),
+			),
+		),
+	)
+
+	// --------------------------------------------------------
+	// START LEARNING JOURNEY
+	//
+	// POST /learn/start
+	//
+	// Form:
+	//
+	// farming_type_id
+	// experience_level
+	// goal
+	//
+	// Example:
+	//
+	// User chooses Fish Farming
+	//        ↓
+	// POST /learn/start
+	//        ↓
+	// Learning Journey created
+	// --------------------------------------------------------
+
+	http.HandleFunc(
+		"/learn/start",
+		middleware.OnlyPath(
+			"/learn/start",
+			middleware.RequireAuth(
+				container.UserRepo,
+				learningHandler.StartLearning,
+			),
+		),
+	)
+
+	// --------------------------------------------------------
+	// LEARNING JOURNEY
+	//
+	// GET /learn/journey?id=123
+	//
+	// Displays:
+	//
+	// - Farming type
+	// - Current stage
+	// - Progress
+	// - Readiness score
+	// - Checkpoints
+	// - Learning messages
+	// --------------------------------------------------------
+
+	http.HandleFunc(
+		"/learn/journey",
+		middleware.OnlyPath(
+			"/learn/journey",
+			middleware.OnlyGet(
+				middleware.RequireAuth(
+					container.UserRepo,
+					learningHandler.LearningJourney,
+				),
+			),
+		),
+	)
+
+	// --------------------------------------------------------
+	// UPDATE LEARNING JOURNEY
+	//
+	// POST /learn/journey/update
+	//
+	// Updates:
+	//
+	// - Current stage
+	// - Status
+	// - Readiness score
+	//
+	// --------------------------------------------------------
+
+	http.HandleFunc(
+		"/learn/journey/update",
+		middleware.OnlyPath(
+			"/learn/journey/update",
+			middleware.RequireAuth(
+				container.UserRepo,
+				learningHandler.UpdateJourneyProgress,
+			),
+		),
+	)
+
+	// --------------------------------------------------------
+	// SEND LEARNING MESSAGE
+	//
+	// POST /learn/message
+	//
+	// Used for:
+	//
+	// - User questions
+	// - Learning discussions
+	// - AI learning interaction later
+	//
+	// --------------------------------------------------------
+
+	http.HandleFunc(
+		"/learn/message",
+		middleware.OnlyPath(
+			"/learn/message",
+			middleware.RequireAuth(
+				container.UserRepo,
+				learningHandler.SendMessage,
+			),
+		),
+	)
+
+	// --------------------------------------------------------
+	// UPDATE LEARNING CHECKPOINT
+	//
+	// POST /learn/checkpoint/update
+	//
+	// Used to update:
+	//
+	// - Progress
+	// - Status
+	// - Notes
+	//
+	// --------------------------------------------------------
+
+	http.HandleFunc(
+		"/learn/checkpoint/update",
+		middleware.OnlyPath(
+			"/learn/checkpoint/update",
+			middleware.RequireAuth(
+				container.UserRepo,
+				learningHandler.UpdateCheckpoint,
+			),
 		),
 	)
 
@@ -187,8 +397,21 @@ func RegisterRoutes(container *app.Container) {
 	storageHandler := handlers.NewStorageHandler(
 		container.Product,
 	)
-	salesHandler := handlers.NewSalesHandler(container.Order)
-	http.HandleFunc("/sales", middleware.OnlyPath("/sales", middleware.RequireAuth(container.UserRepo, salesHandler.Handler)))
+
+	salesHandler := handlers.NewSalesHandler(
+		container.Order,
+	)
+
+	http.HandleFunc(
+		"/sales",
+		middleware.OnlyPath(
+			"/sales",
+			middleware.RequireAuth(
+				container.UserRepo,
+				salesHandler.Handler,
+			),
+		),
+	)
 
 	http.HandleFunc(
 		"/storage",
@@ -270,9 +493,11 @@ func RegisterRoutes(container *app.Container) {
 		container.Notification,
 	)
 
-	// View notifications
+	// --------------------------------------------------------
+	// VIEW NOTIFICATIONS
 	//
 	// GET /notifications
+	// --------------------------------------------------------
 
 	http.HandleFunc(
 		"/notifications",
@@ -285,9 +510,11 @@ func RegisterRoutes(container *app.Container) {
 		),
 	)
 
-	// Mark one notification as read
+	// --------------------------------------------------------
+	// MARK ONE NOTIFICATION AS READ
 	//
 	// POST /notifications/read?id=123
+	// --------------------------------------------------------
 
 	http.HandleFunc(
 		"/notifications/read",
@@ -300,9 +527,11 @@ func RegisterRoutes(container *app.Container) {
 		),
 	)
 
-	// Mark all notifications as read
+	// --------------------------------------------------------
+	// MARK ALL NOTIFICATIONS AS READ
 	//
 	// POST /notifications/read-all
+	// --------------------------------------------------------
 
 	http.HandleFunc(
 		"/notifications/read-all",
@@ -358,9 +587,11 @@ func RegisterRoutes(container *app.Container) {
 		container.MarketEvents,
 	)
 
-	// Negotiation list
+	// --------------------------------------------------------
+	// NEGOTIATION LIST
 	//
 	// GET /negotiations
+	// --------------------------------------------------------
 
 	http.HandleFunc(
 		"/negotiations",
@@ -375,11 +606,11 @@ func RegisterRoutes(container *app.Container) {
 		),
 	)
 
-	// Negotiation conversation
+	// --------------------------------------------------------
+	// NEGOTIATION CONVERSATION
 	//
 	// GET /negotiation?id=123
-	//
-	// The handler also handles POST actions.
+	// --------------------------------------------------------
 
 	http.HandleFunc(
 		"/negotiation",
@@ -392,9 +623,11 @@ func RegisterRoutes(container *app.Container) {
 		),
 	)
 
-	// Start negotiation
+	// --------------------------------------------------------
+	// START NEGOTIATION
 	//
 	// POST /negotiation/start
+	// --------------------------------------------------------
 
 	http.HandleFunc(
 		"/negotiation/start",
@@ -428,13 +661,6 @@ func RegisterRoutes(container *app.Container) {
 	// User ↔ Group
 	// Normal communication
 	//
-	// Examples:
-	//
-	// 🌽 Maize Farmers Association
-	// 🛠️ Farm Tools Sellers
-	// 👨🏽‍🌾 Benue Farmers
-	// 👤 Private conversation with another user
-	//
 	// ========================================================
 
 	chatHandler := handlers.NewChatHandler(
@@ -446,8 +672,6 @@ func RegisterRoutes(container *app.Container) {
 	// CHAT HOME
 	//
 	// GET /chat
-	//
-	// Shows all conversations belonging to the user.
 	// --------------------------------------------------------
 
 	http.HandleFunc(
@@ -467,12 +691,6 @@ func RegisterRoutes(container *app.Container) {
 	// VIEW CHAT
 	//
 	// GET /chat/view?id=123
-	//
-	// Displays:
-	//
-	// - Conversation
-	// - Messages
-	// - Members
 	// --------------------------------------------------------
 
 	http.HandleFunc(
@@ -487,6 +705,12 @@ func RegisterRoutes(container *app.Container) {
 			),
 		),
 	)
+
+	// --------------------------------------------------------
+	// CHAT PRESENCE
+	//
+	// GET /chat/presence
+	// --------------------------------------------------------
 
 	http.HandleFunc(
 		"/chat/presence",
@@ -522,11 +746,6 @@ func RegisterRoutes(container *app.Container) {
 	// CREATE GROUP
 	//
 	// POST /chat/group/create
-	//
-	// Example:
-	//
-	// Maize Farmers Association
-	//
 	// --------------------------------------------------------
 
 	http.HandleFunc(
@@ -544,10 +763,6 @@ func RegisterRoutes(container *app.Container) {
 	// CREATE PRIVATE CHAT
 	//
 	// POST /chat/private
-	//
-	// Form:
-	//
-	// user_id
 	// --------------------------------------------------------
 
 	http.HandleFunc(

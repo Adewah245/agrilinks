@@ -4,6 +4,8 @@ import (
 	"backend/internal/models"
 	"database/sql"
 	"strings"
+
+	"github.com/lib/pq"
 )
 
 // UserRepository provides database operations for users.
@@ -18,7 +20,10 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 	}
 }
 
-// Create creates a new user account and returns the generated user ID.
+// ============================================================
+// CREATE USER
+// ============================================================
+
 func (r *UserRepository) Create(user *models.User) (int, error) {
 	email := strings.TrimSpace(user.Email)
 
@@ -40,8 +45,6 @@ func (r *UserRepository) Create(user *models.User) (int, error) {
 			country,
 			role,
 			account_type,
-			nin,
-			verification_status,
 			organisation_name,
 			photo_url
 		)
@@ -49,8 +52,7 @@ func (r *UserRepository) Create(user *models.User) (int, error) {
 		(
 			$1, $2, $3, $4,
 			$5, $6, $7, $8,
-			$9, $10, $11, $12,
-			$13, $14
+			$9, $10, $11, $12
 		)
 		RETURNING id
 	`
@@ -69,8 +71,6 @@ func (r *UserRepository) Create(user *models.User) (int, error) {
 		strings.TrimSpace(user.Country),
 		strings.TrimSpace(user.Role),
 		strings.TrimSpace(user.AccountType),
-		strings.TrimSpace(user.NIN),
-		strings.TrimSpace(user.VerificationStatus),
 		strings.TrimSpace(user.OrganisationName),
 		strings.TrimSpace(user.PhotoURL),
 	).Scan(&id)
@@ -78,7 +78,10 @@ func (r *UserRepository) Create(user *models.User) (int, error) {
 	return id, err
 }
 
-// userSelectColumns contains the common user fields loaded by the repository.
+// ============================================================
+// COMMON USER SELECT COLUMNS
+// ============================================================
+
 const userSelectColumns = `
 	id,
 	full_name,
@@ -91,12 +94,8 @@ const userSelectColumns = `
 	COALESCE(country, 'Nigeria') AS country,
 	COALESCE(role, 'farmer') AS role,
 	COALESCE(account_type, 'individual') AS account_type,
-	COALESCE(nin, '') AS nin,
-	COALESCE(verification_status, '') AS verification_status,
 	COALESCE(organisation_name, '') AS organisation_name,
 	COALESCE(photo_url, '') AS photo_url,
-	created_at,
-	updated_at,
 	COALESCE(
 		(
 			SELECT ARRAY_AGG(ft.slug ORDER BY ft.name)
@@ -106,13 +105,22 @@ const userSelectColumns = `
 			WHERE uft.user_id = users.id
 		),
 		ARRAY[]::TEXT[]
-	) AS farming_types
+	) AS farming_types,
+	created_at,
+	updated_at
 `
 
-// scanUser scans a database row into a User model.
+// ============================================================
+// SCAN USER
+//
+// PostgreSQL arrays are scanned through pq.Array() so that
+// ARRAY_AGG(...) is correctly converted into []string.
+// ============================================================
+
 func scanUser(scanner interface {
 	Scan(dest ...any) error
 }) (*models.User, error) {
+
 	var user models.User
 
 	err := scanner.Scan(
@@ -127,13 +135,11 @@ func scanUser(scanner interface {
 		&user.Country,
 		&user.Role,
 		&user.AccountType,
-		&user.NIN,
-		&user.VerificationStatus,
 		&user.OrganisationName,
 		&user.PhotoURL,
+		pq.Array(&user.FarmingTypes),
 		&user.CreatedAt,
 		&user.UpdatedAt,
-		&user.FarmingTypes,
 	)
 
 	if err != nil {
@@ -143,8 +149,12 @@ func scanUser(scanner interface {
 	return &user, nil
 }
 
-// GetByPhone retrieves a user by their unique phone number.
+// ============================================================
+// GET USER BY PHONE
+// ============================================================
+
 func (r *UserRepository) GetByPhone(phone string) (*models.User, error) {
+
 	query := `
 		SELECT
 			` + userSelectColumns + `
@@ -170,8 +180,12 @@ func (r *UserRepository) GetByPhone(phone string) (*models.User, error) {
 	return user, nil
 }
 
-// GetByID retrieves a user by their unique ID.
+// ============================================================
+// GET USER BY ID
+// ============================================================
+
 func (r *UserRepository) GetByID(id int) (*models.User, error) {
+
 	query := `
 		SELECT
 			` + userSelectColumns + `
@@ -194,11 +208,15 @@ func (r *UserRepository) GetByID(id int) (*models.User, error) {
 	return user, nil
 }
 
-// ListForChat returns registered users that can be contacted in general chat.
+// ============================================================
+// LIST USERS FOR CHAT
+// ============================================================
+
 func (r *UserRepository) ListForChat(
 	excludeID int,
 	search string,
 ) ([]models.User, error) {
+
 	search = strings.TrimSpace(search)
 
 	query := `
@@ -222,6 +240,7 @@ func (r *UserRepository) ListForChat(
 		excludeID,
 		search,
 	)
+
 	if err != nil {
 		return nil, err
 	}
@@ -231,6 +250,7 @@ func (r *UserRepository) ListForChat(
 	users := make([]models.User, 0)
 
 	for rows.Next() {
+
 		user, err := scanUser(rows)
 		if err != nil {
 			return nil, err
@@ -246,7 +266,10 @@ func (r *UserRepository) ListForChat(
 	return users, nil
 }
 
-// UpdateProfile updates the editable personal details of a user.
+// ============================================================
+// UPDATE PROFILE
+// ============================================================
+
 func (r *UserRepository) UpdateProfile(
 	id int,
 	fullName string,
@@ -254,6 +277,7 @@ func (r *UserRepository) UpdateProfile(
 	email string,
 	location string,
 ) error {
+
 	email = strings.TrimSpace(email)
 
 	var emailValue interface{}
@@ -284,11 +308,15 @@ func (r *UserRepository) UpdateProfile(
 	return err
 }
 
-// UpdatePhoto updates the profile photograph URL for a user.
+// ============================================================
+// UPDATE PROFILE PHOTO
+// ============================================================
+
 func (r *UserRepository) UpdatePhoto(
 	id int,
 	photoURL string,
 ) error {
+
 	_, err := r.db.Exec(
 		`UPDATE users
 		 SET
@@ -302,11 +330,15 @@ func (r *UserRepository) UpdatePhoto(
 	return err
 }
 
-// UpdatePassword updates the password hash for a user.
+// ============================================================
+// UPDATE PASSWORD
+// ============================================================
+
 func (r *UserRepository) UpdatePassword(
 	id int,
 	passwordHash string,
 ) error {
+
 	_, err := r.db.Exec(
 		`UPDATE users
 		 SET
@@ -320,11 +352,19 @@ func (r *UserRepository) UpdatePassword(
 	return err
 }
 
-// SaveFarmingTypes connects a user to their selected farming types.
+// ============================================================
+// SAVE FARMING TYPES
+//
+// These represent farming activities the user already practices.
+//
+// They are NOT the farming type the user wants to learn.
+// ============================================================
+
 func (r *UserRepository) SaveFarmingTypes(
 	userID int,
 	farmingTypes []string,
 ) error {
+
 	query := `
 		INSERT INTO user_farming_types (
 			user_id,
@@ -340,6 +380,7 @@ func (r *UserRepository) SaveFarmingTypes(
 	`
 
 	for _, farmingType := range farmingTypes {
+
 		farmingType = strings.TrimSpace(
 			strings.ToLower(farmingType),
 		)

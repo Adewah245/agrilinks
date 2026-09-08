@@ -24,7 +24,7 @@ type Product struct {
 	Location         string
 	StateID          *int
 	LGAID            *int
-	Community        string
+	CommunityID      *int
 	Latitude         float64
 	Longitude        float64
 	LocationAccuracy float64

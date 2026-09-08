@@ -2,51 +2,48 @@ package models
 
 import "time"
 
-// ============================================================
-// CONVERSATION MODEL
-//
-// Responsibility:
-// - Represents a general Agro-Shield chat room.
+// Conversation represents a general Agro-Shield chat conversation.
 //
 // A conversation can be:
+//   - private: one user communicating with another user
+//   - group: multiple users communicating in one conversation
 //
-// private → one user chatting with another user
-//
-// group → multiple users communicating in one room
-//
-// IMPORTANT:
-// This model is for GENERAL CHAT.
-// It is completely separate from negotiations.
-// ============================================================
-
+// This model is for general chat and is completely separate from
+// negotiation conversations.
 type Conversation struct {
 	ID int `json:"id"`
 
-	// Name is mainly used for group conversations.
-	//
-	// Example:
-	//
-	// "Maize Farmers Association"
-	//
-	// Private conversations may not need a name.
-	Name          string `json:"name"`
-	OtherName     string `json:"other_name"`
-	OtherUserID   int    `json:"other_user_id"`
-	OtherPhotoURL string `json:"other_photo_url"`
-	UnreadCount   int    `json:"unread_count"`
-
-	// Type determines what kind of conversation this is.
+	// Conversation type.
 	//
 	// Possible values:
-	//
-	// "private"
-	// "group"
-	Type string `json:"type"`
+	//   - private
+	//   - group
+	ConversationType string `json:"conversation_type"`
 
-	// CreatedBy is the user who created the conversation.
-	CreatedBy int `json:"created_by"`
+	// Title is primarily used for group conversations.
+	// It is nullable in the database.
+	Title *string `json:"title,omitempty"`
+
+	// User who created the conversation.
+	// The database allows this to become NULL if the user is deleted.
+	CreatedBy *int `json:"created_by,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
-
 	UpdatedAt time.Time `json:"updated_at"`
+
+	// ============================================================
+	// DERIVED / JOINED INFORMATION
+	//
+	// These fields are not stored directly in conversations.
+	// They are populated by repository queries when needed.
+	// ============================================================
+
+	// Information about the other participant in a private
+	// conversation.
+	OtherUserID   int    `json:"other_user_id,omitempty"`
+	OtherName     string `json:"other_name,omitempty"`
+	OtherPhotoURL string `json:"other_photo_url,omitempty"`
+
+	// Number of unread messages for the current user.
+	UnreadCount int `json:"unread_count,omitempty"`
 }

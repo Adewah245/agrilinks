@@ -2,7 +2,11 @@ package models
 
 import "time"
 
-// Negotiation represents a price negotiation between a buyer and a product owner.
+// Negotiation represents a price negotiation between a buyer and
+// the owner of a product.
+//
+// The product owner is not stored directly on the negotiation.
+// Ownership is derived through ProductID -> Product.OwnerType/OwnerID.
 type Negotiation struct {
 	ID int
 
@@ -12,29 +16,35 @@ type Negotiation struct {
 	// Buyer participating in the negotiation.
 	BuyerID int
 
-	// Owner of the product.
-	OwnerType string
-	OwnerID   int
-
 	// Quantity requested by the buyer.
 	Quantity float64
 
-	// Negotiation lifecycle status.
-	Status string // "open", "accepted", "rejected", "expired"
+	// Offer pricing.
+	//
+	// InitialOfferPrice is the buyer's first offer.
+	// CurrentOfferPrice is the latest offer in the negotiation.
+	InitialOfferPrice float64
+	CurrentOfferPrice float64
+
+	// Negotiation lifecycle.
+	Status string // "open", "accepted", "rejected", "expired", "closed"
 
 	// Negotiation round tracking.
 	RoundCount int
 	MaxRounds  int
 
 	// Negotiation timestamps.
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	ExpiresAt  time.Time
+	AcceptedAt *time.Time
+	ClosedAt   *time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 
 	// Populated for display only.
-	ProductName   string
-	BuyerName     string
-	SellerName    string
-	BuyerPhotoURL string
+	ProductName    string
+	BuyerName      string
+	SellerName     string
+	BuyerPhotoURL  string
 	SellerPhotoURL string
 }
 

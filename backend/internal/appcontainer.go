@@ -12,18 +12,22 @@ import (
 //
 // Dependency flow:
 //
-//	Repository
-//	    ↓
-//	Service
-//	    ↓
-//	Container
-//	    ↓
-//	Handler
-//	    ↓
-//	Route
+//      Repository
+//          ↓
+//      Service
+//          ↓
+//      Container
+//          ↓
+//      Handler
+//          ↓
+//      Route
 // ============================================================
 
 type Container struct {
+	// --------------------------------------------------------
+	// APPLICATION SERVICES
+	// --------------------------------------------------------
+
 	Auth         *services.AuthService
 	Product      *services.ProductService
 	Order        *services.OrderService
@@ -32,9 +36,13 @@ type Container struct {
 	Negotiation  *services.NegotiationService
 	Notification *services.NotificationService
 	Chat         *services.ChatService
-	MarketEvents *repository.MarketEventRepository
+	Learning     *services.LearningService
 
-	// Used by authentication middleware.
+	// --------------------------------------------------------
+	// REPOSITORIES USED DIRECTLY BY THE APPLICATION
+	// --------------------------------------------------------
+
+	MarketEvents *repository.MarketEventRepository
 	UserRepo     *repository.UserRepository
 	LocationRepo *repository.LocationRepository
 }
@@ -54,6 +62,7 @@ func NewContainer(
 	negotiationMsgRepo *repository.NegotiationMessageRepository,
 	notificationRepo *repository.NotificationRepository,
 	marketEventRepo *repository.MarketEventRepository,
+	learningRepo *repository.LearningRepository,
 
 	// ========================================================
 	// CHAT REPOSITORIES
@@ -108,16 +117,16 @@ func NewContainer(
 	//     ↓
 	// Offers
 	//     ↓
-	// Accept/Reject
+	// Accept / Reject
 	//
 	// Normal Chat:
 	//
 	// User ↔ User
 	// Group
 	//     ↓
-	// Unlimited normal conversation
+	// Normal conversation
 	//
-	// The negotiation expiration time does NOT affect ChatService.
+	// Negotiation expiration does NOT affect ChatService.
 	// ========================================================
 
 	chatService := services.NewChatService(
@@ -128,7 +137,23 @@ func NewContainer(
 	)
 
 	// ========================================================
-	// 5. RETURN APPLICATION CONTAINER
+	// 5. LEARNING SERVICE
+	//
+	// Learning is available to every authenticated user.
+	//
+	// Repository:
+	//     LearningRepository
+	//            ↓
+	// Service:
+	//     LearningService
+	// ========================================================
+
+	learningService := services.NewLearningService(
+		learningRepo,
+	)
+
+	// ========================================================
+	// 6. RETURN APPLICATION CONTAINER
 	// ========================================================
 
 	return &Container{
@@ -189,14 +214,30 @@ func NewContainer(
 		// CHAT
 		// ----------------------------------------------------
 
-		Chat:         chatService,
+		Chat: chatService,
+
+		// ----------------------------------------------------
+		// LEARNING
+		// ----------------------------------------------------
+
+		Learning: learningService,
+
+		// ----------------------------------------------------
+		// MARKET EVENTS
+		// ----------------------------------------------------
+
 		MarketEvents: marketEventRepo,
 
 		// ----------------------------------------------------
 		// USER REPOSITORY
 		// ----------------------------------------------------
 
-		UserRepo:     userRepo,
+		UserRepo: userRepo,
+
+		// ----------------------------------------------------
+		// LOCATION REPOSITORY
+		// ----------------------------------------------------
+
 		LocationRepo: locationRepo,
 	}
 }

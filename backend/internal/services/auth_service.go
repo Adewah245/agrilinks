@@ -24,12 +24,23 @@ func NewAuthService(repo *repository.UserRepository) *AuthService {
 	}
 }
 
-// Register creates a new Agro-Shield user account.
+// ============================================================
+// REGISTER
 //
-// The role must be one of the roles supported by the users table:
-// farmer, buyer, ministry, or organisation.
+// Creates a new Agro-Shield user account.
 //
-// Farming types are saved after the user account has been created.
+// Important architecture:
+//
+// - role is the user's platform identity.
+// - learning is NOT a role.
+// - account_type describes the account structure.
+// - farmingTypes represent farming activities the user
+//   already practices.
+// - NIN is OPTIONAL for now because the verification API
+//   has not yet been integrated.
+// - Profile picture IS REQUIRED.
+// ============================================================
+
 func (s *AuthService) Register(
 	firstName,
 	lastName,
@@ -47,10 +58,16 @@ func (s *AuthService) Register(
 	organisationName string,
 	farmingTypes []string,
 ) error {
+
+	// --------------------------------------------------------
+	// Normalize input
+	// --------------------------------------------------------
+
 	firstName = strings.TrimSpace(firstName)
 	lastName = strings.TrimSpace(lastName)
 	phone = strings.TrimSpace(phone)
 	email = strings.TrimSpace(email)
+	password = strings.TrimSpace(password)
 	location = strings.TrimSpace(location)
 	lga = strings.TrimSpace(lga)
 	state = strings.TrimSpace(state)
@@ -60,6 +77,10 @@ func (s *AuthService) Register(
 	accountType = strings.ToLower(strings.TrimSpace(accountType))
 	nin = strings.TrimSpace(nin)
 	organisationName = strings.TrimSpace(organisationName)
+
+	// --------------------------------------------------------
+	// Required personal information
+	// --------------------------------------------------------
 
 	if firstName == "" || lastName == "" {
 		return errors.New("first name and last name are required")
@@ -77,9 +98,19 @@ func (s *AuthService) Register(
 		return errors.New("password must be at least 8 characters")
 	}
 
+	// --------------------------------------------------------
+	// Profile picture
+	//
+	// Profile picture is compulsory.
+	// --------------------------------------------------------
+
 	if photoURL == "" {
 		return errors.New("profile picture is required")
 	}
+
+	// --------------------------------------------------------
+	// Location
+	// --------------------------------------------------------
 
 	if location == "" {
 		return errors.New("community is required")
@@ -97,14 +128,29 @@ func (s *AuthService) Register(
 		return errors.New("country is required")
 	}
 
+	// --------------------------------------------------------
+	// Account type
+	//
+	// Must match users.account_type constraint:
+	//
+	// individual
+	// organisation
+	// --------------------------------------------------------
+
 	if accountType == "" {
 		accountType = "individual"
 	}
 
 	if accountType != "individual" &&
-		accountType != "organization" {
+		accountType != "organisation" {
 		return errors.New("invalid account type")
 	}
+
+	// --------------------------------------------------------
+	// Role
+	//
+	// Learning is NOT a role.
+	// --------------------------------------------------------
 
 	switch role {
 	case "farmer", "buyer", "ministry", "organisation":
@@ -113,23 +159,60 @@ func (s *AuthService) Register(
 		return errors.New("invalid user role")
 	}
 
-	if accountType == "organization" {
+	// --------------------------------------------------------
+	// Organisation validation
+	// --------------------------------------------------------
+
+	if accountType == "organisation" {
+
 		if organisationName == "" {
 			return errors.New("organisation name is required")
 		}
+
 	} else {
 		organisationName = ""
 	}
 
+	// Organisation role must use organisation account type.
 	if role == "organisation" &&
-		accountType != "organization" {
+		accountType != "organisation" {
+
 		return errors.New(
-			"organisation accounts must use organization account type",
+			"organisation accounts must use organisation account type",
 		)
 	}
 
-	// New accounts begin with pending verification.
-	verificationStatus := "pending"
+	// --------------------------------------------------------
+	// NIN
+	//
+	// NIN is intentionally OPTIONAL for now.
+	//
+	// We keep receiving it here so that the registration
+	// interface is ready for the future NIN API.
+	//
+	// For now we DO NOT:
+	//
+	// - require NIN
+	// - verify NIN
+	// - store raw NIN in users
+	//
+	// When the NIN API is available, this section can become:
+	//
+	// NIN
+	//   ↓
+	// API verification
+	//   ↓
+	// successful verification
+	//   ↓
+	// identity verification record
+	//
+	// --------------------------------------------------------
+
+	_ = nin
+
+	// --------------------------------------------------------
+	// Check phone uniqueness
+	// --------------------------------------------------------
 
 	existing, err := s.repo.GetByPhone(phone)
 	if err != nil {
@@ -140,6 +223,10 @@ func (s *AuthService) Register(
 		return errors.New("phone number already registered")
 	}
 
+	// --------------------------------------------------------
+	// Hash password
+	// --------------------------------------------------------
+
 	hash, err := bcrypt.GenerateFromPassword(
 		[]byte(password),
 		bcrypt.DefaultCost,
@@ -147,6 +234,10 @@ func (s *AuthService) Register(
 	if err != nil {
 		return err
 	}
+
+	// --------------------------------------------------------
+	// Build user
+	// --------------------------------------------------------
 
 	user := &models.User{
 		FullName: firstName + " " + lastName,
@@ -164,9 +255,6 @@ func (s *AuthService) Register(
 		Role:        role,
 		AccountType: accountType,
 
-		NIN:                nin,
-		VerificationStatus: verificationStatus,
-
 		OrganisationName: organisationName,
 
 		PhotoURL: photoURL,
@@ -174,12 +262,23 @@ func (s *AuthService) Register(
 		FarmingTypes: farmingTypes,
 	}
 
+	// --------------------------------------------------------
+	// Create user
+	// --------------------------------------------------------
+
 	userID, err := s.repo.Create(user)
 	if err != nil {
 		return err
 	}
 
+	// --------------------------------------------------------
+	// Save existing farming activities
+	//
+	// These are NOT learning journeys.
+	// --------------------------------------------------------
+
 	if len(user.FarmingTypes) > 0 {
+
 		if err := s.repo.SaveFarmingTypes(
 			userID,
 			user.FarmingTypes,
@@ -191,6 +290,10 @@ func (s *AuthService) Register(
 	return nil
 }
 
+// ============================================================
+// LOGIN
+// ============================================================
+
 // Login verifies a user's phone number and password.
 //
 // The stored password hash is compared using bcrypt.
@@ -199,6 +302,7 @@ func (s *AuthService) Login(
 	phone,
 	password string,
 ) (*models.User, error) {
+
 	phone = strings.TrimSpace(phone)
 
 	if phone == "" || password == "" {
@@ -223,23 +327,32 @@ func (s *AuthService) Login(
 		[]byte(password),
 	); err != nil {
 		return nil, errors.New(
-			"invalid phone number or password",
+		"invalid phone number or password",
 		)
 	}
 
 	return user, nil
 }
 
+// ============================================================
+// GET USER BY ID
+// ============================================================
+
 // GetUserByID retrieves a user's complete profile information.
 func (s *AuthService) GetUserByID(
 	id int,
 ) (*models.User, error) {
+
 	if id <= 0 {
 		return nil, errors.New("invalid user ID")
 	}
 
 	return s.repo.GetByID(id)
 }
+
+// ============================================================
+// UPDATE PROFILE
+// ============================================================
 
 // UpdateProfile updates a user's editable personal information.
 func (s *AuthService) UpdateProfile(
@@ -249,6 +362,7 @@ func (s *AuthService) UpdateProfile(
 	email,
 	location string,
 ) error {
+
 	if id <= 0 {
 		return errors.New("invalid user ID")
 	}
@@ -279,11 +393,16 @@ func (s *AuthService) UpdateProfile(
 	)
 }
 
+// ============================================================
+// UPDATE PHOTO
+// ============================================================
+
 // UpdatePhoto updates the user's profile photograph URL.
 func (s *AuthService) UpdatePhoto(
 	id int,
 	photoURL string,
 ) error {
+
 	if id <= 0 {
 		return errors.New("invalid user ID")
 	}
@@ -300,12 +419,17 @@ func (s *AuthService) UpdatePhoto(
 	)
 }
 
+// ============================================================
+// RESET PASSWORD
+// ============================================================
+
 // ResetPassword changes the password associated with a user's
 // phone number.
 func (s *AuthService) ResetPassword(
 	phone,
 	newPassword string,
 ) error {
+
 	phone = strings.TrimSpace(phone)
 
 	if phone == "" {
@@ -318,7 +442,7 @@ func (s *AuthService) ResetPassword(
 
 	if len(newPassword) < 8 {
 		return errors.New(
-			"password must be at least 8 characters",
+			"new password must be at least 8 characters",
 		)
 	}
 
