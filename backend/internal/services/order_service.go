@@ -10,18 +10,29 @@ import (
 
 // OrderService handles business logic related to product orders.
 //
-// The service coordinates order creation, product availability,
-// inventory reduction, purchases, and sales.
+// Handler
+//	↓
+// OrderService
+//	↓
+// OrderRepository + ProductRepository
+//	↓
+// PostgreSQL
 //
-// The service does not communicate directly with PostgreSQL.
-// Database operations are handled by the repositories.
+// The service is responsible for:
+//   - validating buyers
+//   - validating products
+//   - checking product availability
+//   - preventing self-purchases
+//   - validating inventory
+//   - calculating order totals
+//   - creating orders
+//   - reducing inventory
 type OrderService struct {
 	orderRepo   *repository.OrderRepository
 	productRepo *repository.ProductRepository
 }
 
-// NewOrderService creates a new OrderService using the provided
-// order and product repositories.
+// NewOrderService creates a new OrderService.
 func NewOrderService(
 	orderRepo *repository.OrderRepository,
 	productRepo *repository.ProductRepository,
@@ -32,28 +43,42 @@ func NewOrderService(
 	}
 }
 
-// PlaceOrder lets a buyer purchase a quantity of an available product.
+// ============================================================
+// PLACE ORDER
+// ============================================================
+
+// PlaceOrder lets a buyer purchase a quantity of an available
+// product.
 //
-// The method verifies that:
-//   - the buyer ID is valid,
-//   - the product ID is valid,
-//   - the requested quantity is greater than zero,
-//   - the product exists and is available,
-//   - a user does not purchase their own product,
-//   - enough inventory is available.
+// The current MVP supports one product per checkout request.
 //
-// The order is currently completed immediately.
+// Internally, however, the database uses:
+//
+//	orders
+//	    ↓
+//	order_items
+//	    ↓
+//	products
+//
+// Therefore, the service creates one Order containing one
+// OrderItem.
+//
+// Successful orders use the database-supported "confirmed"
+// status.
 //
 // NOTE:
-// Order creation and inventory reduction are currently separate
-// repository operations. The long-term implementation should wrap
-// both operations in one PostgreSQL transaction so they either both
-// succeed or both fail.
+// Order creation and inventory reduction are currently performed
+// by separate repository operations. A future transaction-aware
+// implementation should make both operations atomic.
 func (s *OrderService) PlaceOrder(
 	buyerID int,
 	productID int,
 	quantity float64,
 ) error {
+	// --------------------------------------------------------
+	// BASIC VALIDATION
+	// --------------------------------------------------------
+
 	if buyerID <= 0 {
 		return errors.New("invalid buyer")
 	}
@@ -63,8 +88,14 @@ func (s *OrderService) PlaceOrder(
 	}
 
 	if quantity <= 0 {
-		return errors.New("quantity must be greater than zero")
+		return errors.New(
+			"quantity must be greater than zero",
+		)
 	}
+
+	// --------------------------------------------------------
+	// LOAD PRODUCT
+	// --------------------------------------------------------
 
 	product, err := s.productRepo.GetByID(productID)
 	if err != nil {
@@ -75,17 +106,35 @@ func (s *OrderService) PlaceOrder(
 		return errors.New("product not found")
 	}
 
+	// --------------------------------------------------------
+	// PRODUCT AVAILABILITY
+	// --------------------------------------------------------
+
 	if !product.IsAvailable() {
 		return errors.New(
 			"this product is not available for purchase",
 		)
 	}
 
+	// --------------------------------------------------------
+	// OWNER VALIDATION
+	// --------------------------------------------------------
+
+	if product.OwnerType != "user" &&
+		product.OwnerType != "organization" {
+		return errors.New(
+			"invalid product owner type",
+		)
+	}
+
+	// --------------------------------------------------------
+	// PREVENT SELF-PURCHASE
+	// --------------------------------------------------------
+
 	// A user cannot purchase their own product.
 	//
 	// Organization-owned products are allowed because the buyer
-	// is represented by a user account while the product belongs
-	// to an organization.
+	// is represented by a user account.
 	if product.OwnerType == "user" &&
 		product.OwnerID == buyerID {
 		return errors.New(
@@ -93,14 +142,19 @@ func (s *OrderService) PlaceOrder(
 		)
 	}
 
-	if product.OwnerType != "user" &&
-		product.OwnerType != "organization" {
-		return errors.New("invalid product owner type")
-	}
+	// --------------------------------------------------------
+	// INVENTORY VALIDATION
+	// --------------------------------------------------------
 
 	if quantity > product.Quantity {
-		return errors.New("not enough quantity available")
+		return errors.New(
+			"not enough quantity available",
+		)
 	}
+
+	// --------------------------------------------------------
+	// CALCULATE TOTAL
+	// --------------------------------------------------------
 
 	totalPrice := quantity * product.Price
 
@@ -108,38 +162,59 @@ func (s *OrderService) PlaceOrder(
 		return errors.New("invalid order total")
 	}
 
+	// --------------------------------------------------------
+	// BUILD ORDER
+	// --------------------------------------------------------
+
 	order := &models.Order{
-		BuyerID:    buyerID,
-		ProductID:  productID,
-		Quantity:   quantity,
-		TotalPrice: totalPrice,
-		Status:     "completed",
+		BuyerID: buyerID,
+		Status:  "confirmed",
+		TotalAmount: totalPrice,
+		Items: []models.OrderItem{
+			{
+				ProductID: productID,
+				Quantity:  quantity,
+				UnitPrice: product.Price,
+				TotalPrice: totalPrice,
+				ProductName: product.Name,
+				SellerName:  product.SellerName,
+			},
+		},
 	}
 
-	// Create the order first.
+	// --------------------------------------------------------
+	// CREATE ORDER
+	// --------------------------------------------------------
+
 	if err := s.orderRepo.Create(order); err != nil {
 		return err
 	}
 
-	// Reduce the product inventory after the order has been created.
-	//
-	// ProductRepository.ReduceQuantity is responsible for updating
-	// the product quantity and its inventory/status history.
+	// --------------------------------------------------------
+	// REDUCE INVENTORY
+	// --------------------------------------------------------
+
 	if err := s.productRepo.ReduceQuantity(
 		productID,
 		quantity,
 	); err != nil {
 		// IMPORTANT:
-		// At this stage the order already exists.
 		//
-		// A database transaction should eventually be used here
-		// so the order creation and inventory reduction happen
-		// atomically.
+		// The order has already been created at this point.
+		// Therefore, an inventory failure can leave an order
+		// without the corresponding inventory reduction.
+		//
+		// The long-term solution is a transaction-aware service
+		// that creates the order and reduces inventory atomically.
 		return err
 	}
 
 	return nil
 }
+
+// ============================================================
+// MY PURCHASES
+// ============================================================
 
 // MyPurchases returns all orders placed by a buyer.
 func (s *OrderService) MyPurchases(
@@ -152,27 +227,37 @@ func (s *OrderService) MyPurchases(
 	return s.orderRepo.ListByBuyer(buyerID)
 }
 
-// MySales returns all orders made from products owned by
-// the specified seller.
+// ============================================================
+// MY SALES
+// ============================================================
+
+// MySales returns orders containing products owned by the
+// specified seller.
 //
-// sellerType must be either:
+// sellerType:
 //   - "user"
 //   - "organization"
 //
-// sellerID is the ID of the corresponding user or organization.
+// sellerID identifies the corresponding seller.
 func (s *OrderService) MySales(
 	sellerType string,
 	sellerID int,
 ) ([]models.Order, error) {
-	sellerType = strings.ToLower(strings.TrimSpace(sellerType))
+	sellerType = strings.ToLower(
+		strings.TrimSpace(sellerType),
+	)
 
 	if sellerType != "user" &&
 		sellerType != "organization" {
-		return nil, errors.New("invalid seller type")
+		return nil, errors.New(
+			"invalid seller type",
+		)
 	}
 
 	if sellerID <= 0 {
-		return nil, errors.New("invalid seller")
+		return nil, errors.New(
+			"invalid seller",
+		)
 	}
 
 	return s.orderRepo.ListSalesBySeller(

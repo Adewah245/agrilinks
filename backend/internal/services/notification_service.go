@@ -15,6 +15,7 @@ import (
 // - Contains notification business logic.
 // - Acts as the middle layer between handlers/other services
 //   and the notification repository.
+// - Validates notification input.
 // - Provides operations for creating and managing
 //   notifications.
 //
@@ -22,18 +23,15 @@ import (
 // The repository handles database communication.
 // ============================================================
 
-// NotificationService handles business logic related to
-// user notifications.
 type NotificationService struct {
 	repo *repository.NotificationRepository
 }
 
 // ============================================================
-// CREATE NOTIFICATION SERVICE
+// CREATE SERVICE
 // ============================================================
 
-// NewNotificationService creates a new NotificationService
-// using the provided notification repository.
+// NewNotificationService creates a new NotificationService.
 func NewNotificationService(
 	repo *repository.NotificationRepository,
 ) *NotificationService {
@@ -46,16 +44,36 @@ func NewNotificationService(
 // CREATE NOTIFICATION
 //
 // Creates a new unread notification for a user.
+//
+// Current notification architecture:
+//
+//	UserID
+//	NotificationType
+//	Title
+//	Message
+//	ReferenceType
+//	ReferenceID
+//	IsRead
+//	CreatedAt
+//
+// This method intentionally keeps the existing four-argument
+// API so existing services do not need to change.
+//
+// Notifications that need a reference can use
+// CreateNotificationWithReference below.
 // ============================================================
 
-// CreateNotification creates a new unread notification for
-// the specified user.
 func (s *NotificationService) CreateNotification(
 	userID int,
 	title string,
 	message string,
 	notificationType string,
 ) error {
+
+	if s == nil || s.repo == nil {
+		return errors.New("notification service is not initialized")
+	}
+
 	if userID <= 0 {
 		return errors.New("invalid user ID")
 	}
@@ -77,11 +95,89 @@ func (s *NotificationService) CreateNotification(
 	}
 
 	notification := &models.Notification{
-		UserID:  userID,
-		Title:   title,
-		Message: message,
-		Type:    notificationType,
-		IsRead:  false,
+		UserID:           userID,
+		NotificationType: notificationType,
+		Title:            title,
+		Message:          message,
+		IsRead:           false,
+	}
+
+	return s.repo.Create(notification)
+}
+
+// ============================================================
+// CREATE NOTIFICATION WITH REFERENCE
+//
+// Creates a notification connected to another Agro-Shield
+// resource.
+//
+// Examples:
+//
+//	order
+//	product
+//	negotiation
+//	message
+//	training
+//
+// ReferenceType and ReferenceID allow the frontend to know
+// what resource the notification belongs to.
+// ============================================================
+
+func (s *NotificationService) CreateNotificationWithReference(
+	userID int,
+	title string,
+	message string,
+	notificationType string,
+	referenceType *string,
+	referenceID *int,
+) error {
+
+	if s == nil || s.repo == nil {
+		return errors.New("notification service is not initialized")
+	}
+
+	if userID <= 0 {
+		return errors.New("invalid user ID")
+	}
+
+	title = strings.TrimSpace(title)
+	message = strings.TrimSpace(message)
+	notificationType = strings.TrimSpace(notificationType)
+
+	if title == "" {
+		return errors.New("notification title is required")
+	}
+
+	if message == "" {
+		return errors.New("notification message is required")
+	}
+
+	if notificationType == "" {
+		return errors.New("notification type is required")
+	}
+
+	if referenceType != nil {
+		value := strings.TrimSpace(*referenceType)
+
+		if value == "" {
+			referenceType = nil
+		} else {
+			referenceType = &value
+		}
+	}
+
+	if referenceID != nil && *referenceID <= 0 {
+		return errors.New("invalid reference ID")
+	}
+
+	notification := &models.Notification{
+		UserID:           userID,
+		NotificationType: notificationType,
+		Title:            title,
+		Message:          message,
+		ReferenceType:    referenceType,
+		ReferenceID:      referenceID,
+		IsRead:           false,
 	}
 
 	return s.repo.Create(notification)
@@ -89,8 +185,6 @@ func (s *NotificationService) CreateNotification(
 
 // ============================================================
 // GET USER NOTIFICATIONS
-//
-// Retrieves all notifications belonging to a user.
 // ============================================================
 
 // GetUserNotifications returns all notifications belonging
@@ -98,6 +192,11 @@ func (s *NotificationService) CreateNotification(
 func (s *NotificationService) GetUserNotifications(
 	userID int,
 ) ([]models.Notification, error) {
+
+	if s == nil || s.repo == nil {
+		return nil, errors.New("notification service is not initialized")
+	}
+
 	if userID <= 0 {
 		return nil, errors.New("invalid user ID")
 	}
@@ -108,19 +207,21 @@ func (s *NotificationService) GetUserNotifications(
 // ============================================================
 // GET UNREAD COUNT
 //
-// Returns the number of unread notifications for a user.
+// Used by the notification badge.
 //
-// This will be used for the notification badge.
 // Example:
 //
-// 🔔 3
+//	🔔 3
 // ============================================================
 
-// GetUnreadCount returns the number of unread notifications
-// belonging to the specified user.
 func (s *NotificationService) GetUnreadCount(
 	userID int,
 ) (int, error) {
+
+	if s == nil || s.repo == nil {
+		return 0, errors.New("notification service is not initialized")
+	}
+
 	if userID <= 0 {
 		return 0, errors.New("invalid user ID")
 	}
@@ -131,15 +232,19 @@ func (s *NotificationService) GetUnreadCount(
 // ============================================================
 // MARK ONE NOTIFICATION AS READ
 //
-// Marks a specific notification as read.
+// The repository also verifies that the notification belongs
+// to the supplied user.
 // ============================================================
 
-// MarkAsRead marks a specific notification as read, provided
-// that it belongs to the specified user.
 func (s *NotificationService) MarkAsRead(
 	notificationID int,
 	userID int,
 ) error {
+
+	if s == nil || s.repo == nil {
+		return errors.New("notification service is not initialized")
+	}
+
 	if notificationID <= 0 {
 		return errors.New("invalid notification ID")
 	}
@@ -156,15 +261,16 @@ func (s *NotificationService) MarkAsRead(
 
 // ============================================================
 // MARK ALL NOTIFICATIONS AS READ
-//
-// Marks every notification belonging to the user as read.
 // ============================================================
 
-// MarkAllAsRead marks every notification belonging to the
-// specified user as read.
 func (s *NotificationService) MarkAllAsRead(
 	userID int,
 ) error {
+
+	if s == nil || s.repo == nil {
+		return errors.New("notification service is not initialized")
+	}
+
 	if userID <= 0 {
 		return errors.New("invalid user ID")
 	}

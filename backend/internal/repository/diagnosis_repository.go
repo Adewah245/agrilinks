@@ -15,19 +15,33 @@ import (
 // - Counts a user's diagnoses for the current month.
 // - Deletes a diagnosis belonging to a user.
 //
+// CURRENT AGRO-SHIELD ARCHITECTURE:
+//
+// A diagnosis belongs to a user.
+//
+// diagnoses:
+//
+//	id
+//	user_id
+//	farming_type_id
+//	category
+//	symptoms
+//	result
+//	confidence
+//	created_at
+//	updated_at
+//
 // IMPORTANT:
 //
-// The new Agro-Shield architecture uses the users table.
+// The old architecture used:
 //
-// Therefore:
+//	description
 //
-// OLD:
-// farmer_id
+// The new architecture uses:
 //
-// NEW:
-// user_id
+//	symptoms
 //
-// A diagnosis belongs to the user who submitted it.
+// Do NOT use farmer_id or description here.
 // ============================================================
 
 type DiagnosisRepository struct {
@@ -49,36 +63,48 @@ func NewDiagnosisRepository(db *sql.DB) *DiagnosisRepository {
 // ============================================================
 // CREATE DIAGNOSIS
 //
-// Creates a new diagnosis record for a user.
+// Creates a new diagnosis record.
 //
-// The database generates:
-// - ID
-// - CreatedAt
+// Database-generated fields:
+// - id
+// - created_at
+// - updated_at
 // ============================================================
 
-// Create saves a new agricultural diagnosis and updates the
-// model with the generated ID and creation timestamp.
 func (r *DiagnosisRepository) Create(d *models.Diagnosis) error {
+	if r == nil || r.db == nil {
+		return sql.ErrConnDone
+	}
+
+	if d == nil {
+		return sql.ErrNoRows
+	}
+
 	query := `
 		INSERT INTO diagnoses (
 			user_id,
+			farming_type_id,
 			category,
-			description,
-			result
+			symptoms,
+			result,
+			confidence
 		)
-		VALUES ($1, $2, $3, $4)
-		RETURNING id, created_at
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, created_at, updated_at
 	`
 
 	return r.db.QueryRow(
 		query,
 		d.UserID,
+		d.FarmingTypeID,
 		d.Category,
-		d.Description,
+		d.Symptoms,
 		d.Result,
+		d.Confidence,
 	).Scan(
 		&d.ID,
 		&d.CreatedAt,
+		&d.UpdatedAt,
 	)
 }
 
@@ -87,25 +113,35 @@ func (r *DiagnosisRepository) Create(d *models.Diagnosis) error {
 //
 // Retrieves all diagnoses submitted by a particular user.
 //
-// Results are ordered from newest to oldest.
+// Results:
+// - newest first
+//
+// Security:
+// - only diagnoses belonging to the supplied user are returned.
 // ============================================================
 
-// ListByUser retrieves all diagnoses belonging to a user.
 func (r *DiagnosisRepository) ListByUser(
 	userID int,
 ) ([]models.Diagnosis, error) {
+
+	if r == nil || r.db == nil {
+		return nil, sql.ErrConnDone
+	}
 
 	query := `
 		SELECT
 			id,
 			user_id,
+			farming_type_id,
 			category,
-			description,
+			symptoms,
 			result,
-			created_at
+			confidence,
+			created_at,
+			updated_at
 		FROM diagnoses
 		WHERE user_id = $1
-		ORDER BY created_at DESC
+		ORDER BY created_at DESC, id DESC
 	`
 
 	rows, err := r.db.Query(
@@ -121,24 +157,23 @@ func (r *DiagnosisRepository) ListByUser(
 	list := make([]models.Diagnosis, 0)
 
 	for rows.Next() {
-
 		var d models.Diagnosis
 
 		if err := rows.Scan(
 			&d.ID,
 			&d.UserID,
+			&d.FarmingTypeID,
 			&d.Category,
-			&d.Description,
+			&d.Symptoms,
 			&d.Result,
+			&d.Confidence,
 			&d.CreatedAt,
+			&d.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
 
-		list = append(
-			list,
-			d,
-		)
+		list = append(list, d)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -149,27 +184,87 @@ func (r *DiagnosisRepository) ListByUser(
 }
 
 // ============================================================
+// GET BY ID FOR USER
+//
+// Retrieves one diagnosis only when it belongs to the supplied
+// user.
+//
+// This prevents a user from accessing another user's diagnosis.
+// ============================================================
+
+func (r *DiagnosisRepository) GetByIDForUser(
+	diagnosisID,
+	userID int,
+) (*models.Diagnosis, error) {
+
+	if r == nil || r.db == nil {
+		return nil, sql.ErrConnDone
+	}
+
+	query := `
+		SELECT
+			id,
+			user_id,
+			farming_type_id,
+			category,
+			symptoms,
+			result,
+			confidence,
+			created_at,
+			updated_at
+		FROM diagnoses
+		WHERE id = $1
+		  AND user_id = $2
+	`
+
+	var d models.Diagnosis
+
+	err := r.db.QueryRow(
+		query,
+		diagnosisID,
+		userID,
+	).Scan(
+		&d.ID,
+		&d.UserID,
+		&d.FarmingTypeID,
+		&d.Category,
+		&d.Symptoms,
+		&d.Result,
+		&d.Confidence,
+		&d.CreatedAt,
+		&d.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &d, nil
+}
+
+// ============================================================
 // COUNT THIS MONTH
 //
-// Counts how many diagnoses a user has submitted during
-// the current calendar month.
+// Counts how many diagnoses a user has submitted during the
+// current calendar month.
 //
 // Example:
 //
-// If today is September 4:
+// If today is September 8:
 //
 // September 1 → included
-// September 4 → included
-// September 30 → included when reached
-//
-// August → not included.
+// September 8 → included
+// Future September dates → naturally excluded
+// August → excluded
 // ============================================================
 
-// CountThisMonth returns the number of diagnoses submitted
-// by a user during the current calendar month.
 func (r *DiagnosisRepository) CountThisMonth(
 	userID int,
 ) (int, error) {
+
+	if r == nil || r.db == nil {
+		return 0, sql.ErrConnDone
+	}
 
 	query := `
 		SELECT COUNT(*)
@@ -177,7 +272,7 @@ func (r *DiagnosisRepository) CountThisMonth(
 		WHERE user_id = $1
 		  AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
 		  AND created_at < date_trunc('month', CURRENT_TIMESTAMP)
-		  + INTERVAL '1 month'
+		      + INTERVAL '1 month'
 	`
 
 	var count int
@@ -195,16 +290,18 @@ func (r *DiagnosisRepository) CountThisMonth(
 //
 // Deletes a diagnosis only when it belongs to the specified user.
 //
-// This is important for security.
-//
+// Security:
 // A user must not be able to delete another user's diagnosis.
 // ============================================================
 
-// DeleteForUser deletes a diagnosis belonging to a specific user.
 func (r *DiagnosisRepository) DeleteForUser(
 	diagnosisID,
 	userID int,
 ) error {
+
+	if r == nil || r.db == nil {
+		return sql.ErrConnDone
+	}
 
 	result, err := r.db.Exec(`
 		DELETE FROM diagnoses

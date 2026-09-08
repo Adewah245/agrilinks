@@ -23,10 +23,24 @@ func NewProductRepository(db *sql.DB) *ProductRepository {
 	}
 }
 
+// normalizeOwnerType validates and normalizes a product owner type.
+func normalizeOwnerType(ownerType string) (string, error) {
+	ownerType = strings.TrimSpace(strings.ToLower(ownerType))
+
+	switch ownerType {
+	case "user", "organization":
+		return ownerType, nil
+	default:
+		return "", fmt.Errorf(
+			"product owner type must be user or organization",
+		)
+	}
+}
+
 // Create creates a new product.
 //
 // The product is created together with its initial price history,
-// inventory history, and status history so that the complete lifecycle
+// inventory history, and status history so the complete lifecycle
 // of the product is recorded from the beginning.
 func (r *ProductRepository) Create(product *models.Product) error {
 	if product == nil {
@@ -37,11 +51,11 @@ func (r *ProductRepository) Create(product *models.Product) error {
 		return fmt.Errorf("invalid product owner")
 	}
 
-	product.OwnerType = strings.TrimSpace(strings.ToLower(product.OwnerType))
-
-	if product.OwnerType != "user" && product.OwnerType != "organization" {
-		return fmt.Errorf("product owner type must be user or organization")
+	ownerType, err := normalizeOwnerType(product.OwnerType)
+	if err != nil {
+		return err
 	}
+	product.OwnerType = ownerType
 
 	product.Name = strings.TrimSpace(product.Name)
 	if product.Name == "" {
@@ -78,7 +92,7 @@ func (r *ProductRepository) Create(product *models.Product) error {
 		return fmt.Errorf("invalid product status: %s", product.Status)
 	}
 
-	// A product with no available quantity cannot be actively sold.
+	// A product with no available quantity cannot remain actively listed.
 	if product.Quantity <= 0 && product.Status == "active" {
 		product.Status = "sold_out"
 	}
@@ -105,7 +119,7 @@ func (r *ProductRepository) Create(product *models.Product) error {
 			price,
 			state_id,
 			lga_id,
-			community,
+			community_id,
 			latitude,
 			longitude,
 			location_accuracy,
@@ -150,7 +164,7 @@ func (r *ProductRepository) Create(product *models.Product) error {
 		product.Price,
 		product.StateID,
 		product.LGAID,
-		product.Community,
+		product.CommunityID,
 		product.Latitude,
 		product.Longitude,
 		product.LocationAccuracy,
@@ -178,9 +192,11 @@ func (r *ProductRepository) Create(product *models.Product) error {
 		product.Unit,
 		"Agro-Shield",
 	)
-
 	if err != nil {
-		return fmt.Errorf("failed to save initial product price history: %w", err)
+		return fmt.Errorf(
+			"failed to save initial product price history: %w",
+			err,
+		)
 	}
 
 	// Record the initial inventory state.
@@ -200,9 +216,11 @@ func (r *ProductRepository) Create(product *models.Product) error {
 		product.Quantity,
 		"initial_stock",
 	)
-
 	if err != nil {
-		return fmt.Errorf("failed to save initial inventory history: %w", err)
+		return fmt.Errorf(
+			"failed to save initial inventory history: %w",
+			err,
+		)
 	}
 
 	// Record the initial listing status.
@@ -224,30 +242,33 @@ func (r *ProductRepository) Create(product *models.Product) error {
 		product.OwnerType,
 		product.OwnerID,
 	)
-
 	if err != nil {
-		return fmt.Errorf("failed to save initial product status history: %w", err)
+		return fmt.Errorf(
+			"failed to save initial product status history: %w",
+			err,
+		)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit product creation: %w", err)
+		return fmt.Errorf(
+			"failed to commit product creation: %w",
+			err,
+		)
 	}
 
 	return nil
 }
 
 // ListByOwner returns all products belonging to a specific owner.
-//
-// ownerType must be either "user" or "organization".
 func (r *ProductRepository) ListByOwner(
 	ownerType string,
 	ownerID int,
 ) ([]models.Product, error) {
 
-	ownerType = strings.TrimSpace(strings.ToLower(ownerType))
-
-	if ownerType != "user" && ownerType != "organization" {
-		return nil, fmt.Errorf("product owner type must be user or organization")
+	var err error
+	ownerType, err = normalizeOwnerType(ownerType)
+	if err != nil {
+		return nil, err
 	}
 
 	if ownerID <= 0 {
@@ -267,7 +288,7 @@ func (r *ProductRepository) ListByOwner(
 			price,
 			state_id,
 			lga_id,
-			COALESCE(community, ''),
+			community_id,
 			COALESCE(latitude, 0),
 			COALESCE(longitude, 0),
 			COALESCE(location_accuracy, 0),
@@ -286,11 +307,9 @@ func (r *ProductRepository) ListByOwner(
 		ownerType,
 		ownerID,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("list products by owner: %w", err)
 	}
-
 	defer rows.Close()
 
 	products := make([]models.Product, 0)
@@ -310,7 +329,7 @@ func (r *ProductRepository) ListByOwner(
 			&product.Price,
 			&product.StateID,
 			&product.LGAID,
-			&product.Community,
+			&product.CommunityID,
 			&product.Latitude,
 			&product.Longitude,
 			&product.LocationAccuracy,
@@ -336,9 +355,6 @@ func (r *ProductRepository) ListByOwner(
 }
 
 // ListAvailable returns all products currently available for purchase.
-//
-// Only products with an active status and a quantity greater than zero
-// are returned.
 func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 	rows, err := r.db.Query(`
 		SELECT
@@ -353,7 +369,7 @@ func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 			p.price,
 			p.state_id,
 			p.lga_id,
-			COALESCE(p.community, ''),
+			p.community_id,
 			COALESCE(p.latitude, 0),
 			COALESCE(p.longitude, 0),
 			COALESCE(p.location_accuracy, 0),
@@ -377,11 +393,9 @@ func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 		AND p.quantity > 0
 		ORDER BY p.created_at DESC, p.id DESC
 	`)
-
 	if err != nil {
 		return nil, fmt.Errorf("list available products: %w", err)
 	}
-
 	defer rows.Close()
 
 	products := make([]models.Product, 0)
@@ -401,7 +415,7 @@ func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 			&product.Price,
 			&product.StateID,
 			&product.LGAID,
-			&product.Community,
+			&product.CommunityID,
 			&product.Latitude,
 			&product.Longitude,
 			&product.LocationAccuracy,
@@ -429,8 +443,6 @@ func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 }
 
 // GetByID returns a product by its database ID.
-//
-// sql.ErrNoRows is returned when the product does not exist.
 func (r *ProductRepository) GetByID(id int) (*models.Product, error) {
 	if id <= 0 {
 		return nil, fmt.Errorf("invalid product ID")
@@ -451,7 +463,7 @@ func (r *ProductRepository) GetByID(id int) (*models.Product, error) {
 			price,
 			state_id,
 			lga_id,
-			COALESCE(community, ''),
+			community_id,
 			COALESCE(latitude, 0),
 			COALESCE(longitude, 0),
 			COALESCE(location_accuracy, 0),
@@ -478,7 +490,7 @@ func (r *ProductRepository) GetByID(id int) (*models.Product, error) {
 		&product.Price,
 		&product.StateID,
 		&product.LGAID,
-		&product.Community,
+		&product.CommunityID,
 		&product.Latitude,
 		&product.Longitude,
 		&product.LocationAccuracy,
@@ -498,11 +510,7 @@ func (r *ProductRepository) GetByID(id int) (*models.Product, error) {
 	return &product, nil
 }
 
-// Update updates an existing product and records any important changes.
-//
-// Price changes are recorded in product_price_history.
-// Quantity changes are recorded in inventory_history.
-// Status changes are recorded in product_status_history.
+// Update updates an existing product and records important changes.
 func (r *ProductRepository) Update(product *models.Product) error {
 	if product == nil {
 		return fmt.Errorf("product cannot be nil")
@@ -516,11 +524,11 @@ func (r *ProductRepository) Update(product *models.Product) error {
 		return fmt.Errorf("invalid product owner")
 	}
 
-	product.OwnerType = strings.TrimSpace(strings.ToLower(product.OwnerType))
-
-	if product.OwnerType != "user" && product.OwnerType != "organization" {
-		return fmt.Errorf("product owner type must be user or organization")
+	ownerType, err := normalizeOwnerType(product.OwnerType)
+	if err != nil {
+		return err
 	}
+	product.OwnerType = ownerType
 
 	product.Name = strings.TrimSpace(product.Name)
 	if product.Name == "" {
@@ -617,7 +625,7 @@ func (r *ProductRepository) Update(product *models.Product) error {
 			price = $6,
 			state_id = $7,
 			lga_id = $8,
-			community = $9,
+			community_id = $9,
 			latitude = $10,
 			longitude = $11,
 			location_accuracy = $12,
@@ -635,7 +643,7 @@ func (r *ProductRepository) Update(product *models.Product) error {
 		product.Price,
 		product.StateID,
 		product.LGAID,
-		product.Community,
+		product.CommunityID,
 		product.Latitude,
 		product.Longitude,
 		product.LocationAccuracy,
@@ -649,7 +657,7 @@ func (r *ProductRepository) Update(product *models.Product) error {
 		return fmt.Errorf("failed to update product: %w", err)
 	}
 
-	// Record price history only when the price or pricing unit changes.
+	// Record price history only when price or unit changes.
 	if oldPrice != product.Price || oldUnit != product.Unit {
 		_, err = tx.Exec(`
 			INSERT INTO product_price_history (
@@ -667,12 +675,17 @@ func (r *ProductRepository) Update(product *models.Product) error {
 		)
 
 		if err != nil {
-			return fmt.Errorf("failed to save product price history: %w", err)
+			return fmt.Errorf(
+				"failed to save product price history: %w",
+				err,
+			)
 		}
 	}
 
 	// Record inventory changes.
 	if oldQuantity != product.Quantity {
+		quantityChange := product.Quantity - oldQuantity
+
 		_, err = tx.Exec(`
 			INSERT INTO inventory_history (
 				product_id,
@@ -685,13 +698,16 @@ func (r *ProductRepository) Update(product *models.Product) error {
 		`,
 			product.ID,
 			oldQuantity,
-			product.Quantity-oldQuantity,
+			quantityChange,
 			product.Quantity,
 			"product_update",
 		)
 
 		if err != nil {
-			return fmt.Errorf("failed to save inventory history: %w", err)
+			return fmt.Errorf(
+				"failed to save inventory history: %w",
+				err,
+			)
 		}
 	}
 
@@ -717,26 +733,34 @@ func (r *ProductRepository) Update(product *models.Product) error {
 		)
 
 		if err != nil {
-			return fmt.Errorf("failed to save product status history: %w", err)
+			return fmt.Errorf(
+				"failed to save product status history: %w",
+				err,
+			)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit product update: %w", err)
+		return fmt.Errorf(
+			"failed to commit product update: %w",
+			err,
+		)
 	}
 
 	return nil
 }
 
 // Unlist changes a product's status to inactive.
-//
-// The product remains in the database and can be relisted by its owner.
 func (r *ProductRepository) Unlist(
 	productID int,
 	ownerType string,
 	ownerID int,
 ) error {
-	ownerType = strings.TrimSpace(strings.ToLower(ownerType))
+	var err error
+	ownerType, err = normalizeOwnerType(ownerType)
+	if err != nil {
+		return err
+	}
 
 	if productID <= 0 {
 		return fmt.Errorf("invalid product ID")
@@ -744,10 +768,6 @@ func (r *ProductRepository) Unlist(
 
 	if ownerID <= 0 {
 		return fmt.Errorf("invalid product owner")
-	}
-
-	if ownerType != "user" && ownerType != "organization" {
-		return fmt.Errorf("product owner type must be user or organization")
 	}
 
 	tx, err := r.db.Begin()
@@ -825,14 +845,17 @@ func (r *ProductRepository) Unlist(
 	return tx.Commit()
 }
 
-// Relist changes an inactive or sold-out product back to active
-// when it has available quantity.
+// Relist changes an inactive or sold-out product back to active.
 func (r *ProductRepository) Relist(
 	productID int,
 	ownerType string,
 	ownerID int,
 ) error {
-	ownerType = strings.TrimSpace(strings.ToLower(ownerType))
+	var err error
+	ownerType, err = normalizeOwnerType(ownerType)
+	if err != nil {
+		return err
+	}
 
 	if productID <= 0 {
 		return fmt.Errorf("invalid product ID")
@@ -840,10 +863,6 @@ func (r *ProductRepository) Relist(
 
 	if ownerID <= 0 {
 		return fmt.Errorf("invalid product owner")
-	}
-
-	if ownerType != "user" && ownerType != "organization" {
-		return fmt.Errorf("product owner type must be user or organization")
 	}
 
 	tx, err := r.db.Begin()
@@ -882,7 +901,9 @@ func (r *ProductRepository) Relist(
 	}
 
 	if quantity <= 0 {
-		return fmt.Errorf("product cannot be relisted without available quantity")
+		return fmt.Errorf(
+			"product cannot be relisted without available quantity",
+		)
 	}
 
 	_, err = tx.Exec(`
@@ -935,7 +956,10 @@ func (r *ProductRepository) Relist(
 		)
 
 		if err != nil {
-			return fmt.Errorf("save relist status history: %w", err)
+			return fmt.Errorf(
+				"save relist status history: %w",
+				err,
+			)
 		}
 	}
 
@@ -943,16 +967,16 @@ func (r *ProductRepository) Relist(
 }
 
 // Delete permanently deletes a product belonging to the specified owner.
-//
-// Related product images, favorites, price history, inventory history,
-// and status history are automatically removed through database
-// cascading foreign keys.
 func (r *ProductRepository) Delete(
 	productID int,
 	ownerType string,
 	ownerID int,
 ) error {
-	ownerType = strings.TrimSpace(strings.ToLower(ownerType))
+	var err error
+	ownerType, err = normalizeOwnerType(ownerType)
+	if err != nil {
+		return err
+	}
 
 	if productID <= 0 {
 		return fmt.Errorf("invalid product ID")
@@ -960,10 +984,6 @@ func (r *ProductRepository) Delete(
 
 	if ownerID <= 0 {
 		return fmt.Errorf("invalid product owner")
-	}
-
-	if ownerType != "user" && ownerType != "organization" {
-		return fmt.Errorf("product owner type must be user or organization")
 	}
 
 	result, err := r.db.Exec(`
@@ -995,11 +1015,8 @@ func (r *ProductRepository) Delete(
 
 // ReduceQuantity decreases the available quantity of a product.
 //
-// The operation uses row-level locking so simultaneous orders cannot
-// incorrectly reduce the same inventory.
-//
-// When quantity reaches zero, the product is automatically marked
-// as sold_out and the status change is recorded.
+// Row-level locking prevents simultaneous orders from incorrectly
+// reducing the same inventory.
 func (r *ProductRepository) ReduceQuantity(
 	productID int,
 	amount float64,
@@ -1014,7 +1031,10 @@ func (r *ProductRepository) ReduceQuantity(
 
 	tx, err := r.db.Begin()
 	if err != nil {
-		return fmt.Errorf("begin quantity reduction transaction: %w", err)
+		return fmt.Errorf(
+			"begin quantity reduction transaction: %w",
+			err,
+		)
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -1086,6 +1106,9 @@ func (r *ProductRepository) ReduceQuantity(
 		return fmt.Errorf("reduce product quantity: %w", err)
 	}
 
+	// A reduction is recorded as a negative inventory change.
+	quantityChange := -amount
+
 	_, err = tx.Exec(`
 		INSERT INTO inventory_history (
 			product_id,
@@ -1098,13 +1121,16 @@ func (r *ProductRepository) ReduceQuantity(
 	`,
 		productID,
 		before,
-		-after+before,
+		quantityChange,
 		after,
 		"order",
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to save inventory history: %w", err)
+		return fmt.Errorf(
+			"failed to save inventory history: %w",
+			err,
+		)
 	}
 
 	if oldStatus != newStatus {
@@ -1128,7 +1154,10 @@ func (r *ProductRepository) ReduceQuantity(
 		)
 
 		if err != nil {
-			return fmt.Errorf("failed to save sold out status history: %w", err)
+			return fmt.Errorf(
+				"failed to save sold out status history: %w",
+				err,
+			)
 		}
 	}
 
@@ -1137,8 +1166,8 @@ func (r *ProductRepository) ReduceQuantity(
 
 // AddImages adds one or more images to a product.
 //
-// If the product does not already have a primary image, the first valid
-// image supplied becomes the primary image.
+// If the product does not already have a primary image, the first
+// valid image supplied becomes the primary image.
 func (r *ProductRepository) AddImages(
 	productID int,
 	imageURLs []string,
@@ -1153,7 +1182,10 @@ func (r *ProductRepository) AddImages(
 
 	tx, err := r.db.Begin()
 	if err != nil {
-		return fmt.Errorf("begin add product images transaction: %w", err)
+		return fmt.Errorf(
+			"begin add product images transaction: %w",
+			err,
+		)
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -1172,7 +1204,10 @@ func (r *ProductRepository) AddImages(
 	).Scan(&exists)
 
 	if err != nil {
-		return fmt.Errorf("check product before adding images: %w", err)
+		return fmt.Errorf(
+			"check product before adding images: %w",
+			err,
+		)
 	}
 
 	if !exists {
@@ -1193,7 +1228,10 @@ func (r *ProductRepository) AddImages(
 	).Scan(&hasPrimary)
 
 	if err != nil {
-		return fmt.Errorf("check primary product image: %w", err)
+		return fmt.Errorf(
+			"check primary product image: %w",
+			err,
+		)
 	}
 
 	var nextSortOrder int
@@ -1207,7 +1245,10 @@ func (r *ProductRepository) AddImages(
 	).Scan(&nextSortOrder)
 
 	if err != nil {
-		return fmt.Errorf("get next product image sort order: %w", err)
+		return fmt.Errorf(
+			"get next product image sort order: %w",
+			err,
+		)
 	}
 
 	inserted := 0
@@ -1249,15 +1290,15 @@ func (r *ProductRepository) AddImages(
 	}
 
 	if inserted == 0 {
-		return fmt.Errorf("at least one valid product image is required")
+		return fmt.Errorf(
+			"at least one valid product image is required",
+		)
 	}
 
 	return tx.Commit()
 }
 
 // ListImages returns all images belonging to a product.
-//
-// Images are ordered by sort order and then by database ID.
 func (r *ProductRepository) ListImages(
 	productID int,
 ) ([]models.ProductImage, error) {
@@ -1279,11 +1320,9 @@ func (r *ProductRepository) ListImages(
 	`,
 		productID,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("list product images: %w", err)
 	}
-
 	defer rows.Close()
 
 	images := make([]models.ProductImage, 0)
@@ -1299,14 +1338,20 @@ func (r *ProductRepository) ListImages(
 			&image.SortOrder,
 			&image.CreatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan product image: %w", err)
+			return nil, fmt.Errorf(
+				"scan product image: %w",
+				err,
+			)
 		}
 
 		images = append(images, image)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate product images: %w", err)
+		return nil, fmt.Errorf(
+			"iterate product images: %w",
+			err,
+		)
 	}
 
 	return images, nil

@@ -1,68 +1,74 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
-// MarketEvent records buyer activity used for transparent demand signals.
+// MarketEvent records marketplace activity used to generate
+// transparent demand and market-behaviour signals.
+//
+// A market event may optionally belong to:
+//   - a product
+//   - an authenticated user
+//   - an anonymous/session-based visitor
+//
+// The event itself is intentionally generic so the marketplace
+// can record activities such as:
+//
+//   - product_view
+//   - cart_add
+//   - negotiation_started
+//   - negotiation_accepted
+//   - order_created
+//   - checkout_abandoned
+//
+// ProductID and UserID are pointers because the database allows
+// them to be NULL.
 type MarketEvent struct {
-	ID        int
-	EventType string
-	ProductID *int
-	UserID    *int
-	SessionID string
-	Metadata  string
-	CreatedAt time.Time
+	ID        int             `json:"id"`
+	EventType string          `json:"event_type"`
+	ProductID *int            `json:"product_id,omitempty"`
+	UserID    *int            `json:"user_id,omitempty"`
+	SessionID *string         `json:"session_id,omitempty"`
+	Metadata  json.RawMessage `json:"metadata"`
+	CreatedAt time.Time       `json:"created_at"`
 }
 
-// ProduceDemandSummary represents aggregated marketplace demand
-// and pricing information for a product category or produce type.
-type ProduceDemandSummary struct {
-	ProduceType string
+// NewMarketEvent creates a market event with an empty JSON object
+// when no additional metadata is supplied.
+func NewMarketEvent(eventType string) *MarketEvent {
+	return &MarketEvent{
+		EventType: eventType,
+		Metadata:  json.RawMessage(`{}`),
+	}
+}
 
-	Views, CartAdds, Negotiations, Orders int
+// SetMetadata replaces the event metadata with any JSON-compatible
+// value.
+func (e *MarketEvent) SetMetadata(value any) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
 
-	UnitsOrdered, UnitsAdded float64
+	e.Metadata = json.RawMessage(data)
+	return nil
+}
 
-	CurrentListings int
+// HasMetadata reports whether the event contains usable metadata.
+func (e *MarketEvent) HasMetadata() bool {
+	return len(e.Metadata) > 0 && string(e.Metadata) != "null"
+}
 
-	Activity     string
-	TrendPercent float64
-	Searches     int
+// IsProductEvent reports whether this event is associated with
+// a marketplace product.
+func (e *MarketEvent) IsProductEvent() bool {
+	return e.ProductID != nil
+}
 
-	NegotiationsActive, NegotiationsAccepted, NegotiationsRejected int
-
-	NegotiatedUnits, AverageOfferPrice, NegotiationConversionRate float64
-
-	DemandScore float64
-
-	ComparisonLocation string
-
-	LocalListings int
-
-	SellThroughRate, TimeToFirstOrderHours, TimeToSellOutHours float64
-
-	LifecycleDataAvailable bool
-
-	LocalPriceMin, LocalPriceMedian, LocalPriceMax float64
-
-	PriceAvailable bool
-
-	Recommendation string
-
-	FarmerPrice, PriceDifferencePercent float64
-
-	PricePosition string
-
-	StateListings, NationalListings int
-
-	NearbyListings int
-
-	StatePriceMedian, NationalPriceMedian float64
-
-	NearbyPriceMedian float64
-
-	ExternalListings       int
-	ExternalPriceMedian    float64
-	ExternalPriceAvailable bool
-
-	ComparisonScope string
+// IsUserEvent reports whether this event is associated with
+// an authenticated user.
+func (e *MarketEvent) IsUserEvent() bool {
+	return e.UserID != nil
 }

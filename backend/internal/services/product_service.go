@@ -10,34 +10,24 @@ import (
 
 // ProductService contains the business logic for agricultural products.
 //
-// The service sits between handlers and the product repository:
-//
 // Handler
-//
 //	↓
-//
 // ProductService
-//
 //	↓
-//
 // ProductRepository
-//
 //	↓
+// PostgreSQL
 //
-// # PostgreSQL
-//
-// ProductService is responsible for validating product data,
-// enforcing ownership rules, and coordinating product operations.
-//
-// Authorization for acting on behalf of an organization should be
-// established by the caller or a dedicated organization membership
-// service before an organization owner ID is supplied here.
+// The service is responsible for:
+//   - validating product input
+//   - validating ownership
+//   - enforcing marketplace rules
+//   - coordinating product and image operations
 type ProductService struct {
 	repo *repository.ProductRepository
 }
 
-// NewProductService creates a new ProductService using the provided
-// product repository.
+// NewProductService creates a new ProductService.
 func NewProductService(
 	repo *repository.ProductRepository,
 ) *ProductService {
@@ -50,27 +40,17 @@ func NewProductService(
 // CREATE PRODUCT
 // ============================================================
 
-// AddProduct creates a new agricultural product listing.
+// AddProduct creates a new agricultural product.
 //
-// ownerType identifies who owns the product:
+// ownerType:
 //   - "user"
 //   - "organization"
 //
-// ownerID identifies the corresponding user or organization.
+// ownerID is the ID of the corresponding owner.
 //
-// Example:
-//
-//	ownerType = "user"
-//	ownerID   = logged-in user's ID
-//
-// When listForSale is false, the product is stored as inactive.
-// When listForSale is true, the product is immediately available
-// on the marketplace.
-//
-// Product creation and image creation are currently separate
-// repository operations. They should eventually be wrapped in
-// one database transaction so a product cannot exist without
-// its required images.
+// A product can be created as:
+//   - inactive: stored in inventory but not listed
+//   - active: immediately available on marketplace
 func (s *ProductService) AddProduct(
 	ownerType string,
 	ownerID int,
@@ -82,7 +62,7 @@ func (s *ProductService) AddProduct(
 	price float64,
 	stateID *int,
 	lgaID *int,
-	community string,
+	communityID *int,
 	imageURLs []string,
 	latitude float64,
 	longitude float64,
@@ -94,11 +74,18 @@ func (s *ProductService) AddProduct(
 	description = strings.TrimSpace(description)
 	category = strings.TrimSpace(category)
 	unit = strings.TrimSpace(unit)
-	community = strings.TrimSpace(community)
+
+	// --------------------------------------------------------
+	// OWNER VALIDATION
+	// --------------------------------------------------------
 
 	if err := validateProductOwner(ownerType, ownerID); err != nil {
 		return err
 	}
+
+	// --------------------------------------------------------
+	// BASIC PRODUCT VALIDATION
+	// --------------------------------------------------------
 
 	if name == "" {
 		return errors.New("product name is required")
@@ -120,21 +107,20 @@ func (s *ProductService) AddProduct(
 		return errors.New("price cannot be negative")
 	}
 
-	if listForSale {
-		if quantity <= 0 {
-			return errors.New(
-				"quantity must be greater than zero to list for sale",
-			)
-		}
+	// --------------------------------------------------------
+	// MARKETPLACE VALIDATION
+	// --------------------------------------------------------
 
-		if price <= 0 {
-			return errors.New(
-				"price must be greater than zero to list for sale",
-			)
-		}
+	if listForSale && price <= 0 {
+		return errors.New(
+			"price must be greater than zero to list for sale",
+		)
 	}
 
-	// A new product must have at least one picture.
+	// --------------------------------------------------------
+	// IMAGE VALIDATION
+	// --------------------------------------------------------
+
 	validImages := cleanImageURLs(imageURLs)
 
 	if len(validImages) == 0 {
@@ -142,6 +128,14 @@ func (s *ProductService) AddProduct(
 			"at least one product picture is required",
 		)
 	}
+
+	// --------------------------------------------------------
+	// LOCATION VALIDATION
+	// --------------------------------------------------------
+	//
+	// Location fields are optional in the database.
+	// Therefore, we only validate values when coordinates
+	// have actually been supplied.
 
 	if err := validateProductLocation(
 		latitude,
@@ -151,11 +145,19 @@ func (s *ProductService) AddProduct(
 		return err
 	}
 
+	// --------------------------------------------------------
+	// STATUS
+	// --------------------------------------------------------
+
 	status := "inactive"
 
 	if listForSale {
 		status = "active"
 	}
+
+	// --------------------------------------------------------
+	// BUILD PRODUCT MODEL
+	// --------------------------------------------------------
 
 	product := &models.Product{
 		OwnerType:        ownerType,
@@ -168,25 +170,34 @@ func (s *ProductService) AddProduct(
 		Price:            price,
 		StateID:          stateID,
 		LGAID:            lgaID,
-		Community:        community,
+		CommunityID:      communityID,
 		Latitude:         latitude,
 		Longitude:        longitude,
 		LocationAccuracy: accuracy,
-		Status:           status,
+		Status:            status,
 	}
+
+	// --------------------------------------------------------
+	// CREATE PRODUCT
+	// --------------------------------------------------------
 
 	if err := s.repo.Create(product); err != nil {
 		return err
 	}
 
-	// Save all supplied product pictures.
+	// --------------------------------------------------------
+	// CREATE PRODUCT IMAGES
+	// --------------------------------------------------------
+
 	if err := s.repo.AddImages(
 		product.ID,
 		validImages,
 	); err != nil {
 		// Product creation succeeded but image creation failed.
-		// The eventual transaction layer should make these operations
-		// atomic.
+		//
+		// Future improvement:
+		// Wrap product + image creation in one database
+		// transaction so the operations become atomic.
 		return err
 	}
 
@@ -200,8 +211,6 @@ func (s *ProductService) AddProduct(
 // MyProducts returns all products belonging to an owner.
 //
 // Both active and inactive products are returned.
-//
-// ownerType must be either "user" or "organization".
 func (s *ProductService) MyProducts(
 	ownerType string,
 	ownerID int,
@@ -238,7 +247,7 @@ func (s *ProductService) AvailableProducts() (
 // GET PRODUCT
 // ============================================================
 
-// GetProduct retrieves one product by its ID.
+// GetProduct retrieves a product by ID.
 func (s *ProductService) GetProduct(
 	productID int,
 ) (*models.Product, error) {
@@ -277,16 +286,10 @@ func (s *ProductService) GetProductImages(
 // UPDATE PRODUCT
 // ============================================================
 
-// UpdateProduct updates an owner's product.
+// UpdateProduct updates an existing product.
 //
-// Existing pictures are preserved when no new pictures are supplied.
-//
-// If imageURLs contains valid images, those images are added to the
-// existing product images. Existing images are not automatically deleted.
-//
-// The caller must already have authorization to act for the specified
-// owner. In particular, organization ownership should be checked against
-// organization membership before this method is called.
+// Existing product images are preserved.
+// New valid images are added to the existing images.
 func (s *ProductService) UpdateProduct(
 	ownerType string,
 	ownerID int,
@@ -299,7 +302,7 @@ func (s *ProductService) UpdateProduct(
 	price float64,
 	stateID *int,
 	lgaID *int,
-	community string,
+	communityID *int,
 	imageURLs []string,
 	latitude float64,
 	longitude float64,
@@ -311,7 +314,10 @@ func (s *ProductService) UpdateProduct(
 	description = strings.TrimSpace(description)
 	category = strings.TrimSpace(category)
 	unit = strings.TrimSpace(unit)
-	community = strings.TrimSpace(community)
+
+	// --------------------------------------------------------
+	// VALIDATE OWNER
+	// --------------------------------------------------------
 
 	if err := validateProductOwner(
 		ownerType,
@@ -323,6 +329,10 @@ func (s *ProductService) UpdateProduct(
 	if productID <= 0 {
 		return errors.New("invalid product ID")
 	}
+
+	// --------------------------------------------------------
+	// VALIDATE PRODUCT DATA
+	// --------------------------------------------------------
 
 	if name == "" {
 		return errors.New("product name is required")
@@ -344,19 +354,15 @@ func (s *ProductService) UpdateProduct(
 		return errors.New("price cannot be negative")
 	}
 
-	if listForSale {
-		if quantity <= 0 {
-			return errors.New(
-				"quantity must be greater than zero to list for sale",
-			)
-		}
-
-		if price <= 0 {
-			return errors.New(
-				"price must be greater than zero to list for sale",
-			)
-		}
+	if listForSale && price <= 0 {
+		return errors.New(
+			"price must be greater than zero to list for sale",
+		)
 	}
+
+	// --------------------------------------------------------
+	// VALIDATE LOCATION
+	// --------------------------------------------------------
 
 	if err := validateProductLocation(
 		latitude,
@@ -365,6 +371,10 @@ func (s *ProductService) UpdateProduct(
 	); err != nil {
 		return err
 	}
+
+	// --------------------------------------------------------
+	// LOAD EXISTING PRODUCT
+	// --------------------------------------------------------
 
 	product, err := s.repo.GetByID(productID)
 	if err != nil {
@@ -375,7 +385,10 @@ func (s *ProductService) UpdateProduct(
 		return errors.New("product not found")
 	}
 
-	// Verify ownership before modifying the product.
+	// --------------------------------------------------------
+	// OWNERSHIP CHECK
+	// --------------------------------------------------------
+
 	if product.OwnerType != ownerType ||
 		product.OwnerID != ownerID {
 		return errors.New(
@@ -383,11 +396,19 @@ func (s *ProductService) UpdateProduct(
 		)
 	}
 
+	// --------------------------------------------------------
+	// STATUS
+	// --------------------------------------------------------
+
 	status := "inactive"
 
 	if listForSale {
 		status = "active"
 	}
+
+	// --------------------------------------------------------
+	// UPDATE MODEL
+	// --------------------------------------------------------
 
 	product.Name = name
 	product.Description = description
@@ -397,19 +418,24 @@ func (s *ProductService) UpdateProduct(
 	product.Price = price
 	product.StateID = stateID
 	product.LGAID = lgaID
-	product.Community = community
+	product.CommunityID = communityID
 	product.Latitude = latitude
 	product.Longitude = longitude
 	product.LocationAccuracy = accuracy
 	product.Status = status
 
+	// --------------------------------------------------------
+	// SAVE PRODUCT
+	// --------------------------------------------------------
+
 	if err := s.repo.Update(product); err != nil {
 		return err
 	}
 
-	// Add new pictures only when valid images were supplied.
-	//
-	// Existing pictures remain untouched.
+	// --------------------------------------------------------
+	// ADD NEW IMAGES
+	// --------------------------------------------------------
+
 	validImages := cleanImageURLs(imageURLs)
 
 	if len(validImages) > 0 {
@@ -428,8 +454,8 @@ func (s *ProductService) UpdateProduct(
 // UNLIST PRODUCT
 // ============================================================
 
-// UnlistProduct removes an owner's product from the marketplace
-// while keeping the product and its inventory in storage.
+// UnlistProduct removes a product from the marketplace
+// without deleting the product or its inventory.
 func (s *ProductService) UnlistProduct(
 	ownerType string,
 	ownerID int,
@@ -481,7 +507,7 @@ func (s *ProductService) UnlistProduct(
 
 // RelistProduct puts an existing product back on the marketplace.
 //
-// A product must have available inventory before it can be relisted.
+// A product must have available quantity before it can be relisted.
 func (s *ProductService) RelistProduct(
 	ownerType string,
 	ownerID int,
@@ -538,10 +564,6 @@ func (s *ProductService) RelistProduct(
 // ============================================================
 
 // DeleteProduct permanently deletes an owner's product.
-//
-// Product-related records such as images and product history are
-// expected to be removed according to the database foreign-key
-// rules defined by the product schema.
 func (s *ProductService) DeleteProduct(
 	ownerType string,
 	ownerID int,
@@ -587,16 +609,18 @@ func (s *ProductService) DeleteProduct(
 // VALIDATION HELPERS
 // ============================================================
 
-// validateProductOwner validates the type and ID of a product owner.
-//
-// Valid owner types are "user" and "organization".
+// validateProductOwner validates the product owner.
 func validateProductOwner(
 	ownerType string,
 	ownerID int,
 ) error {
-	if ownerType != "user" &&
-		ownerType != "organization" {
-		return errors.New("invalid owner type")
+	switch ownerType {
+	case "user", "organization":
+		// valid
+	default:
+		return errors.New(
+			"invalid owner type: must be user or organization",
+		)
 	}
 
 	if ownerID <= 0 {
@@ -606,32 +630,42 @@ func validateProductOwner(
 	return nil
 }
 
-// validateProductLocation validates the GPS coordinates and
-// location accuracy supplied for a product.
+// ============================================================
+// LOCATION VALIDATION
+// ============================================================
+
+// validateProductLocation validates GPS values when supplied.
+//
+// The database allows location coordinates to be NULL, so a product
+// is allowed to have no GPS location.
+//
+// However, when coordinates are supplied:
+//   - latitude must be between -90 and 90
+//   - longitude must be between -180 and 180
+//   - accuracy must be greater than zero
+//
+// The 0,0 coordinate is treated as "not supplied".
 func validateProductLocation(
 	latitude float64,
 	longitude float64,
 	accuracy float64,
 ) error {
-	if latitude < -90 ||
-		latitude > 90 {
+	// No GPS location supplied.
+	if latitude == 0 && longitude == 0 {
+		return nil
+	}
+
+	if latitude < -90 || latitude > 90 {
 		return errors.New("invalid product latitude")
 	}
 
-	if longitude < -180 ||
-		longitude > 180 {
+	if longitude < -180 || longitude > 180 {
 		return errors.New("invalid product longitude")
-	}
-
-	// Coordinates of exactly 0,0 normally indicate that the
-	// device did not provide a real location.
-	if latitude == 0 && longitude == 0 {
-		return errors.New("valid product GPS location is required")
 	}
 
 	if accuracy <= 0 {
 		return errors.New(
-			"valid product GPS accuracy is required",
+			"valid product GPS accuracy is required when location is supplied",
 		)
 	}
 
@@ -644,8 +678,7 @@ func validateProductLocation(
 
 // cleanImageURLs removes empty image URLs and trims whitespace.
 //
-// It returns only non-empty image URLs while preserving their
-// original order.
+// The original order is preserved.
 func cleanImageURLs(
 	imageURLs []string,
 ) []string {

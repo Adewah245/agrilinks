@@ -16,12 +16,9 @@ import (
 // - Marks notifications as read.
 // - Marks all notifications as read.
 //
-// The repository only handles database operations.
-// Business decisions belong to the NotificationService.
+// Business decisions belong to NotificationService.
 // ============================================================
 
-// NotificationRepository handles database operations
-// for user notifications.
 type NotificationRepository struct {
 	db *sql.DB
 }
@@ -30,8 +27,6 @@ type NotificationRepository struct {
 // CREATE REPOSITORY
 // ============================================================
 
-// NewNotificationRepository creates a new NotificationRepository
-// using the provided database connection.
 func NewNotificationRepository(db *sql.DB) *NotificationRepository {
 	return &NotificationRepository{
 		db: db,
@@ -41,34 +36,61 @@ func NewNotificationRepository(db *sql.DB) *NotificationRepository {
 // ============================================================
 // CREATE NOTIFICATION
 //
-// Saves a new notification in PostgreSQL.
+// Current notifications schema:
+//
+//	user_id
+//	notification_type
+//	title
+//	message
+//	reference_type
+//	reference_id
+//	is_read
+//	created_at
+//
+// The database generates:
+// - id
+// - created_at
 // ============================================================
 
-// Create stores a new notification for a user.
 func (r *NotificationRepository) Create(
 	notification *models.Notification,
 ) error {
 
+	if r == nil || r.db == nil {
+		return sql.ErrConnDone
+	}
+
+	if notification == nil {
+		return sql.ErrNoRows
+	}
+
 	query := `
 		INSERT INTO notifications (
 			user_id,
+			notification_type,
 			title,
 			message,
-			type,
+			reference_type,
+			reference_id,
 			is_read
 		)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, created_at
 	`
 
 	return r.db.QueryRow(
 		query,
 		notification.UserID,
+		notification.NotificationType,
 		notification.Title,
 		notification.Message,
-		notification.Type,
+		notification.ReferenceType,
+		notification.ReferenceID,
 		notification.IsRead,
-	).Scan(&notification.ID)
+	).Scan(
+		&notification.ID,
+		&notification.CreatedAt,
+	)
 }
 
 // ============================================================
@@ -79,19 +101,23 @@ func (r *NotificationRepository) Create(
 // Newest notifications are returned first.
 // ============================================================
 
-// GetUserNotifications retrieves all notifications belonging
-// to the specified user, with the newest notifications first.
 func (r *NotificationRepository) GetUserNotifications(
 	userID int,
 ) ([]models.Notification, error) {
+
+	if r == nil || r.db == nil {
+		return nil, sql.ErrConnDone
+	}
 
 	query := `
 		SELECT
 			id,
 			user_id,
+			notification_type,
 			title,
 			message,
-			type,
+			reference_type,
+			reference_id,
 			is_read,
 			created_at
 		FROM notifications
@@ -103,9 +129,10 @@ func (r *NotificationRepository) GetUserNotifications(
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
-	var notifications []models.Notification
+	notifications := make([]models.Notification, 0)
 
 	for rows.Next() {
 		var notification models.Notification
@@ -113,9 +140,11 @@ func (r *NotificationRepository) GetUserNotifications(
 		err := rows.Scan(
 			&notification.ID,
 			&notification.UserID,
+			&notification.NotificationType,
 			&notification.Title,
 			&notification.Message,
-			&notification.Type,
+			&notification.ReferenceType,
+			&notification.ReferenceID,
 			&notification.IsRead,
 			&notification.CreatedAt,
 		)
@@ -123,7 +152,10 @@ func (r *NotificationRepository) GetUserNotifications(
 			return nil, err
 		}
 
-		notifications = append(notifications, notification)
+		notifications = append(
+			notifications,
+			notification,
+		)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -138,82 +170,104 @@ func (r *NotificationRepository) GetUserNotifications(
 //
 // Returns the number of unread notifications belonging to
 // one user.
-//
-// This will later be useful for the 🔔 notification badge.
 // ============================================================
 
-// GetUnreadCount returns the number of unread notifications
-// belonging to the specified user.
-func (r *NotificationRepository) GetUnreadCount(userID int) (int, error) {
+func (r *NotificationRepository) GetUnreadCount(
+	userID int,
+) (int, error) {
+
+	if r == nil || r.db == nil {
+		return 0, sql.ErrConnDone
+	}
 
 	query := `
 		SELECT COUNT(*)
 		FROM notifications
 		WHERE user_id = $1
-		AND is_read = FALSE
+		  AND is_read = FALSE
 	`
 
 	var count int
 
-	err := r.db.QueryRow(query, userID).Scan(&count)
-	if err != nil {
-		return 0, err
-	}
+	err := r.db.QueryRow(
+		query,
+		userID,
+	).Scan(&count)
 
-	return count, nil
+	return count, err
 }
 
 // ============================================================
 // MARK ONE NOTIFICATION AS READ
 //
-// Marks one notification as read.
+// Security:
 //
-// The userID condition is important because a user should not
-// be able to mark another user's notification as read.
+// The notification must belong to the supplied user.
 // ============================================================
 
-// MarkAsRead marks one notification as read, provided that
-// the notification belongs to the specified user.
 func (r *NotificationRepository) MarkAsRead(
 	notificationID int,
 	userID int,
 ) error {
 
+	if r == nil || r.db == nil {
+		return sql.ErrConnDone
+	}
+
 	query := `
 		UPDATE notifications
 		SET is_read = TRUE
 		WHERE id = $1
-		AND user_id = $2
+		  AND user_id = $2
 	`
 
-	_, err := r.db.Exec(
+	result, err := r.db.Exec(
 		query,
 		notificationID,
 		userID,
 	)
+	if err != nil {
+		return err
+	}
 
-	return err
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
 
 // ============================================================
 // MARK ALL NOTIFICATIONS AS READ
 //
-// Marks every notification belonging to the current user
-// as read.
+// Marks every unread notification belonging to the current
+// user as read.
 // ============================================================
 
-// MarkAllAsRead marks all unread notifications belonging
-// to the specified user as read.
-func (r *NotificationRepository) MarkAllAsRead(userID int) error {
+func (r *NotificationRepository) MarkAllAsRead(
+	userID int,
+) error {
+
+	if r == nil || r.db == nil {
+		return sql.ErrConnDone
+	}
 
 	query := `
 		UPDATE notifications
 		SET is_read = TRUE
 		WHERE user_id = $1
-		AND is_read = FALSE
+		  AND is_read = FALSE
 	`
 
-	_, err := r.db.Exec(query, userID)
+	_, err := r.db.Exec(
+		query,
+		userID,
+	)
 
 	return err
 }

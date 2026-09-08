@@ -12,39 +12,28 @@ import (
 // MARKET EVENT REPOSITORY
 //
 // Responsibility:
-// - Records marketplace activity.
-// - Tracks product listing views.
-// - Tracks marketplace searches.
-// - Tracks product price history.
-// - Tracks external market prices.
-// - Calculates demand summaries.
-// - Calculates marketplace activity trends.
-// - Tracks checkout abandonment.
-// - Tracks LGA relationships.
+// - Record marketplace activity.
+// - Track product listing views.
+// - Track marketplace searches.
+// - Track product price history.
+// - Track external market prices.
+// - Calculate demand summaries.
+// - Calculate marketplace activity trends.
+// - Track checkout abandonment.
+// - Track LGA relationships.
 //
-// IMPORTANT:
+// Current architecture:
 //
-// The new Agro-Shield architecture uses:
-//
-// OLD:
-// crops
-// farmers
-// crop_id
-// farmer_id
-//
-// NEW:
 // products
 // users
+// organizations
 // product_id
 // user_id
 //
-// Products can belong to:
+// Products may belong to:
 //
 // owner_type = "user"
 // owner_type = "organization"
-//
-// Therefore marketplace analytics must work with products
-// instead of crops.
 // ============================================================
 
 type MarketEventRepository struct {
@@ -55,8 +44,6 @@ type MarketEventRepository struct {
 // CREATE REPOSITORY
 // ============================================================
 
-// NewMarketEventRepository creates a new repository for
-// recording and analysing marketplace events.
 func NewMarketEventRepository(db *sql.DB) *MarketEventRepository {
 	return &MarketEventRepository{
 		db: db,
@@ -65,33 +52,27 @@ func NewMarketEventRepository(db *sql.DB) *MarketEventRepository {
 
 // ============================================================
 // DEMAND SUMMARY
-//
-// Calculates marketplace demand for a particular product type.
-//
-// The summary includes:
-//
-// - Views
-// - Cart additions
-// - Negotiations
-// - Orders
-// - Units ordered
-// - Units added to cart
-// - Current listings
-// - Activity trend
 // ============================================================
 
-// DemandSummary calculates demand statistics for a product
-// type during the supplied time periods.
+// DemandSummary calculates marketplace demand statistics for
+// a particular product name.
 func (r *MarketEventRepository) DemandSummary(
 	produceType string,
 	since,
 	previousSince time.Time,
 ) (models.ProduceDemandSummary, error) {
 
-	var s models.ProduceDemandSummary
-	var currentTotal, previousTotal int
+	var summary models.ProduceDemandSummary
+	var currentTotal int
+	var previousTotal int
 
-	s.ProduceType = produceType
+	produceType = strings.TrimSpace(produceType)
+
+	if produceType == "" {
+		return summary, fmt.Errorf("produce type is required")
+	}
+
+	summary.ProduceType = produceType
 
 	err := r.db.QueryRow(`
 		SELECT
@@ -152,7 +133,7 @@ func (r *MarketEventRepository) DemandSummary(
 						WHEN e.event_type = 'checkout_completed'
 							AND e.created_at >= $2
 						THEN COALESCE(
-							(e.metadata->>'quantity')::double precision,
+							NULLIF(e.metadata->>'quantity', '')::double precision,
 							0
 						)
 						ELSE 0
@@ -167,7 +148,7 @@ func (r *MarketEventRepository) DemandSummary(
 						WHEN e.event_type = 'cart_item_added'
 							AND e.created_at >= $2
 						THEN COALESCE(
-							(e.metadata->>'quantity')::double precision,
+							NULLIF(e.metadata->>'quantity', '')::double precision,
 							0
 						)
 						ELSE 0
@@ -194,17 +175,20 @@ func (r *MarketEventRepository) DemandSummary(
 		since,
 		previousSince,
 	).Scan(
-		&s.Views,
-		&s.CartAdds,
-		&s.Negotiations,
-		&s.Orders,
-		&s.UnitsOrdered,
-		&s.UnitsAdded,
-		&s.CurrentListings,
+		&summary.Views,
+		&summary.CartAdds,
+		&summary.Negotiations,
+		&summary.Orders,
+		&summary.UnitsOrdered,
+		&summary.UnitsAdded,
+		&summary.CurrentListings,
 	)
 
 	if err != nil {
-		return s, err
+		return summary, fmt.Errorf(
+			"calculate demand summary: %w",
+			err,
+		)
 	}
 
 	err = r.db.QueryRow(`
@@ -212,13 +196,16 @@ func (r *MarketEventRepository) DemandSummary(
 			COUNT(*) FILTER (
 				WHERE e.created_at >= $2
 			),
+
 			COUNT(*) FILTER (
 				WHERE e.created_at >= $3
 				  AND e.created_at < $2
 			)
+
 		FROM market_events e
 		JOIN products p
 			ON p.id = e.product_id
+
 		WHERE LOWER(p.name) = LOWER($1)
 	`,
 		produceType,
@@ -230,45 +217,42 @@ func (r *MarketEventRepository) DemandSummary(
 	)
 
 	if err != nil {
-		return s, err
+		return summary, fmt.Errorf(
+			"calculate demand trend: %w",
+			err,
+		)
 	}
 
-	s.TrendPercent = calculateTrendPercent(
+	summary.TrendPercent = calculateTrendPercent(
 		currentTotal,
 		previousTotal,
 	)
 
-	total := s.Views +
-		s.CartAdds +
-		s.Negotiations +
-		s.Orders
+	totalActivity :=
+		summary.Views +
+			summary.CartAdds +
+			summary.Negotiations +
+			summary.Orders
 
-	s.Activity = classifyActivity(total)
+	summary.Activity = classifyActivity(totalActivity)
 
-	return s, nil
+	return summary, nil
 }
 
 // ============================================================
 // GROUPED DEMAND SUMMARIES
-//
-// Retrieves demand summaries for products owned by a user.
-//
-// The user may own products directly:
-//
-// owner_type = "user"
-//
-// Organization-owned products are not included when querying
-// a user's personal products.
 // ============================================================
 
-// GroupedDemandSummaries returns demand summaries for the
-// products owned by a specific user.
 func (r *MarketEventRepository) GroupedDemandSummaries(
 	userID int,
 	location string,
 	since,
 	previous time.Time,
 ) ([]models.ProduceDemandSummary, error) {
+
+	if userID <= 0 {
+		return nil, fmt.Errorf("user id is required")
+	}
 
 	rows, err := r.db.Query(`
 		SELECT DISTINCT p.name
@@ -281,7 +265,10 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf(
+			"load user product names: %w",
+			err,
+		)
 	}
 
 	defer rows.Close()
@@ -292,14 +279,20 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 		var name string
 
 		if err := rows.Scan(&name); err != nil {
-			return nil, err
+			return nil, fmt.Errorf(
+				"scan product name: %w",
+				err,
+			)
 		}
 
 		names = append(names, name)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf(
+			"iterate product names: %w",
+			err,
+		)
 	}
 
 	result := make(
@@ -310,7 +303,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 
 	for _, name := range names {
 
-		s, err := r.DemandSummary(
+		summary, err := r.DemandSummary(
 			name,
 			since,
 			previous,
@@ -320,16 +313,20 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 			return nil, err
 		}
 
-		s.ComparisonLocation = location
+		summary.ComparisonLocation = location
 
-		// --------------------------------------------------------
+		// ========================================================
 		// LOCAL PRICE COMPARISON
-		// --------------------------------------------------------
+		//
+		// products.community_id references communities.id.
+		// We therefore resolve the supplied community name through
+		// the communities table instead of using p.community.
+		// ========================================================
 
 		var minimum sql.NullFloat64
 		var median sql.NullFloat64
 		var maximum sql.NullFloat64
-		var count int
+		var localCount int
 
 		err = r.db.QueryRow(`
 			SELECT
@@ -340,39 +337,52 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 					),
 				MAX(p.price),
 				COUNT(*)
+
 			FROM products p
+
+			JOIN communities c
+				ON c.id = p.community_id
+
 			WHERE LOWER(p.name) = LOWER($1)
 			  AND p.status = 'active'
 			  AND p.owner_type = 'user'
 			  AND p.owner_id <> $3
-			  AND LOWER(p.community) = LOWER($2)
+			  AND LOWER(c.name) = LOWER($2)
 		`,
 			name,
-			location,
+			strings.TrimSpace(location),
 			userID,
 		).Scan(
 			&minimum,
 			&median,
 			&maximum,
-			&count,
+			&localCount,
 		)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(
+				"calculate local price comparison for %q: %w",
+				name,
+				err,
+			)
 		}
 
-		if count > 0 {
-			s.LocalPriceMin = minimum.Float64
-			s.LocalPriceMedian = median.Float64
-			s.LocalPriceMax = maximum.Float64
-			s.PriceAvailable = true
+		if localCount > 0 {
+			summary.LocalPriceMin = minimum.Float64
+			summary.LocalPriceMedian = median.Float64
+			summary.LocalPriceMax = maximum.Float64
+			summary.PriceAvailable = true
+			summary.LocalListings = localCount
 		}
 
-		// --------------------------------------------------------
-		// STATE LISTINGS
+		// ========================================================
+		// USER LOCATION
 		//
-		// Find the user's state through the users table.
-		// --------------------------------------------------------
+		// users.state is text.
+		// products.state_id references states.id.
+		//
+		// Resolve the user's state name through states.name.
+		// ========================================================
 
 		err = r.db.QueryRow(`
 			SELECT
@@ -384,70 +394,42 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 					),
 					0
 				)
+
 			FROM products p
+
+			JOIN states st
+				ON st.id = p.state_id
+
 			WHERE p.status = 'active'
 			  AND LOWER(p.name) = LOWER($1)
 			  AND p.owner_type = 'user'
 			  AND p.owner_id <> $2
-			  AND p.state_id = (
-					SELECT u.state
-					FROM users u
-					WHERE u.id = $2
+			  AND LOWER(st.name) = LOWER(
+					(
+						SELECT u.state
+						FROM users u
+						WHERE u.id = $2
+					)
 			  )
 		`,
 			name,
 			userID,
 		).Scan(
-			&s.StateListings,
-			&s.StatePriceMedian,
+			&summary.StateListings,
+			&summary.StatePriceMedian,
 		)
 
 		if err != nil {
-			// The current users schema stores state as TEXT while
-			// products.state_id stores a location ID.
-			//
-			// State-level comparison is therefore handled below
-			// using the user's state text when available.
-			err = r.db.QueryRow(`
-				SELECT
-					COUNT(*),
-					COALESCE(
-						PERCENTILE_CONT(0.5)
-						WITHIN GROUP (
-							ORDER BY p.price
-						),
-						0
-					)
-				FROM products p
-				JOIN users u
-					ON u.id = p.owner_id
-					AND p.owner_type = 'user'
-				WHERE p.status = 'active'
-				  AND LOWER(p.name) = LOWER($1)
-				  AND p.owner_id <> $2
-				  AND LOWER(u.state) = LOWER(
-						(
-							SELECT state
-							FROM users
-							WHERE id = $2
-						)
-				  )
-			`,
+			return nil, fmt.Errorf(
+				"calculate state market comparison for %q: %w",
 				name,
-				userID,
-			).Scan(
-				&s.StateListings,
-				&s.StatePriceMedian,
+				err,
 			)
-
-			if err != nil {
-				return nil, err
-			}
 		}
 
-		// --------------------------------------------------------
-		// NEARBY LISTINGS
-		// --------------------------------------------------------
+		// ========================================================
+		// NEARBY LGA LISTINGS
+		// ========================================================
 
 		err = r.db.QueryRow(`
 			SELECT
@@ -459,28 +441,34 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 					),
 					0
 				)
+
 			FROM products p
-			JOIN users u
-				ON u.id = p.owner_id
+
+			JOIN users seller
+				ON seller.id = p.owner_id
 				AND p.owner_type = 'user'
+
 			WHERE p.status = 'active'
 			  AND LOWER(p.name) = LOWER($1)
 			  AND p.owner_id <> $2
-			  AND LOWER(u.lga) IN (
-					SELECT LOWER(neighbor_lga)
-					FROM lga_neighbors
-					WHERE LOWER(state) = LOWER(
+
+			  AND LOWER(seller.lga) IN (
+					SELECT LOWER(ln.neighbor_lga)
+					FROM lga_neighbors ln
+
+					WHERE LOWER(ln.state) = LOWER(
 						(
-							SELECT state
-							FROM users
-							WHERE id = $2
+							SELECT u.state
+							FROM users u
+							WHERE u.id = $2
 						)
 					)
-					AND LOWER(lga) = LOWER(
+
+					AND LOWER(ln.lga) = LOWER(
 						(
-							SELECT lga
-							FROM users
-							WHERE id = $2
+							SELECT u.lga
+							FROM users u
+							WHERE u.id = $2
 						)
 					)
 			  )
@@ -488,17 +476,21 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 			name,
 			userID,
 		).Scan(
-			&s.NearbyListings,
-			&s.NearbyPriceMedian,
+			&summary.NearbyListings,
+			&summary.NearbyPriceMedian,
 		)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(
+				"calculate nearby market comparison for %q: %w",
+				name,
+				err,
+			)
 		}
 
-		// --------------------------------------------------------
+		// ========================================================
 		// NATIONAL LISTINGS
-		// --------------------------------------------------------
+		// ========================================================
 
 		err = r.db.QueryRow(`
 			SELECT
@@ -510,9 +502,12 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 					),
 					0
 				)
+
 			FROM products p
+
 			WHERE p.status = 'active'
 			  AND LOWER(p.name) = LOWER($1)
+
 			  AND NOT (
 					p.owner_type = 'user'
 					AND p.owner_id = $2
@@ -521,29 +516,46 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 			name,
 			userID,
 		).Scan(
-			&s.NationalListings,
-			&s.NationalPriceMedian,
+			&summary.NationalListings,
+			&summary.NationalPriceMedian,
 		)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(
+				"calculate national market comparison for %q: %w",
+				name,
+				err,
+			)
 		}
 
-		s.ComparisonScope = "Local LGA"
+		// ========================================================
+		// COMPARISON SCOPE
+		// ========================================================
 
-		if s.StateListings == 0 &&
-			s.NationalListings == 0 {
-			s.ComparisonScope = "No independent listings"
+		switch {
+		case summary.LocalListings > 0:
+			summary.ComparisonScope = "Local LGA"
+
+		case summary.StateListings > 0:
+			summary.ComparisonScope = "State"
+
+		case summary.NationalListings > 0:
+			summary.ComparisonScope = "National"
+
+		default:
+			summary.ComparisonScope = "No independent listings"
 		}
 
-		// --------------------------------------------------------
+		// ========================================================
 		// USER'S CURRENT PRICE
-		// --------------------------------------------------------
+		// ========================================================
 
 		err = r.db.QueryRow(`
 			SELECT
 				COALESCE(AVG(p.price), 0)
+
 			FROM products p
+
 			WHERE p.owner_type = 'user'
 			  AND p.owner_id = $1
 			  AND LOWER(p.name) = LOWER($2)
@@ -551,15 +563,19 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 		`,
 			userID,
 			name,
-		).Scan(&s.FarmerPrice)
+		).Scan(&summary.FarmerPrice)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(
+				"calculate current user price for %q: %w",
+				name,
+				err,
+			)
 		}
 
-		// --------------------------------------------------------
+		// ========================================================
 		// EXTERNAL MARKET PRICE
-		// --------------------------------------------------------
+		// ========================================================
 
 		err = r.db.QueryRow(`
 			SELECT
@@ -571,16 +587,20 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 					),
 					0
 				)
+
 			FROM external_market_prices
+
 			WHERE LOWER(produce_type) = LOWER($1)
 			  AND collected_at >= $2
+
 			  AND (
 					state IS NULL
+
 					OR LOWER(state) = LOWER(
 						(
-							SELECT state
-							FROM users
-							WHERE id = $3
+							SELECT u.state
+							FROM users u
+							WHERE u.id = $3
 						)
 					)
 			  )
@@ -589,60 +609,69 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 			since,
 			userID,
 		).Scan(
-			&s.ExternalListings,
-			&s.ExternalPriceMedian,
+			&summary.ExternalListings,
+			&summary.ExternalPriceMedian,
 		)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf(
+				"calculate external market price for %q: %w",
+				name,
+				err,
+			)
 		}
 
-		s.ExternalPriceAvailable =
-			s.ExternalListings > 0 &&
-				s.ExternalPriceMedian > 0
+		summary.ExternalPriceAvailable =
+			summary.ExternalListings > 0 &&
+				summary.ExternalPriceMedian > 0
 
-		// --------------------------------------------------------
+		// ========================================================
 		// PRICE POSITION
-		// --------------------------------------------------------
+		// ========================================================
 
-		if s.PriceAvailable &&
-			s.LocalPriceMedian > 0 &&
-			s.FarmerPrice > 0 {
+		if summary.PriceAvailable &&
+			summary.LocalPriceMedian > 0 &&
+			summary.FarmerPrice > 0 {
 
-			s.PriceDifferencePercent =
-				(s.FarmerPrice - s.LocalPriceMedian) *
+			summary.PriceDifferencePercent =
+				(summary.FarmerPrice -
+					summary.LocalPriceMedian) *
 					100 /
-					s.LocalPriceMedian
+					summary.LocalPriceMedian
 
 			switch {
-			case s.PriceDifferencePercent > 5:
-				s.PricePosition = "Above local median"
+			case summary.PriceDifferencePercent > 5:
+				summary.PricePosition = "Above local median"
 
-			case s.PriceDifferencePercent < -5:
-				s.PricePosition = "Below local median"
+			case summary.PriceDifferencePercent < -5:
+				summary.PricePosition = "Below local median"
 
 			default:
-				s.PricePosition = "Near local median"
+				summary.PricePosition = "Near local median"
 			}
 		}
 
-		// --------------------------------------------------------
+		// ========================================================
 		// RECOMMENDATION
-		// --------------------------------------------------------
+		// ========================================================
 
-		if s.ComparisonScope == "No independent listings" &&
-			s.Views+
-				s.CartAdds+
-				s.Orders+
-				s.Negotiations == 0 {
+		activityTotal :=
+			summary.Views +
+				summary.CartAdds +
+				summary.Orders +
+				summary.Negotiations
 
-			s.Recommendation =
+		if summary.ComparisonScope == "No independent listings" &&
+			activityTotal == 0 {
+
+			summary.Recommendation =
 				"No buyer activity yet. Add a clear photo and keep availability current."
 		} else {
-			s.Recommendation = demandRecommendation(s)
+			summary.Recommendation =
+				demandRecommendation(summary)
 		}
 
-		result = append(result, s)
+		result = append(result, summary)
 	}
 
 	return result, nil
@@ -650,15 +679,8 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 
 // ============================================================
 // USER DEMAND SUMMARY
-//
-// Provides marketplace demand information for products owned
-// by a specific user.
-//
-// This replaces the old FarmerDemandSummary architecture.
 // ============================================================
 
-// UserDemandSummary returns marketplace demand statistics
-// for products owned by a specific user.
 func (r *MarketEventRepository) UserDemandSummary(
 	userID int,
 	location string,
@@ -666,10 +688,13 @@ func (r *MarketEventRepository) UserDemandSummary(
 	previousSince time.Time,
 ) (models.ProduceDemandSummary, error) {
 
-	var s models.ProduceDemandSummary
-
+	var summary models.ProduceDemandSummary
 	var current int
 	var previous int
+
+	if userID <= 0 {
+		return summary, fmt.Errorf("user id is required")
+	}
 
 	err := r.db.QueryRow(`
 		SELECT
@@ -711,7 +736,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 						WHEN e.event_type = 'checkout_completed'
 							AND e.created_at >= $2
 						THEN COALESCE(
-							(e.metadata->>'quantity')::double precision,
+							NULLIF(e.metadata->>'quantity', '')::double precision,
 							0
 						)
 						ELSE 0
@@ -723,6 +748,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 			COUNT(DISTINCT p.id)
 
 		FROM market_events e
+
 		JOIN products p
 			ON p.id = e.product_id
 
@@ -735,60 +761,92 @@ func (r *MarketEventRepository) UserDemandSummary(
 	).Scan(
 		&current,
 		&previous,
-		&s.Views,
-		&s.CartAdds,
-		&s.Negotiations,
-		&s.Orders,
-		&s.UnitsOrdered,
-		&s.CurrentListings,
+		&summary.Views,
+		&summary.CartAdds,
+		&summary.Negotiations,
+		&summary.Orders,
+		&summary.UnitsOrdered,
+		&summary.CurrentListings,
 	)
 
 	if err != nil {
-		return s, err
+		return summary, fmt.Errorf(
+			"calculate user demand summary: %w",
+			err,
+		)
 	}
 
-	// --------------------------------------------------------
+	// ========================================================
 	// MARKETPLACE SEARCHES
-	// --------------------------------------------------------
+	// ========================================================
 
-	_ = r.db.QueryRow(`
+	err = r.db.QueryRow(`
 		SELECT COUNT(*)
 		FROM marketplace_searches
 		WHERE created_at >= $1
 	`,
 		since,
-	).Scan(&s.Searches)
+	).Scan(&summary.Searches)
 
-	_ = r.db.QueryRow(`
-		SELECT COUNT(*)
-		FROM marketplace_searches
-		WHERE created_at >= $1
-		  AND LOWER(location) = LOWER($2)
-	`,
-		since,
-		location,
-	).Scan(&s.Searches)
+	if err != nil {
+		return summary, fmt.Errorf(
+			"calculate marketplace searches: %w",
+			err,
+		)
+	}
 
-	// --------------------------------------------------------
+	if strings.TrimSpace(location) != "" {
+		err = r.db.QueryRow(`
+			SELECT COUNT(*)
+			FROM marketplace_searches
+			WHERE created_at >= $1
+			  AND LOWER(location) = LOWER($2)
+		`,
+			since,
+			location,
+		).Scan(&summary.Searches)
+
+		if err != nil {
+			return summary, fmt.Errorf(
+				"calculate local marketplace searches: %w",
+				err,
+			)
+		}
+	}
+
+	// ========================================================
 	// LOCAL LISTINGS
-	// --------------------------------------------------------
+	//
+	// Resolve community through communities.name.
+	// ========================================================
 
-	_ = r.db.QueryRow(`
-		SELECT COUNT(*)
-		FROM products p
-		WHERE p.status = 'active'
-		  AND LOWER(p.community) = LOWER($1)
-	`,
-		location,
-	).Scan(&s.LocalListings)
+	if strings.TrimSpace(location) != "" {
+		err = r.db.QueryRow(`
+			SELECT COUNT(*)
+			FROM products p
+			JOIN communities c
+				ON c.id = p.community_id
+			WHERE p.status = 'active'
+			  AND LOWER(c.name) = LOWER($1)
+		`,
+			location,
+		).Scan(&summary.LocalListings)
 
-	s.ComparisonLocation = location
+		if err != nil {
+			return summary, fmt.Errorf(
+				"calculate local listings: %w",
+				err,
+			)
+		}
+	}
 
-	// --------------------------------------------------------
+	summary.ComparisonLocation = location
+
+	// ========================================================
 	// NEGOTIATIONS
-	// --------------------------------------------------------
+	// ========================================================
 
-	_ = r.db.QueryRow(`
+	err = r.db.QueryRow(`
 		SELECT
 			COUNT(*) FILTER (
 				WHERE n.status = 'open'
@@ -808,6 +866,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 			)
 
 		FROM negotiations n
+
 		JOIN products p
 			ON p.id = n.product_id
 
@@ -818,17 +877,24 @@ func (r *MarketEventRepository) UserDemandSummary(
 		userID,
 		since,
 	).Scan(
-		&s.NegotiationsActive,
-		&s.NegotiationsAccepted,
-		&s.NegotiationsRejected,
-		&s.NegotiatedUnits,
+		&summary.NegotiationsActive,
+		&summary.NegotiationsAccepted,
+		&summary.NegotiationsRejected,
+		&summary.NegotiatedUnits,
 	)
 
-	// --------------------------------------------------------
-	// AVERAGE OFFER PRICE
-	// --------------------------------------------------------
+	if err != nil {
+		return summary, fmt.Errorf(
+			"calculate negotiation statistics: %w",
+			err,
+		)
+	}
 
-	_ = r.db.QueryRow(`
+	// ========================================================
+	// AVERAGE OFFER PRICE
+	// ========================================================
+
+	err = r.db.QueryRow(`
 		SELECT
 			COALESCE(
 				AVG(m.offer_price),
@@ -851,16 +917,23 @@ func (r *MarketEventRepository) UserDemandSummary(
 	`,
 		userID,
 		since,
-	).Scan(&s.AverageOfferPrice)
+	).Scan(&summary.AverageOfferPrice)
 
-	// --------------------------------------------------------
+	if err != nil {
+		return summary, fmt.Errorf(
+			"calculate average offer price: %w",
+			err,
+		)
+	}
+
+	// ========================================================
 	// PRODUCT LIFECYCLE
-	// --------------------------------------------------------
+	// ========================================================
 
 	var initial float64
 	var remaining float64
 
-	_ = r.db.QueryRow(`
+	err = r.db.QueryRow(`
 		SELECT
 			COALESCE(
 				SUM(initial_listed_quantity),
@@ -911,65 +984,72 @@ func (r *MarketEventRepository) UserDemandSummary(
 	).Scan(
 		&initial,
 		&remaining,
-		&s.TimeToFirstOrderHours,
-		&s.TimeToSellOutHours,
+		&summary.TimeToFirstOrderHours,
+		&summary.TimeToSellOutHours,
 	)
 
-	s.SellThroughRate =
+	if err != nil {
+		return summary, fmt.Errorf(
+			"calculate product lifecycle: %w",
+			err,
+		)
+	}
+
+	summary.SellThroughRate =
 		calculateSellThrough(
 			initial,
 			remaining,
 		)
 
-	s.LifecycleDataAvailable =
+	summary.LifecycleDataAvailable =
 		initial > 0
 
-	// --------------------------------------------------------
+	// ========================================================
 	// NEGOTIATION CONVERSION
-	// --------------------------------------------------------
+	// ========================================================
 
 	totalNegotiations :=
-		s.NegotiationsActive +
-			s.NegotiationsAccepted +
-			s.NegotiationsRejected
+		summary.NegotiationsActive +
+			summary.NegotiationsAccepted +
+			summary.NegotiationsRejected
 
 	if totalNegotiations > 0 {
-		s.NegotiationConversionRate =
-			float64(s.NegotiationsAccepted) *
+		summary.NegotiationConversionRate =
+			float64(summary.NegotiationsAccepted) *
 				100 /
 				float64(totalNegotiations)
 	}
 
-	// --------------------------------------------------------
+	// ========================================================
 	// DEMAND SCORE
-	// --------------------------------------------------------
+	// ========================================================
 
-	s.DemandScore = calculateDemandScore(
-		s.Views,
-		s.CartAdds,
-		s.Orders,
-		totalNegotiations,
-	)
+	summary.DemandScore =
+		calculateDemandScore(
+			summary.Views,
+			summary.CartAdds,
+			summary.Orders,
+			totalNegotiations,
+		)
 
-	s.ProduceType = "Your products"
+	summary.ProduceType = "Your products"
 
-	s.TrendPercent =
+	summary.TrendPercent =
 		calculateTrendPercent(
 			current,
 			previous,
 		)
 
-	s.Activity =
+	summary.Activity =
 		classifyActivity(current)
 
-	return s, nil
+	return summary, nil
 }
 
 // ============================================================
 // MIN FLOAT
 // ============================================================
 
-// minFloat returns the smaller of two floating-point numbers.
 func minFloat(a, b float64) float64 {
 	if a < b {
 		return a
@@ -982,8 +1062,6 @@ func minFloat(a, b float64) float64 {
 // CLASSIFY ACTIVITY
 // ============================================================
 
-// classifyActivity converts an activity count into a
-// human-readable marketplace activity level.
 func classifyActivity(total int) string {
 	switch {
 	case total < 3:
@@ -1004,8 +1082,6 @@ func classifyActivity(total int) string {
 // CALCULATE TREND
 // ============================================================
 
-// calculateTrendPercent calculates the percentage change
-// between the current and previous activity periods.
 func calculateTrendPercent(
 	current,
 	previous int,
@@ -1024,8 +1100,6 @@ func calculateTrendPercent(
 // CALCULATE DEMAND SCORE
 // ============================================================
 
-// calculateDemandScore calculates a weighted marketplace
-// demand score from 0 to 100.
 func calculateDemandScore(
 	views,
 	cartAdds,
@@ -1036,30 +1110,28 @@ func calculateDemandScore(
 	return minFloat(
 		float64(views)/20*100,
 		100,
-	)*.20 +
+	)*0.20 +
 
 		minFloat(
 			float64(cartAdds)/10*100,
 			100,
-		)*.25 +
+		)*0.25 +
 
 		minFloat(
 			float64(orders)/5*100,
 			100,
-		)*.35 +
+		)*0.35 +
 
 		minFloat(
 			float64(negotiations)/10*100,
 			100,
-		)*.20
+		)*0.20
 }
 
 // ============================================================
 // CALCULATE SELL THROUGH
 // ============================================================
 
-// calculateSellThrough calculates the percentage of an
-// initially listed quantity that has been sold.
 func calculateSellThrough(
 	initial,
 	remaining float64,
@@ -1070,7 +1142,7 @@ func calculateSellThrough(
 	}
 
 	rate :=
-		(initial - remaining) *
+		(initial-remaining) *
 			100 /
 			initial
 
@@ -1089,8 +1161,6 @@ func calculateSellThrough(
 // DEMAND RECOMMENDATION
 // ============================================================
 
-// demandRecommendation generates a marketplace recommendation
-// based on price and buyer activity.
 func demandRecommendation(
 	s models.ProduceDemandSummary,
 ) string {
@@ -1127,15 +1197,8 @@ func demandRecommendation(
 
 // ============================================================
 // RECORD LISTING VIEW
-//
-// Records one listing view for a product.
-//
-// A user/session cannot repeatedly generate views for the same
-// product inside the deduplication window.
 // ============================================================
 
-// RecordListingView records at most one view for a user/session
-// and product within the supplied deduplication window.
 func (r *MarketEventRepository) RecordListingView(
 	productID int,
 	userID *int,
@@ -1195,21 +1258,27 @@ func (r *MarketEventRepository) RecordListingView(
 	`,
 		productID,
 		userID,
-		sessionID,
+		strings.TrimSpace(sessionID),
 		fmt.Sprintf(
 			"%f seconds",
 			window.Seconds(),
 		),
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf(
+			"record listing view: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
 // ============================================================
 // RECORD MARKET EVENT
 // ============================================================
 
-// Record stores a marketplace event in the database.
 func (r *MarketEventRepository) Record(
 	event *models.MarketEvent,
 ) error {
@@ -1217,6 +1286,28 @@ func (r *MarketEventRepository) Record(
 	if event == nil {
 		return fmt.Errorf("market event is nil")
 	}
+
+	event.EventType =
+		strings.TrimSpace(event.EventType)
+
+	if event.EventType == "" {
+		return fmt.Errorf("event type is required")
+	}
+
+	if event.ProductID != nil &&
+		*event.ProductID <= 0 {
+
+		return fmt.Errorf("invalid product id")
+	}
+
+	if event.UserID != nil &&
+		*event.UserID <= 0 {
+
+		return fmt.Errorf("invalid user id")
+	}
+
+	event.SessionID =
+		strings.TrimSpace(event.SessionID)
 
 	metadata :=
 		strings.TrimSpace(event.Metadata)
@@ -1233,7 +1324,13 @@ func (r *MarketEventRepository) Record(
 			session_id,
 			metadata
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			NULLIF($4, ''),
+			$5::jsonb
+		)
 	`,
 		event.EventType,
 		event.ProductID,
@@ -1242,15 +1339,20 @@ func (r *MarketEventRepository) Record(
 		metadata,
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf(
+			"record market event: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
 // ============================================================
 // RECORD MARKETPLACE SEARCH
 // ============================================================
 
-// RecordSearch records a marketplace search performed by
-// a user or anonymous session.
 func (r *MarketEventRepository) RecordSearch(
 	term,
 	normalized,
@@ -1265,7 +1367,9 @@ func (r *MarketEventRepository) RecordSearch(
 		return nil
 	}
 
-	if strings.TrimSpace(normalized) == "" {
+	normalized = strings.TrimSpace(normalized)
+
+	if normalized == "" {
 		normalized = term
 	}
 
@@ -1286,22 +1390,26 @@ func (r *MarketEventRepository) RecordSearch(
 		)
 	`,
 		term,
-		strings.ToLower(
-			strings.TrimSpace(normalized),
-		),
+		strings.ToLower(normalized),
 		strings.TrimSpace(location),
 		userID,
-		sessionID,
+		strings.TrimSpace(sessionID),
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf(
+			"record marketplace search: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
 // ============================================================
 // RECORD PRODUCT PRICE
 // ============================================================
 
-// RecordPrice records the price history of a product.
 func (r *MarketEventRepository) RecordPrice(
 	productID int,
 	price float64,
@@ -1309,16 +1417,23 @@ func (r *MarketEventRepository) RecordPrice(
 	source string,
 ) error {
 
-	if productID <= 0 ||
-		price <= 0 ||
-		strings.TrimSpace(unit) == "" {
-
-		return fmt.Errorf(
-			"invalid price history record",
-		)
+	if productID <= 0 {
+		return fmt.Errorf("product id is required")
 	}
 
-	if strings.TrimSpace(source) == "" {
+	if price <= 0 {
+		return fmt.Errorf("price must be greater than zero")
+	}
+
+	unit = strings.TrimSpace(unit)
+
+	if unit == "" {
+		return fmt.Errorf("unit is required")
+	}
+
+	source = strings.TrimSpace(source)
+
+	if source == "" {
 		source = "Agro-Shield"
 	}
 
@@ -1337,15 +1452,20 @@ func (r *MarketEventRepository) RecordPrice(
 		source,
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf(
+			"record product price: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
 // ============================================================
 // RECORD EXTERNAL PRICE
 // ============================================================
 
-// RecordExternalPrice stores a verified external market-price
-// observation together with its provenance.
 func (r *MarketEventRepository) RecordExternalPrice(
 	produce string,
 	price float64,
@@ -1395,25 +1515,29 @@ func (r *MarketEventRepository) RecordExternalPrice(
 	`,
 		strings.TrimSpace(produce),
 		price,
-		unit,
-		provider,
-		market,
+		strings.TrimSpace(unit),
+		strings.TrimSpace(provider),
+		strings.TrimSpace(market),
 		strings.TrimSpace(lga),
 		strings.TrimSpace(state),
 		collectedAt,
 		strings.TrimSpace(sourceURL),
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf(
+			"record external market price: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
 // ============================================================
 // UPSERT LGA NEIGHBOR
 // ============================================================
 
-// UpsertLGANeighbor stores a directional LGA relationship.
-// When the relationship is mutual, the caller should store
-// both directions.
 func (r *MarketEventRepository) UpsertLGANeighbor(
 	state,
 	lga,
@@ -1426,11 +1550,16 @@ func (r *MarketEventRepository) UpsertLGANeighbor(
 
 	if state == "" ||
 		lga == "" ||
-		neighbor == "" ||
-		strings.EqualFold(lga, neighbor) {
+		neighbor == "" {
 
 		return fmt.Errorf(
 			"invalid LGA neighbor relationship",
+		)
+	}
+
+	if strings.EqualFold(lga, neighbor) {
+		return fmt.Errorf(
+			"LGA cannot be its own neighbor",
 		)
 	}
 
@@ -1454,15 +1583,20 @@ func (r *MarketEventRepository) UpsertLGANeighbor(
 		neighbor,
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf(
+			"upsert LGA neighbor: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
 // ============================================================
 // VALIDATE EXTERNAL PRICE
 // ============================================================
 
-// validateExternalPrice validates an external market-price
-// observation before it is stored.
 func validateExternalPrice(
 	produce string,
 	price float64,
@@ -1472,15 +1606,39 @@ func validateExternalPrice(
 	collectedAt time.Time,
 ) error {
 
-	if strings.TrimSpace(produce) == "" ||
-		price <= 0 ||
-		strings.TrimSpace(unit) == "" ||
-		strings.TrimSpace(provider) == "" ||
-		strings.TrimSpace(market) == "" ||
-		collectedAt.IsZero() {
-
+	if strings.TrimSpace(produce) == "" {
 		return fmt.Errorf(
-			"incomplete external price observation",
+			"produce type is required",
+		)
+	}
+
+	if price <= 0 {
+		return fmt.Errorf(
+			"external price must be greater than zero",
+		)
+	}
+
+	if strings.TrimSpace(unit) == "" {
+		return fmt.Errorf(
+			"price unit is required",
+		)
+	}
+
+	if strings.TrimSpace(provider) == "" {
+		return fmt.Errorf(
+			"price provider is required",
+		)
+	}
+
+	if strings.TrimSpace(market) == "" {
+		return fmt.Errorf(
+			"market name is required",
+		)
+	}
+
+	if collectedAt.IsZero() {
+		return fmt.Errorf(
+			"collection time is required",
 		)
 	}
 
@@ -1489,16 +1647,8 @@ func validateExternalPrice(
 
 // ============================================================
 // RECONCILE CHECKOUT ABANDONMENTS
-//
-// Finds checkout sessions that started but were not completed
-// within the configured timeout.
-//
-// The operation is safe to run repeatedly because it checks
-// whether an abandonment event already exists.
 // ============================================================
 
-// ReconcileCheckoutAbandonments records abandonment events for
-// checkout starts that remained incomplete beyond the timeout.
 func (r *MarketEventRepository) ReconcileCheckoutAbandonments(
 	timeout time.Duration,
 ) error {
@@ -1520,10 +1670,12 @@ func (r *MarketEventRepository) ReconcileCheckoutAbandonments(
 			'checkout_abandoned',
 			s.user_id,
 			s.session_id,
+
 			jsonb_build_object(
 				'checkout_started_event_id',
 				s.id
 			),
+
 			CURRENT_TIMESTAMP
 
 		FROM market_events s
@@ -1578,5 +1730,12 @@ func (r *MarketEventRepository) ReconcileCheckoutAbandonments(
 			timeout.Seconds(),
 		))
 
-	return err
+	if err != nil {
+		return fmt.Errorf(
+			"reconcile checkout abandonments: %w",
+			err,
+		)
+	}
+
+	return nil
 }
