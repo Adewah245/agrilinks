@@ -18,28 +18,47 @@ func NewOrderRepository(db *sql.DB) *OrderRepository {
 
 // Create creates a new order for a product.
 func (r *OrderRepository) Create(order *models.Order) error {
-	query := `
+	if order == nil || len(order.Items) == 0 {
+		return sql.ErrNoRows
+	}
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	err = tx.QueryRow(`
 		INSERT INTO orders (
 			buyer_id,
-			product_id,
-			quantity,
-			total_price,
+			total_amount,
 			status
 		)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id
-	`
-
-	err := r.db.QueryRow(
-		query,
+		VALUES ($1, $2, $3)
+		RETURNING id, created_at, updated_at
+	`,
 		order.BuyerID,
-		order.ProductID,
-		order.Quantity,
-		order.TotalPrice,
+		order.TotalAmount,
 		order.Status,
-	).Scan(&order.ID)
+	).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
+	if err != nil {
+		return err
+	}
 
-	return err
+	for i := range order.Items {
+		item := &order.Items[i]
+		err = tx.QueryRow(`
+			INSERT INTO order_items (order_id, product_id, quantity, unit_price, total_price)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING id, created_at
+		`, order.ID, item.ProductID, item.Quantity, item.UnitPrice, item.TotalPrice).
+			Scan(&item.ID, &item.CreatedAt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // ListByBuyer returns all orders belonging to a buyer,
@@ -52,9 +71,9 @@ func (r *OrderRepository) ListByBuyer(
 		SELECT
 			orders.id,
 			orders.buyer_id,
-			orders.product_id,
-			orders.quantity,
-			orders.total_price,
+			order_items.product_id,
+			order_items.quantity,
+			order_items.total_price,
 			orders.status,
 			orders.created_at,
 			products.name,
@@ -64,8 +83,8 @@ func (r *OrderRepository) ListByBuyer(
 				''
 			) AS seller_name
 		FROM orders
-		JOIN products
-			ON products.id = orders.product_id
+		JOIN order_items ON order_items.order_id = orders.id
+		JOIN products ON products.id = order_items.product_id
 		LEFT JOIN users seller_user
 			ON products.owner_type = 'user'
 			AND seller_user.id = products.owner_id
@@ -124,16 +143,16 @@ func (r *OrderRepository) ListSalesBySeller(
 		SELECT
 			orders.id,
 			orders.buyer_id,
-			orders.product_id,
-			orders.quantity,
-			orders.total_price,
+			order_items.product_id,
+			order_items.quantity,
+			order_items.total_price,
 			orders.status,
 			orders.created_at,
 			products.name,
 			buyer.full_name
 		FROM orders
-		JOIN products
-			ON products.id = orders.product_id
+		JOIN order_items ON order_items.order_id = orders.id
+		JOIN products ON products.id = order_items.product_id
 		JOIN users buyer
 			ON buyer.id = orders.buyer_id
 		WHERE products.owner_type = $1

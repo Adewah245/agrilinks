@@ -12,7 +12,7 @@
 
     <title>
         {{if .Conversation}}
-            {{.Conversation.Name}}
+            {{.Conversation.Title}}
         {{else}}
             Chat
         {{end}}
@@ -133,9 +133,9 @@
 
                 <h2 class="chat-heading">
 
-                    {{if eq .Conversation.Type "group"}}
+                    {{if eq .Conversation.ConversationType "group"}}
 
-                        {{.Conversation.Name}}
+                        {{.Conversation.Title}}
 
                     {{else}}
 
@@ -183,7 +183,7 @@
 
                 <span class="chat-type">
 
-                    {{if eq .Conversation.Type "group"}}
+                    {{if eq .Conversation.ConversationType "group"}}
 
                         Group conversation
 
@@ -216,7 +216,7 @@
          GROUP MEMBERS
          ============================================================ -->
 
-    {{if eq .Conversation.Type "group"}}
+    {{if eq .Conversation.ConversationType "group"}}
 
     <section
         class="members-section"

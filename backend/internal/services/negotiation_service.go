@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -173,8 +174,8 @@ func (s *NegotiationService) StartNegotiation(
 		NegotiationID: negotiation.ID,
 		SenderID:      buyerID,
 		MessageType:   "offer",
-		OfferPrice:    offerPrice,
-		Message:       message,
+		OfferPrice:    float64Pointer(offerPrice),
+		Message:       stringPointer(message),
 		OfferStatus:   "pending",
 	}
 
@@ -264,8 +265,7 @@ func (s *NegotiationService) SendMessage(
 		NegotiationID: negotiationID,
 		SenderID:      senderID,
 		MessageType:   "message",
-		OfferPrice:    0,
-		Message:       message,
+		Message:       stringPointer(message),
 		OfferStatus:   "none",
 	}
 
@@ -370,8 +370,8 @@ func (s *NegotiationService) SendOffer(
 		NegotiationID: negotiationID,
 		SenderID:      senderID,
 		MessageType:   "offer",
-		OfferPrice:    offerPrice,
-		Message:       message,
+		OfferPrice:    float64Pointer(offerPrice),
+		Message:       stringPointer(message),
 		OfferStatus:   "pending",
 	}
 
@@ -537,9 +537,13 @@ func (s *NegotiationService) Accept(
 	// Add the agreed deal to the buyer's cart before finalizing
 	// the negotiation. This prevents an accepted negotiation from
 	// being finalized when the cart operation cannot succeed.
+	if offer.OfferPrice == nil {
+		return errors.New("offer price is missing")
+	}
+
 	if err := s.cartService.AddFromNegotiation(
 		negotiation,
-		offer.OfferPrice,
+		*offer.OfferPrice,
 	); err != nil {
 		return err
 	}
@@ -568,10 +572,10 @@ func (s *NegotiationService) Accept(
 				EventType: "negotiation_accepted",
 				ProductID: &productID,
 				UserID:    &userID,
-				Metadata: fmt.Sprintf(
+				Metadata: json.RawMessage(fmt.Sprintf(
 					`{"quantity":%g}`,
 					negotiation.Quantity,
-				),
+				)),
 			},
 		)
 	}
@@ -594,6 +598,8 @@ func (s *NegotiationService) Accept(
 
 	return nil
 }
+
+func float64Pointer(value float64) *float64 { return &value }
 
 // Reject rejects one specific pending offer.
 //

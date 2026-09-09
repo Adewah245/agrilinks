@@ -417,7 +417,7 @@
                 <a
                     href="/chat/view?id={{.ID}}"
                     class="conversation-card"
-                    {{if and (eq .Type "private") (gt .OtherUserID 0)}}
+                    {{if and (eq .ConversationType "private") (gt .OtherUserID 0)}}
                         data-user-id="{{.OtherUserID}}"
                     {{end}}
                 >
@@ -428,7 +428,7 @@
 
                     <div class="conversation-icon">
 
-                        {{if eq .Type "group"}}
+                        {{if eq .ConversationType "group"}}
 
                             <span
                                 class="group-avatar"
@@ -471,7 +471,7 @@
 
                         <h3>
 
-                            {{if eq .Type "private"}}
+                            {{if eq .ConversationType "private"}}
 
                                 {{if .OtherName}}
                                     {{.OtherName}}
@@ -479,9 +479,9 @@
                                     Private Chat
                                 {{end}}
 
-                            {{else if .Name}}
+                            {{else if .Title}}
 
-                                {{.Name}}
+                                {{.Title}}
 
                             {{else}}
 
@@ -494,7 +494,7 @@
 
                         <p>
 
-                            {{if eq .Type "group"}}
+                            {{if eq .ConversationType "group"}}
 
                                 Group conversation
 

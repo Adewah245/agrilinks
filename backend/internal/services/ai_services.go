@@ -9,11 +9,13 @@ import (
 	"backend/internal/models"
 	"backend/internal/repository"
 )
+
 // AIProvider defines the contract that an AI provider must implement
 // to analyze agricultural requests.
 type AIProvider interface {
 	Analyze(request models.AIRequest) (*models.DiagnosisResult, error)
 }
+
 // AIService coordinates agricultural diagnosis requests between
 // the application, AI provider, and diagnosis repository.
 type AIService struct {
@@ -64,10 +66,10 @@ func (s *AIService) Diagnose(
 	}
 
 	diagnosis := &models.Diagnosis{
-		UserID:      userID,
-		Category:    request.Category,
-		Description: request.Description,
-		Result:      aiResult.Result,
+		UserID:   userID,
+		Category: stringPointer(request.Category),
+		Symptoms: stringPointer(request.Description),
+		Result:   stringPointer(aiResult.Result),
 	}
 
 	dbStart := time.Now()
@@ -81,6 +83,8 @@ func (s *AIService) Diagnose(
 
 	return diagnosis, nil
 }
+
+func stringPointer(value string) *string { return &value }
 
 // DeleteDiagnosis deletes a diagnosis belonging to the specified user.
 func (s *AIService) DeleteDiagnosis(

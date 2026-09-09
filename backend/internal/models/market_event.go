@@ -35,6 +35,54 @@ type MarketEvent struct {
 	CreatedAt time.Time       `json:"created_at"`
 }
 
+// ProduceDemandSummary is the dashboard projection built from marketplace
+// events, products, negotiations, and external price data. It is not a table;
+// the repository populates it from the schema-backed aggregate queries.
+type ProduceDemandSummary struct {
+	ProduceType               string  `json:"produce_type"`
+	Views                     int     `json:"views"`
+	CartAdds                  int     `json:"cart_adds"`
+	Negotiations              int     `json:"negotiations"`
+	Orders                    int     `json:"orders"`
+	UnitsOrdered              float64 `json:"units_ordered"`
+	UnitsAdded                float64 `json:"units_added"`
+	CurrentListings           int     `json:"current_listings"`
+	Searches                  int     `json:"searches"`
+	TrendPercent              float64 `json:"trend_percent"`
+	Activity                  string  `json:"activity"`
+	DemandScore               float64 `json:"demand_score"`
+	ComparisonLocation        string  `json:"comparison_location"`
+	ComparisonScope           string  `json:"comparison_scope"`
+	LocalListings             int     `json:"local_listings"`
+	LocalPriceMin             float64 `json:"local_price_min"`
+	LocalPriceMedian          float64 `json:"local_price_median"`
+	LocalPriceMax             float64 `json:"local_price_max"`
+	StateListings             int     `json:"state_listings"`
+	StatePriceMedian          float64 `json:"state_price_median"`
+	NearbyListings            int     `json:"nearby_listings"`
+	NearbyPriceMedian         float64 `json:"nearby_price_median"`
+	NationalListings          int     `json:"national_listings"`
+	NationalPriceMedian       float64 `json:"national_price_median"`
+	ExternalListings          int     `json:"external_listings"`
+	ExternalPriceMedian       float64 `json:"external_price_median"`
+	FarmerPrice               float64 `json:"farmer_price"`
+	PriceAvailable            bool    `json:"price_available"`
+	ExternalPriceAvailable    bool    `json:"external_price_available"`
+	PriceDifferencePercent    float64 `json:"price_difference_percent"`
+	PricePosition             string  `json:"price_position"`
+	Recommendation            string  `json:"recommendation"`
+	NegotiationsActive        int     `json:"negotiations_active"`
+	NegotiationsAccepted      int     `json:"negotiations_accepted"`
+	NegotiationsRejected      int     `json:"negotiations_rejected"`
+	NegotiatedUnits           float64 `json:"negotiated_units"`
+	AverageOfferPrice         float64 `json:"average_offer_price"`
+	SellThroughRate           float64 `json:"sell_through_rate"`
+	TimeToFirstOrderHours     float64 `json:"time_to_first_order_hours"`
+	TimeToSellOutHours        float64 `json:"time_to_sell_out_hours"`
+	LifecycleDataAvailable    bool    `json:"lifecycle_data_available"`
+	NegotiationConversionRate float64 `json:"negotiation_conversion_rate"`
+}
+
 // NewMarketEvent creates a market event with an empty JSON object
 // when no additional metadata is supplied.
 func NewMarketEvent(eventType string) *MarketEvent {

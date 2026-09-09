@@ -46,6 +46,10 @@ type Negotiation struct {
 	SellerName     string
 	BuyerPhotoURL  string
 	SellerPhotoURL string
+	// Owner fields are derived from the related product for authorization and
+	// display; they are not columns on negotiations.
+	OwnerType string
+	OwnerID   int
 }
 
 // TimeLeft returns the amount of time remaining before the negotiation expires.

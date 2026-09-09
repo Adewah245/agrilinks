@@ -28,6 +28,16 @@ type Storage struct {
 	product *services.ProductService
 }
 
+// communityID accepts the numeric community identifier used by the current
+// schema. Older forms may submit a name; in that case no community is stored.
+func communityID(value string) *int {
+	id, err := strconv.Atoi(strings.TrimSpace(value))
+	if err != nil || id <= 0 {
+		return nil
+	}
+	return &id
+}
+
 // NewStorageHandler creates a new Storage handler.
 func NewStorageHandler(product *services.ProductService) *Storage {
 	return &Storage{
@@ -367,7 +377,7 @@ func (h *Storage) createProduct(
 		price,
 		nil,
 		nil,
-		community,
+		communityID(community),
 		imageURLs,
 		latitude,
 		longitude,
@@ -531,7 +541,7 @@ func (h *Storage) updateProduct(
 		price,
 		nil,
 		nil,
-		community,
+		communityID(community),
 		imageURLs,
 		latitude,
 		longitude,

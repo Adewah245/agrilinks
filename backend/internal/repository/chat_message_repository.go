@@ -81,9 +81,10 @@ func (r *ChatMessageRepository) Create(
 		INSERT INTO chat_messages (
 			conversation_id,
 			sender_id,
+			message_type,
 			message
 		)
-		VALUES ($1, $2, $3)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at
 	`
 
@@ -91,6 +92,7 @@ func (r *ChatMessageRepository) Create(
 		query,
 		message.ConversationID,
 		message.SenderID,
+		message.MessageType,
 		message.Message,
 	).Scan(
 		&message.ID,
@@ -123,7 +125,11 @@ func (r *ChatMessageRepository) GetByID(
 			id,
 			conversation_id,
 			sender_id,
+			message_type,
 			message,
+			media_url,
+			is_edited,
+			edited_at,
 			created_at
 		FROM chat_messages
 		WHERE id = $1
@@ -138,7 +144,11 @@ func (r *ChatMessageRepository) GetByID(
 		&message.ID,
 		&message.ConversationID,
 		&message.SenderID,
+		&message.MessageType,
 		&message.Message,
+		&message.MediaURL,
+		&message.IsEdited,
+		&message.EditedAt,
 		&message.CreatedAt,
 	)
 
@@ -183,16 +193,14 @@ func (r *ChatMessageRepository) ListByConversation(
 			m.id,
 			m.conversation_id,
 			m.sender_id,
+			m.message_type,
 			m.message,
+			m.media_url,
+			m.is_edited,
+			m.edited_at,
 			m.created_at,
 			u.full_name,
-			EXISTS (
-				SELECT 1
-				FROM conversation_members receipt
-				WHERE receipt.conversation_id = m.conversation_id
-				  AND receipt.user_id <> m.sender_id
-				  AND receipt.last_read_at >= m.created_at
-			) AS seen
+			FALSE AS seen
 		FROM chat_messages m
 		JOIN users u
 			ON u.id = m.sender_id
@@ -215,7 +223,11 @@ func (r *ChatMessageRepository) ListByConversation(
 			&message.ID,
 			&message.ConversationID,
 			&message.SenderID,
+			&message.MessageType,
 			&message.Message,
+			&message.MediaURL,
+			&message.IsEdited,
+			&message.EditedAt,
 			&message.CreatedAt,
 			&message.SenderName,
 			&message.Seen,
@@ -232,6 +244,7 @@ func (r *ChatMessageRepository) ListByConversation(
 
 	return messages, nil
 }
+
 // ============================================================
 // DELETE MESSAGE
 // ============================================================

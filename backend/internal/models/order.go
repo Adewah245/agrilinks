@@ -20,7 +20,12 @@ type Order struct {
 	Items []OrderItem
 
 	// Display information populated by repository queries.
-	BuyerName string
+	BuyerName   string
+	ProductID   int
+	Quantity    float64
+	TotalPrice  float64
+	ProductName string
+	SellerName  string
 
 	// Timestamps.
 	CreatedAt time.Time

@@ -15,7 +15,6 @@ import (
 // - Checks whether a user belongs to a conversation.
 // - Gets members of a conversation.
 // - Counts members in a conversation.
-// - Tracks when a user last read a conversation.
 //
 // IMPORTANT:
 //
@@ -320,35 +319,3 @@ func (r *ConversationMemberRepository) CountMembers(
 }
 
 // ============================================================
-// MARK READ
-//
-// Records the last time a user read a conversation.
-//
-// This is used for:
-//
-// - Unread message counts
-// - Read status
-// - Conversation notifications
-//
-// Example:
-//
-// James opens Conversation 10.
-//
-// last_read_at becomes the current time.
-// ============================================================
-
-// MarkRead records the time when a user last read a conversation.
-func (r *ConversationMemberRepository) MarkRead(
-	conversationID,
-	userID int,
-) error {
-
-	_, err := r.db.Exec(`
-		UPDATE conversation_members
-		SET last_read_at = CURRENT_TIMESTAMP
-		WHERE conversation_id = $1
-		AND user_id = $2
-	`, conversationID, userID)
-
-	return err
-}

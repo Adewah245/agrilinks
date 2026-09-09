@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -219,8 +220,7 @@ func (h *Marketplace) record(
 			EventType: eventType,
 			ProductID: productID,
 			UserID:    &uid,
-			SessionID: "",
-			Metadata:  meta,
+			Metadata:  json.RawMessage(meta),
 		},
 	)
 }

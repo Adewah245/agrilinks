@@ -71,8 +71,8 @@ func (r *ConversationRepository) Create(
 
 	query := `
 		INSERT INTO conversations (
-			name,
-			type,
+			title,
+			conversation_type,
 			created_by
 		)
 		VALUES ($1, $2, $3)
@@ -81,8 +81,8 @@ func (r *ConversationRepository) Create(
 
 	return r.db.QueryRow(
 		query,
-		conversation.Name,
-		conversation.Type,
+		conversation.Title,
+		conversation.ConversationType,
 		conversation.CreatedBy,
 	).Scan(
 		&conversation.ID,
@@ -112,8 +112,8 @@ func (r *ConversationRepository) GetByID(
 	query := `
 		SELECT
 			id,
-			name,
-			type,
+			title,
+			conversation_type,
 			created_by,
 			created_at,
 			updated_at
@@ -128,8 +128,8 @@ func (r *ConversationRepository) GetByID(
 		conversationID,
 	).Scan(
 		&conversation.ID,
-		&conversation.Name,
-		&conversation.Type,
+		&conversation.Title,
+		&conversation.ConversationType,
 		&conversation.CreatedBy,
 		&conversation.CreatedAt,
 		&conversation.UpdatedAt,
@@ -149,15 +149,15 @@ func (r *ConversationRepository) GetByID(
 // FindPrivateBetween returns the existing one-to-one chat for two users.
 func (r *ConversationRepository) FindPrivateBetween(firstUserID, secondUserID int) (*models.Conversation, error) {
 	query := `
-		SELECT c.id, c.name, c.type, c.created_by, c.created_at, c.updated_at
+		SELECT c.id, c.title, c.conversation_type, c.created_by, c.created_at, c.updated_at
 		FROM conversations c
 		JOIN conversation_members first_member ON first_member.conversation_id = c.id AND first_member.user_id = $1
 		JOIN conversation_members second_member ON second_member.conversation_id = c.id AND second_member.user_id = $2
-		WHERE c.type = 'private'
+		WHERE c.conversation_type = 'private'
 		  AND (SELECT COUNT(*) FROM conversation_members cm WHERE cm.conversation_id = c.id) = 2
 		ORDER BY c.id ASC LIMIT 1`
 	var conversation models.Conversation
-	err := r.db.QueryRow(query, firstUserID, secondUserID).Scan(&conversation.ID, &conversation.Name, &conversation.Type, &conversation.CreatedBy, &conversation.CreatedAt, &conversation.UpdatedAt)
+	err := r.db.QueryRow(query, firstUserID, secondUserID).Scan(&conversation.ID, &conversation.Title, &conversation.ConversationType, &conversation.CreatedBy, &conversation.CreatedAt, &conversation.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -194,15 +194,15 @@ func (r *ConversationRepository) ListForUser(
 	query := `
 		SELECT
 			c.id,
-			c.name,
-			COALESCE((SELECT f.full_name FROM conversation_members cm JOIN farmers f ON f.id = cm.user_id WHERE cm.conversation_id = c.id AND cm.user_id <> $1 LIMIT 1), '') AS other_name,
+			c.title,
+			COALESCE((SELECT u.full_name FROM conversation_members cm JOIN users u ON u.id = cm.user_id WHERE cm.conversation_id = c.id AND cm.user_id <> $1 LIMIT 1), '') AS other_name,
 			COALESCE((SELECT cm.user_id FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.user_id <> $1 LIMIT 1), 0) AS other_user_id,
-			COALESCE((SELECT f.photo_url FROM conversation_members cm JOIN farmers f ON f.id = cm.user_id WHERE cm.conversation_id = c.id AND cm.user_id <> $1 LIMIT 1), '') AS other_photo_url,
-			c.type,
+			COALESCE((SELECT u.photo_url FROM conversation_members cm JOIN users u ON u.id = cm.user_id WHERE cm.conversation_id = c.id AND cm.user_id <> $1 LIMIT 1), '') AS other_photo_url,
+			c.conversation_type,
 			c.created_by,
 			c.created_at,
 			c.updated_at
-			, (SELECT COUNT(*) FROM chat_messages msg WHERE msg.conversation_id = c.id AND msg.sender_id <> $1 AND msg.created_at > COALESCE(cm.last_read_at, cm.joined_at)) AS unread_count
+			, 0 AS unread_count
 		FROM conversations c
 		INNER JOIN conversation_members cm
 			ON cm.conversation_id = c.id
@@ -229,11 +229,11 @@ func (r *ConversationRepository) ListForUser(
 
 		err := rows.Scan(
 			&conversation.ID,
-			&conversation.Name,
+			&conversation.Title,
 			&conversation.OtherName,
 			&conversation.OtherUserID,
 			&conversation.OtherPhotoURL,
-			&conversation.Type,
+			&conversation.ConversationType,
 			&conversation.CreatedBy,
 			&conversation.CreatedAt,
 			&conversation.UpdatedAt,

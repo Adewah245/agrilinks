@@ -94,13 +94,13 @@ type DashboardData struct {
 	Weather         models.Weather
 	LatestDiagnosis *models.Diagnosis
 
-	MarketListings        int
-	MarketPriceMin        float64
-	MarketPriceMedian     float64
-	MarketPriceMax        float64
-	MarketHasPrices       bool
-	MarketOrders30        int
-	MarketNegotiations30  int
+	MarketListings       int
+	MarketPriceMin       float64
+	MarketPriceMedian    float64
+	MarketPriceMax       float64
+	MarketHasPrices      bool
+	MarketOrders30       int
+	MarketNegotiations30 int
 
 	Demand               models.ProduceDemandSummary
 	ProduceDemands       []models.ProduceDemandSummary
@@ -785,10 +785,7 @@ func sellerPriorities(
 	var priorities []DashboardPriority
 
 	for _, diagnosis := range diagnoses {
-		text := strings.ToLower(
-			diagnosis.Result + " " +
-				diagnosis.Description,
-		)
+		text := strings.ToLower(diagnosisString(diagnosis.Result) + " " + diagnosisString(diagnosis.Symptoms))
 
 		if strings.Contains(text, "severe") ||
 			strings.Contains(text, "urgent") ||
@@ -952,10 +949,7 @@ func farmHealth(
 	}
 
 	for _, diagnosis := range diagnoses {
-		text := strings.ToLower(
-			diagnosis.Result + " " +
-				diagnosis.Description,
-		)
+		text := strings.ToLower(diagnosisString(diagnosis.Result) + " " + diagnosisString(diagnosis.Symptoms))
 
 		if strings.Contains(text, "severe") ||
 			strings.Contains(text, "urgent") ||
@@ -1001,4 +995,11 @@ func farmHealth(
 			Percent: sales,
 		},
 	}, score, status
+}
+
+func diagnosisString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }

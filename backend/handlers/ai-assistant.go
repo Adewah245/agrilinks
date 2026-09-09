@@ -349,7 +349,7 @@ func (h *AIAssistant) Handler(
 				", " +
 				user.FullName +
 				". I’m Agro-Shield AI, and I’m ready to help you.\n\n" +
-				diagnosis.Result
+				diagnosisText(diagnosis.Result)
 
 		h.render(
 			w,
@@ -365,6 +365,13 @@ func (h *AIAssistant) Handler(
 			http.StatusMethodNotAllowed,
 		)
 	}
+}
+
+func diagnosisText(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 // render loads the authenticated user's diagnosis history and renders

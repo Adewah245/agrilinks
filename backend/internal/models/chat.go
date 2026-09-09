@@ -34,5 +34,8 @@ type ChatMessage struct {
 	IsEdited bool       `json:"is_edited"`
 	EditedAt *time.Time `json:"edited_at,omitempty"`
 
+	// Seen is derived by a repository query when read receipts are available.
+	Seen bool `json:"seen"`
+
 	CreatedAt time.Time `json:"created_at"`
 }

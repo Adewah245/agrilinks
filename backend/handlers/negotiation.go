@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -199,11 +200,11 @@ func (h *Negotiation) StartHandler(
 				EventType: "negotiation_started",
 				ProductID: &pid,
 				UserID:    &uid,
-				Metadata: fmt.Sprintf(
+				Metadata: json.RawMessage(fmt.Sprintf(
 					`{"quantity":%g,"offer_price":%g}`,
 					quantity,
 					price,
-				),
+				)),
 			},
 		)
 	}

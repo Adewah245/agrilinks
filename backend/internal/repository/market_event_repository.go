@@ -1142,7 +1142,7 @@ func calculateSellThrough(
 	}
 
 	rate :=
-		(initial-remaining) *
+		(initial - remaining) *
 			100 /
 			initial
 
@@ -1306,11 +1306,17 @@ func (r *MarketEventRepository) Record(
 		return fmt.Errorf("invalid user id")
 	}
 
-	event.SessionID =
-		strings.TrimSpace(event.SessionID)
+	var sessionID string
+	if event.SessionID != nil {
+		sessionID = strings.TrimSpace(*event.SessionID)
+		if sessionID == "" {
+			event.SessionID = nil
+		} else {
+			event.SessionID = &sessionID
+		}
+	}
 
-	metadata :=
-		strings.TrimSpace(event.Metadata)
+	metadata := strings.TrimSpace(string(event.Metadata))
 
 	if metadata == "" {
 		metadata = "{}"
@@ -1335,7 +1341,7 @@ func (r *MarketEventRepository) Record(
 		event.EventType,
 		event.ProductID,
 		event.UserID,
-		event.SessionID,
+		sessionID,
 		metadata,
 	)
 

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -96,7 +97,7 @@ func (s *CartService) AddFromNegotiation(
 	item := &models.CartItem{
 		BuyerID:       negotiation.BuyerID,
 		ProductID:     negotiation.ProductID,
-		NegotiationID: negotiation.ID,
+		NegotiationID: &negotiation.ID,
 		Quantity:      negotiation.Quantity,
 		PricePerUnit:  agreedPrice,
 		TotalPrice:    negotiation.Quantity * agreedPrice,
@@ -116,10 +117,10 @@ func (s *CartService) AddFromNegotiation(
 				EventType: "cart_item_added",
 				ProductID: &productID,
 				UserID:    &userID,
-				Metadata: fmt.Sprintf(
+				Metadata: json.RawMessage(fmt.Sprintf(
 					`{"quantity":%g}`,
 					item.Quantity,
-				),
+				)),
 			},
 		)
 

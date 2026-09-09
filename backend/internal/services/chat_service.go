@@ -73,9 +73,9 @@ func (s *ChatService) CreateGroup(
 	}
 
 	conversation := &models.Conversation{
-		Name:      name,
-		Type:      "group",
-		CreatedBy: creatorID,
+		Title:            &name,
+		ConversationType: "group",
+		CreatedBy:        &creatorID,
 	}
 
 	if err := s.conversationRepo.Create(
@@ -129,9 +129,8 @@ func (s *ChatService) CreatePrivateChat(
 	}
 
 	conversation := &models.Conversation{
-		Name:      "",
-		Type:      "private",
-		CreatedBy: userID,
+		ConversationType: "private",
+		CreatedBy:        &userID,
 	}
 
 	if err := s.conversationRepo.Create(
@@ -195,7 +194,7 @@ func (s *ChatService) AddMember(
 		return errors.New("conversation not found")
 	}
 
-	if conversation.Type != "group" {
+	if conversation.ConversationType != "group" {
 		return errors.New(
 			"members can only be added to groups",
 		)
@@ -267,21 +266,21 @@ func (s *ChatService) RemoveMember(
 		return errors.New("conversation not found")
 	}
 
-	if conversation.Type != "group" {
+	if conversation.ConversationType != "group" {
 		return errors.New(
 			"members can only be removed from groups",
 		)
 	}
 
 	// Only the group creator can remove members.
-	if conversation.CreatedBy != requesterID {
+	if conversation.CreatedBy == nil || *conversation.CreatedBy != requesterID {
 		return errors.New(
 			"only the group creator can remove members",
 		)
 	}
 
 	// Protect the group creator.
-	if userID == conversation.CreatedBy {
+	if conversation.CreatedBy != nil && userID == *conversation.CreatedBy {
 		return errors.New(
 			"group creator cannot be removed",
 		)
@@ -335,11 +334,11 @@ func (s *ChatService) LeaveGroup(
 		return errors.New("conversation not found")
 	}
 
-	if conversation.Type != "group" {
+	if conversation.ConversationType != "group" {
 		return errors.New("this is not a group")
 	}
 
-	if conversation.CreatedBy == userID {
+	if conversation.CreatedBy != nil && *conversation.CreatedBy == userID {
 		return errors.New(
 			"group creator cannot leave yet",
 		)
@@ -433,7 +432,8 @@ func (s *ChatService) SendMessage(
 	chatMessage := &models.ChatMessage{
 		ConversationID: conversationID,
 		SenderID:       senderID,
-		Message:        message,
+		Message:        &message,
+		MessageType:    "text",
 	}
 
 	if err := s.messageRepo.Create(
@@ -583,13 +583,6 @@ func (s *ChatService) GetMessages(
 		conversationID,
 	)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := s.memberRepo.MarkRead(
-		conversationID,
-		userID,
-	); err != nil {
 		return nil, err
 	}
 

@@ -7,6 +7,8 @@ import (
 	"backend/internal/models"
 )
 
+func diagnosisPointer(value string) *string { return &value }
+
 // TestSellerPrioritiesUrgentFirstAndLimited verifies that urgent
 // seller priorities are placed first and that the dashboard limits
 // the returned priorities to three items.
@@ -25,7 +27,7 @@ func TestSellerPrioritiesUrgentFirstAndLimited(t *testing.T) {
 
 	diagnoses := []models.Diagnosis{
 		{
-			Result: "Severe disease detected",
+			Result: diagnosisPointer("Severe disease detected"),
 		},
 	}
 
@@ -98,7 +100,7 @@ func TestFarmHealthUrgentDiagnosis(t *testing.T) {
 		data,
 		[]models.Diagnosis{
 			{
-				Description: "Urgent treatment required",
+				Symptoms: diagnosisPointer("Urgent treatment required"),
 			},
 		},
 	)
