@@ -37,6 +37,8 @@ type Container struct {
 	Notification *services.NotificationService
 	Chat         *services.ChatService
 	Learning     *services.LearningService
+	Payment      *services.PaymentService
+	Delivery     *services.DeliveryService
 
 	// --------------------------------------------------------
 	// REPOSITORIES USED DIRECTLY BY THE APPLICATION
@@ -63,6 +65,8 @@ func NewContainer(
 	notificationRepo *repository.NotificationRepository,
 	marketEventRepo *repository.MarketEventRepository,
 	learningRepo *repository.LearningRepository,
+	paymentRepo *repository.PaymentRepository,
+	deliveryRepo *repository.DeliveryRepository,
 
 	// ========================================================
 	// CHAT REPOSITORIES
@@ -221,6 +225,8 @@ func NewContainer(
 		// ----------------------------------------------------
 
 		Learning: learningService,
+		Payment:  services.NewPaymentService(paymentRepo),
+		Delivery: services.NewDeliveryService(deliveryRepo),
 
 		// ----------------------------------------------------
 		// MARKET EVENTS

@@ -551,6 +551,15 @@ func RegisterRoutes(container *app.Container) {
 	)
 
 	// ========================================================
+	// PAYMENTS
+	// ========================================================
+
+	paymentHandler := handlers.NewPaymentHandler(container.Payment)
+	http.HandleFunc("/payments", middleware.OnlyPath("/payments", middleware.RequireAuth(container.UserRepo, paymentHandler.Handler)))
+	deliveryHandler := handlers.NewDeliveryHandler(container.Delivery)
+	http.HandleFunc("/deliveries", middleware.OnlyPath("/deliveries", middleware.OnlyGet(middleware.RequireAuth(container.UserRepo, deliveryHandler.Handler))))
+
+	// ========================================================
 	// AI ASSISTANT
 	// ========================================================
 

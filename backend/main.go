@@ -232,6 +232,9 @@ func main() {
 	learningRepo :=
 		repository.NewLearningRepository(db)
 
+	paymentRepo := repository.NewPaymentRepository(db)
+	deliveryRepo := repository.NewDeliveryRepository(db)
+
 	// ============================================================
 	// CHAT REPOSITORIES
 	//
@@ -324,6 +327,8 @@ func main() {
 		notificationRepo,
 		marketEventRepo,
 		learningRepo,
+		paymentRepo,
+		deliveryRepo,
 
 		// --------------------------------------------------------
 		// CHAT REPOSITORIES
