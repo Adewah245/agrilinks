@@ -3,13 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"backend/internal/models"
 	"backend/internal/services"
+	"backend/middleware"
+	"backend/render"
 )
 
 type LearningHandler struct {
@@ -570,35 +571,13 @@ type LearningJourneyData struct {
 // ============================================================
 
 // getLearningUserID gets the logged-in user ID.
-//
-// IMPORTANT:
-// This function assumes your authentication middleware stores
-// the user ID in the request context under "user_id".
-//
-// If Agro-Shield currently uses a different context key,
-// we will replace this helper when we connect the routes.
 func getLearningUserID(r *http.Request) (int, bool) {
-	value := r.Context().Value("user_id")
-
-	switch v := value.(type) {
-	case int:
-		if v > 0 {
-			return v, true
-		}
-
-	case int64:
-		if v > 0 {
-			return int(v), true
-		}
-
-	case string:
-		id, err := strconv.Atoi(v)
-		if err == nil && id > 0 {
-			return id, true
-		}
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil || user.ID <= 0 {
+		return 0, false
 	}
 
-	return 0, false
+	return user.ID, true
 }
 
 // getJourneyForUser makes sure the requested journey belongs
@@ -630,19 +609,7 @@ func (h *LearningHandler) renderTemplate(
 	name string,
 	data interface{},
 ) {
-	tmpl, err := template.ParseFiles(
-		"frontend/pages/" + name,
-	)
-	if err != nil {
-		http.Error(
-			w,
-			"failed to load learning page",
-			http.StatusInternalServerError,
-		)
-		return
-	}
-
-	if err := tmpl.Execute(w, data); err != nil {
+	if err := render.RenderTemplates(w, name, data); err != nil {
 		http.Error(
 			w,
 			"failed to render learning page",

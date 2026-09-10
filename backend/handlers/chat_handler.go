@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"html/template"
 	"log"
 	"net/http"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"backend/internal/repository"
 	"backend/internal/services"
 	"backend/middleware"
+	"backend/render"
 )
 
 // ============================================================
@@ -1021,30 +1021,13 @@ func (h *ChatHandler) renderList(
 }
 
 // ============================================================
-// TEMPLATE RENDERER
-//
-// We use ParseFiles here because this matches the existing
-// Agro-Shield frontend structure:
-//
-// ../frontend/pages/
-// ============================================================
-
-// renderTemplate parses and executes an Agro-Shield HTML template.
+// renderTemplate renders a chat page through the shared renderer. This keeps
+// template paths independent of the process working directory and prevents a
+// partial response when template execution fails.
 func (h *ChatHandler) renderTemplate(
 	w http.ResponseWriter,
 	templateName string,
 	data interface{},
 ) error {
-	tmpl, err := template.ParseFiles(
-		"../frontend/pages/" + templateName,
-	)
-
-	if err != nil {
-		return err
-	}
-
-	return tmpl.Execute(
-		w,
-		data,
-	)
+	return render.RenderTemplates(w, templateName, data)
 }

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learning Journey | Agro-Shield</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <main class="dashboard">
+    <p><a href="/learn">← All learning journeys</a></p>
+    <h1>{{with .Journey.FarmingType}}{{.Name}}{{else}}Learning journey{{end}}</h1>
+    <p>Stage: {{.Journey.CurrentStage}} · Readiness: {{.Journey.ReadinessScore}}% · Status: {{.Journey.Status}}</p>
+
+    <section class="panel">
+      <h2>Preparation checklist</h2>
+      {{if .Checkpoints}}
+        <ul>
+        {{range .Checkpoints}}
+          <li><strong>{{.Title}}</strong> — {{.Status}} ({{.Progress}}%){{if .Description}}: {{.Description}}{{end}}</li>
+        {{end}}
+        </ul>
+      {{else}}
+        <p>No checkpoints have been added yet.</p>
+      {{end}}
+    </section>
+
+    <section class="panel">
+      <h2>Learning guidance</h2>
+      {{if .Messages}}
+        {{range .Messages}}
+          <article><strong>{{.SenderType}}</strong><p>{{.Content}}</p></article>
+        {{end}}
+      {{else}}
+        <p>Your guidance will appear here as you progress.</p>
+      {{end}}
+    </section>
+  </main>
+</body>
+</html>

@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"html/template"
 	"net/http"
 	"strconv"
 
 	"backend/internal/services"
 	"backend/middleware"
+	"backend/render"
 )
 
 // NotificationHandler handles notification-related HTTP requests.
@@ -88,21 +88,8 @@ func (h *NotificationHandler) NotificationsHandler(
 		UnreadCount:   unreadCount,
 	}
 
-	tmpl, err := template.ParseFiles(
-		"../frontend/pages/notification.html",
-	)
-	if err != nil {
-		http.Error(
-			w,
-			"Failed to load notifications page",
-			http.StatusInternalServerError,
-		)
-		return
-	}
-
-	if err := tmpl.Execute(w, data); err != nil {
-		// The response may already have been partially written,
-		// so we do not attempt another http.Error response here.
+	if err := render.RenderTemplates(w, "notification.html", data); err != nil {
+		http.Error(w, "Failed to render notifications page", http.StatusInternalServerError)
 		return
 	}
 }
