@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -136,14 +137,24 @@ func saveOneUploadedFile(
 	}
 
 	// --------------------------------------------------------
-	// Validate file type
+	// Read and validate file type
 	// --------------------------------------------------------
 
-	contentType := strings.ToLower(
-		strings.TrimSpace(
-			header.Header.Get("Content-Type"),
-		),
-	)
+	// Do not trust the multipart Content-Type header: a browser client
+	// can set it to any value. Read a bounded copy and inspect its bytes.
+	data, err := io.ReadAll(io.LimitReader(file, maxFileSize+1))
+	if err != nil {
+		return "", fmt.Errorf("could not read uploaded file: %w", err)
+	}
+
+	if int64(len(data)) > maxFileSize {
+		return "", fmt.Errorf(
+			"file %q is too large; maximum size is 10 MB",
+			header.Filename,
+		)
+	}
+
+	contentType := strings.ToLower(http.DetectContentType(data))
 
 	allowedTypes := map[string]string{
 		"image/jpeg": ".jpg",
@@ -165,12 +176,16 @@ func saveOneUploadedFile(
 	// Create upload directory
 	// --------------------------------------------------------
 
-	uploadDir := filepath.Join(
-		"frontend",
-		"static",
-		"uploads",
-		cleanSubdir,
-	)
+	frontendDir, err := frontendDirectory()
+	if err != nil {
+		return "", err
+	}
+
+	// /static/ is served from the frontend directory, so files stored
+	// at frontend/uploads are reachable at /static/uploads. Keeping the
+	// filesystem location and returned URL aligned prevents uploads from
+	// appearing to succeed but returning 404 in the browser.
+	uploadDir := filepath.Join(frontendDir, "uploads", cleanSubdir)
 
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
 		return "", fmt.Errorf(
@@ -215,7 +230,7 @@ func saveOneUploadedFile(
 	// Copy uploaded file
 	// --------------------------------------------------------
 
-	if _, err := io.Copy(output, file); err != nil {
+	if _, err := io.Copy(output, bytes.NewReader(data)); err != nil {
 		// Remove a partially written file so that incomplete uploads
 		// are not left inside the uploads directory.
 		_ = os.Remove(destination)
@@ -234,6 +249,20 @@ func saveOneUploadedFile(
 		cleanSubdir +
 		"/" +
 		filename, nil
+}
+
+// frontendDirectory resolves the frontend directory for both supported
+// development commands: running from the repository root and running from
+// backend (the command documented for this project).
+func frontendDirectory() (string, error) {
+	for _, candidate := range []string{"frontend", "../frontend"} {
+		info, err := os.Stat(candidate)
+		if err == nil && info.IsDir() {
+			return candidate, nil
+		}
+	}
+
+	return "", fmt.Errorf("frontend directory not found")
 }
 
 // saveUploadedFile saves a single uploaded image.

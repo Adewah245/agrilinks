@@ -155,6 +155,10 @@ func (h *Storage) StorageHandler(
 			contentType,
 			"multipart/form-data",
 		) {
+			// Product listings may contain several images. Keep the
+			// aggregate request bounded before multipart parsing so a
+			// client cannot force unbounded temporary-file usage.
+			r.Body = http.MaxBytesReader(w, r.Body, 51<<20)
 			if err := r.ParseMultipartForm(10 << 20); err != nil {
 				h.render(
 					w,

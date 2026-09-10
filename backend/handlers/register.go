@@ -71,6 +71,7 @@ func (h *Register) RegisterHandler(
 
 		// Parse multipart form because registration includes
 		// a profile picture upload.
+		r.Body = http.MaxBytesReader(w, r.Body, 11<<20)
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
 			http.Error(
 				w,

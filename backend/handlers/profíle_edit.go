@@ -53,6 +53,7 @@ func (h *ProfileEdit) Handler(w http.ResponseWriter, r *http.Request) {
 	// 3. PARSE FORM
 	// ========================================================
 
+	r.Body = http.MaxBytesReader(w, r.Body, 11<<20)
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		log.Println("form parse error:", err)
 

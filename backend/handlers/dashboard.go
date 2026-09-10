@@ -69,6 +69,11 @@ type DashboardData struct {
 	IsBuyer  bool
 	PhotoURL string
 
+	// FarmingTypes contains the authenticated user's selected farming
+	// activities. It is used by the seller dashboard to personalise the
+	// farming activity sections.
+	FarmingTypes []string
+
 	// Seller statistics.
 	ProduceInStorage     int
 	StorageCrops         []models.Product
@@ -159,6 +164,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 			data.Role = user.Role
 			data.IsBuyer = user.IsBuyer()
 			data.PhotoURL = user.PhotoURL
+			data.FarmingTypes = user.FarmingTypes
 
 			// -------------------------------------------------
 			// WEATHER

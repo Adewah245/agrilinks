@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"os"
 
 	"backend/handlers"
 	app "backend/internal"
@@ -32,11 +33,16 @@ func RegisterRoutes(container *app.Container) {
 	// STATIC FILES
 	// ========================================================
 
+	frontendDir := "../frontend"
+	if _, err := os.Stat(frontendDir); err != nil {
+		frontendDir = "frontend"
+	}
+
 	http.Handle(
 		"/static/",
 		http.StripPrefix(
 			"/static/",
-			http.FileServer(http.Dir("../frontend")),
+			http.FileServer(http.Dir(frontendDir)),
 		),
 	)
 

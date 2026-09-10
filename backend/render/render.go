@@ -1,6 +1,7 @@
 package render
 
 import (
+	"bytes"
 	"html/template"
 	"math"
 	"net/http"
@@ -55,5 +56,15 @@ func loadTemplates() *template.Template {
 var TMPL = loadTemplates()
 
 func RenderTemplates(w http.ResponseWriter, name string, data any) error {
-	return TMPL.ExecuteTemplate(w, name, data)
+	// Render before writing to the HTTP response. A template error after a
+	// partial write prevents callers from returning a correct error response
+	// and produces a "superfluous response.WriteHeader" server warning.
+	var output bytes.Buffer
+	if err := TMPL.ExecuteTemplate(&output, name, data); err != nil {
+		return err
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, err := w.Write(output.Bytes())
+	return err
 }
