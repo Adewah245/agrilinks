@@ -172,9 +172,12 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 			if h.weather != nil {
 				var err error
 
-				data.Weather, err = h.weather.Current(
+				data.Weather, err = h.weather.CurrentForLocation(
 					r.Context(),
 					user.Location,
+					user.LGA,
+					user.State,
+					user.Country,
 				)
 
 				if err != nil {

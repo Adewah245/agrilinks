@@ -124,6 +124,98 @@ func (s *WeatherService) Current(
 	return weather, nil
 }
 
+// CurrentForLocation retrieves weather using the most specific known
+// geographic value first, then falls back to the user's LGA and state.
+// Community names are often not indexed by third-party geocoders, while the
+// structured Nigerian location fields provide a useful, less precise fallback.
+func (s *WeatherService) CurrentForLocation(
+	ctx context.Context,
+	location string,
+	lga string,
+	state string,
+	country string,
+) (models.Weather, error) {
+	var lastErr error
+
+	for _, candidate := range weatherLocationCandidates(
+		location,
+		lga,
+		state,
+		country,
+	) {
+		weather, err := s.Current(ctx, candidate)
+		if err == nil {
+			return weather, nil
+		}
+
+		lastErr = err
+	}
+
+	if lastErr != nil {
+		return models.Weather{}, lastErr
+	}
+
+	return models.Weather{}, errors.New("weather location is required")
+}
+
+// weatherLocationCandidates returns unique, increasingly broader queries for
+// a user's structured location. The source text is retained as the first
+// choice, because it is the most precise when a provider recognizes it.
+func weatherLocationCandidates(
+	location string,
+	lga string,
+	state string,
+	country string,
+) []string {
+	location = strings.TrimSpace(location)
+	lga = strings.TrimSpace(lga)
+	state = strings.TrimSpace(state)
+	country = strings.TrimSpace(country)
+
+	if country == "" {
+		country = "Nigeria"
+	}
+
+	parts := [][]string{
+		{location},
+		{location, lga, state, country},
+		{lga, state, country},
+		{state, country},
+	}
+
+	seen := make(map[string]struct{})
+	candidates := make([]string, 0, len(parts))
+
+	for _, fields := range parts {
+		filtered := make([]string, 0, len(fields))
+		fieldSeen := make(map[string]struct{})
+		for _, field := range fields {
+			if field = strings.TrimSpace(field); field != "" {
+				fieldKey := normalizeWeatherLocation(field)
+				if _, exists := fieldSeen[fieldKey]; exists {
+					continue
+				}
+				fieldSeen[fieldKey] = struct{}{}
+				filtered = append(filtered, field)
+			}
+		}
+
+		candidate := strings.Join(filtered, ", ")
+		key := normalizeWeatherLocation(candidate)
+		if candidate == "" || key == "" {
+			continue
+		}
+		if _, exists := seen[key]; exists {
+			continue
+		}
+
+		seen[key] = struct{}{}
+		candidates = append(candidates, candidate)
+	}
+
+	return candidates
+}
+
 // cached retrieves weather data from the in-memory cache.
 //
 // The read lock allows multiple weather requests to read the
