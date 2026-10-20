@@ -65,6 +65,25 @@ func (p *Product) IsInactive() bool {
 	return p.Status == "inactive"
 }
 
+// PrimaryImageURL returns the image that represents this product in
+// marketplace and inventory lists. The primary image is preferred, with the
+// first image used as a fallback for older records that have no primary flag.
+func (p Product) PrimaryImageURL() string {
+	for _, image := range p.Images {
+		if image.IsPrimary && image.ImageURL != "" {
+			return image.ImageURL
+		}
+	}
+
+	for _, image := range p.Images {
+		if image.ImageURL != "" {
+			return image.ImageURL
+		}
+	}
+
+	return ""
+}
+
 // ProductImage represents one picture belonging to a product.
 type ProductImage struct {
 	ID        int

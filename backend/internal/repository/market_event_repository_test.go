@@ -87,3 +87,22 @@ func TestViewWindowDefaults(t *testing.T) {
 		t.Fatal("view deduplication window must be positive")
 	}
 }
+
+func TestRecentForUserRejectsInvalidUser(t *testing.T) {
+	repo := NewMarketEventRepository(nil)
+
+	if _, err := repo.RecentForUser(0, 5); err == nil {
+		t.Fatal("expected invalid user to be rejected")
+	}
+}
+
+func TestUpsertLGANeighborValidation(t *testing.T) {
+	repo := NewMarketEventRepository(nil)
+
+	if err := repo.UpsertLGANeighbor("", "Makurdi", "Guma"); err == nil {
+		t.Fatal("expected missing state to be rejected")
+	}
+	if err := repo.UpsertLGANeighbor("Benue", "Makurdi", "Makurdi"); err == nil {
+		t.Fatal("expected self-neighbor to be rejected")
+	}
+}

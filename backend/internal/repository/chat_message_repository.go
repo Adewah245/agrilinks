@@ -82,9 +82,10 @@ func (r *ChatMessageRepository) Create(
 			conversation_id,
 			sender_id,
 			message_type,
-			message
+			message,
+			media_url
 		)
-		VALUES ($1, $2, $3, $4)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at
 	`
 
@@ -94,6 +95,7 @@ func (r *ChatMessageRepository) Create(
 		message.SenderID,
 		message.MessageType,
 		message.Message,
+		message.MediaURL,
 	).Scan(
 		&message.ID,
 		&message.CreatedAt,
@@ -200,7 +202,13 @@ func (r *ChatMessageRepository) ListByConversation(
 			m.edited_at,
 			m.created_at,
 			u.full_name,
-			FALSE AS seen
+			EXISTS (
+				SELECT 1
+				FROM conversation_members receipt
+				WHERE receipt.conversation_id = m.conversation_id
+				  AND receipt.user_id <> m.sender_id
+				  AND receipt.last_read_at >= m.created_at
+			) AS seen
 		FROM chat_messages m
 		JOIN users u
 			ON u.id = m.sender_id

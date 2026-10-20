@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"backend/internal/middleware"
 	"backend/internal/models"
@@ -42,6 +43,7 @@ type MarketplacePageData struct {
 	CurrentUserID int
 	Message       string
 	Error         string
+	SearchTerm    string
 }
 
 // MarketplaceHandler renders the marketplace and processes marketplace
@@ -85,10 +87,13 @@ func (h *Marketplace) MarketplaceHandler(
 		// Marketplace search.
 		if r.FormValue("action") == "search" {
 			uid := user.ID
+			searchTerm := strings.TrimSpace(
+				r.FormValue("search_term"),
+			)
 
 			if h.events != nil {
 				_ = h.events.RecordSearch(
-					r.FormValue("search_term"),
+					searchTerm,
 					r.FormValue("normalized_produce"),
 					user.Location,
 					&uid,
@@ -96,12 +101,13 @@ func (h *Marketplace) MarketplaceHandler(
 				)
 			}
 
-			h.render(
+			h.renderWithSearch(
 				w,
 				user.IsBuyer(),
 				user.ID,
 				"",
 				"",
+				searchTerm,
 			)
 			return
 		}
@@ -233,12 +239,38 @@ func (h *Marketplace) render(
 	message string,
 	errMsg string,
 ) {
+	h.renderWithSearch(
+		w,
+		isBuyer,
+		currentUserID,
+		message,
+		errMsg,
+		"",
+	)
+}
+
+// renderWithSearch loads either the complete marketplace or the products that
+// match the buyer's search term, then renders the shared marketplace page.
+func (h *Marketplace) renderWithSearch(
+	w http.ResponseWriter,
+	isBuyer bool,
+	currentUserID int,
+	message string,
+	errMsg string,
+	searchTerm string,
+) {
 	var products []models.Product
+	searchTerm = strings.TrimSpace(searchTerm)
 
 	if h.product != nil {
 		var err error
 
-		products, err = h.product.AvailableProducts()
+		if searchTerm == "" {
+			products, err = h.product.AvailableProducts()
+		} else {
+			products, err = h.product.SearchAvailable(searchTerm)
+		}
+
 		if err != nil {
 			log.Println(
 				"failed to load products:",
@@ -253,6 +285,7 @@ func (h *Marketplace) render(
 		CurrentUserID: currentUserID,
 		Message:       message,
 		Error:         errMsg,
+		SearchTerm:    searchTerm,
 	}
 
 	if err := render.RenderTemplates(

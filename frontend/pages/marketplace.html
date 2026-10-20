@@ -202,6 +202,7 @@
             class="search-box"
             autocomplete="off"
             maxlength="100"
+            value="{{.SearchTerm}}"
         >
 
         <button
@@ -230,10 +231,10 @@
             <!-- =========================
                  PRODUCT IMAGE
             ========================== -->
-            {{if .ImageURL}}
+            {{if .PrimaryImageURL}}
 
             <img
-                src="{{.ImageURL}}"
+                src="{{.PrimaryImageURL}}"
                 alt="{{.Name}}"
                 class="product-image"
                 loading="lazy"
@@ -255,7 +256,7 @@
             ========================== -->
             <p class="price">
 
-                ₦{{money .PricePerUnit}}
+                ₦{{money .Price}}
                 /
                 {{.Unit}}
 
@@ -477,8 +478,13 @@
         <div class="empty-state">
 
             <p>
-                No agricultural products are currently
-                listed for sale.
+                {{if .SearchTerm}}
+                    No available products match
+                    “{{.SearchTerm}}”.
+                {{else}}
+                    No agricultural products are currently
+                    listed for sale.
+                {{end}}
             </p>
 
             {{if not .IsBuyer}}

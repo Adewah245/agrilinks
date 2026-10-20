@@ -3,6 +3,8 @@ package repository
 import (
 	"backend/internal/models"
 	"database/sql"
+	"fmt"
+	"strings"
 )
 
 // ============================================================
@@ -77,8 +79,32 @@ func (r *DiagnosisRepository) Create(d *models.Diagnosis) error {
 	}
 
 	if d == nil {
-		return sql.ErrNoRows
+		return fmt.Errorf("diagnosis cannot be nil")
 	}
+
+	if d.UserID <= 0 {
+		return fmt.Errorf("invalid diagnosis user")
+	}
+
+	if d.FarmingTypeID != nil && *d.FarmingTypeID <= 0 {
+		return fmt.Errorf("invalid diagnosis farming type")
+	}
+
+	if d.Confidence != nil && (*d.Confidence < 0 || *d.Confidence > 1) {
+		return fmt.Errorf("diagnosis confidence must be between 0 and 1")
+	}
+
+	d.Category = normalizeDiagnosisText(d.Category)
+	d.Symptoms = normalizeDiagnosisText(d.Symptoms)
+	d.Result = normalizeDiagnosisText(d.Result)
+
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin diagnosis transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	query := `
 		INSERT INTO diagnoses (
@@ -93,7 +119,7 @@ func (r *DiagnosisRepository) Create(d *models.Diagnosis) error {
 		RETURNING id, created_at, updated_at
 	`
 
-	return r.db.QueryRow(
+	err = tx.QueryRow(
 		query,
 		d.UserID,
 		d.FarmingTypeID,
@@ -106,6 +132,42 @@ func (r *DiagnosisRepository) Create(d *models.Diagnosis) error {
 		&d.CreatedAt,
 		&d.UpdatedAt,
 	)
+	if err != nil {
+		return fmt.Errorf("create diagnosis: %w", err)
+	}
+
+	for i := range d.Media {
+		media := &d.Media[i]
+		if err := normalizeDiagnosisMedia(media); err != nil {
+			return err
+		}
+
+		if err := tx.QueryRow(`
+			INSERT INTO diagnosis_media (
+				diagnosis_id,
+				media_type,
+				media_url,
+				image_name
+			)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id, created_at
+		`,
+			d.ID,
+			media.MediaType,
+			media.MediaURL,
+			media.ImageName,
+		).Scan(&media.ID, &media.CreatedAt); err != nil {
+			return fmt.Errorf("create diagnosis media: %w", err)
+		}
+
+		media.DiagnosisID = d.ID
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit diagnosis: %w", err)
+	}
+
+	return nil
 }
 
 // ============================================================
@@ -126,6 +188,10 @@ func (r *DiagnosisRepository) ListByUser(
 
 	if r == nil || r.db == nil {
 		return nil, sql.ErrConnDone
+	}
+
+	if userID <= 0 {
+		return nil, fmt.Errorf("invalid diagnosis user")
 	}
 
 	query := `
@@ -179,6 +245,13 @@ func (r *DiagnosisRepository) ListByUser(
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("close diagnoses: %w", err)
+	}
+
+	if err := r.attachMedia(list); err != nil {
+		return nil, fmt.Errorf("load diagnosis media: %w", err)
+	}
 
 	return list, nil
 }
@@ -199,6 +272,10 @@ func (r *DiagnosisRepository) GetByIDForUser(
 
 	if r == nil || r.db == nil {
 		return nil, sql.ErrConnDone
+	}
+
+	if diagnosisID <= 0 || userID <= 0 {
+		return nil, fmt.Errorf("invalid diagnosis request")
 	}
 
 	query := `
@@ -239,7 +316,12 @@ func (r *DiagnosisRepository) GetByIDForUser(
 		return nil, err
 	}
 
-	return &d, nil
+	diagnoses := []models.Diagnosis{d}
+	if err := r.attachMedia(diagnoses); err != nil {
+		return nil, fmt.Errorf("load diagnosis media: %w", err)
+	}
+
+	return &diagnoses[0], nil
 }
 
 // ============================================================
@@ -264,6 +346,10 @@ func (r *DiagnosisRepository) CountThisMonth(
 
 	if r == nil || r.db == nil {
 		return 0, sql.ErrConnDone
+	}
+
+	if userID <= 0 {
+		return 0, fmt.Errorf("invalid diagnosis user")
 	}
 
 	query := `
@@ -303,6 +389,10 @@ func (r *DiagnosisRepository) DeleteForUser(
 		return sql.ErrConnDone
 	}
 
+	if diagnosisID <= 0 || userID <= 0 {
+		return fmt.Errorf("invalid diagnosis request")
+	}
+
 	result, err := r.db.Exec(`
 		DELETE FROM diagnoses
 		WHERE id = $1
@@ -324,6 +414,108 @@ func (r *DiagnosisRepository) DeleteForUser(
 	if count == 0 {
 		return sql.ErrNoRows
 	}
+
+	return nil
+}
+
+// attachMedia loads all media for the supplied diagnoses in one query.
+func (r *DiagnosisRepository) attachMedia(diagnoses []models.Diagnosis) error {
+	if len(diagnoses) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, len(diagnoses))
+	args := make([]any, len(diagnoses))
+	positions := make(map[int][]int, len(diagnoses))
+
+	for i := range diagnoses {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = diagnoses[i].ID
+		positions[diagnoses[i].ID] = append(positions[diagnoses[i].ID], i)
+	}
+
+	rows, err := r.db.Query(`
+		SELECT
+			id,
+			diagnosis_id,
+			media_type,
+			media_url,
+			image_name,
+			created_at
+		FROM diagnosis_media
+		WHERE diagnosis_id IN (`+strings.Join(placeholders, ", ")+`)
+		ORDER BY diagnosis_id, created_at ASC, id ASC
+	`, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			media     models.DiagnosisMedia
+			imageName sql.NullString
+		)
+
+		if err := rows.Scan(
+			&media.ID,
+			&media.DiagnosisID,
+			&media.MediaType,
+			&media.MediaURL,
+			&imageName,
+			&media.CreatedAt,
+		); err != nil {
+			return err
+		}
+
+		if imageName.Valid {
+			value := imageName.String
+			media.ImageName = &value
+		}
+
+		for _, index := range positions[media.DiagnosisID] {
+			diagnoses[index].Media = append(diagnoses[index].Media, media)
+		}
+	}
+
+	return rows.Err()
+}
+
+func normalizeDiagnosisText(value *string) *string {
+	if value == nil {
+		return nil
+	}
+
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+
+	return &trimmed
+}
+
+func normalizeDiagnosisMedia(media *models.DiagnosisMedia) error {
+	if media == nil {
+		return fmt.Errorf("diagnosis media cannot be nil")
+	}
+
+	media.MediaType = strings.ToLower(strings.TrimSpace(media.MediaType))
+	if media.MediaType == "" {
+		media.MediaType = "image"
+	}
+
+	switch media.MediaType {
+	case "image", "video", "audio", "document":
+	default:
+		return fmt.Errorf("invalid diagnosis media type: %s", media.MediaType)
+	}
+
+	media.MediaURL = strings.TrimSpace(media.MediaURL)
+	if media.MediaURL == "" {
+		return fmt.Errorf("diagnosis media URL is required")
+	}
+
+	media.ImageName = normalizeDiagnosisText(media.ImageName)
 
 	return nil
 }

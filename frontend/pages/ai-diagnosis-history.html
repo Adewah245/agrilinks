@@ -322,8 +322,8 @@
 
             <article
                 class="diagnosis-card"
-                data-category="{{.Category}}"
-                data-search="{{.Category}} {{.Description}} {{.Result}}"
+                data-category="{{.CategoryText}}"
+                data-search="{{.CategoryText}} {{.SymptomsText}} {{.ResultText}}"
             >
 
 
@@ -340,58 +340,58 @@
                             aria-hidden="true"
                         >
 
-                            {{if eq .Category "Crops"}}
+                            {{if eq .CategoryText "Crops"}}
                             🌾
 
-                            {{else if eq .Category "Livestock"}}
+                            {{else if eq .CategoryText "Livestock"}}
                             🐄
 
-                            {{else if eq .Category "Poultry"}}
+                            {{else if eq .CategoryText "Poultry"}}
                             🐔
 
-                            {{else if eq .Category "Goats"}}
+                            {{else if eq .CategoryText "Goats"}}
                             🐐
 
-                            {{else if eq .Category "Sheep"}}
+                            {{else if eq .CategoryText "Sheep"}}
                             🐑
 
-                            {{else if eq .Category "Cattle"}}
+                            {{else if eq .CategoryText "Cattle"}}
                             🐄
 
-                            {{else if eq .Category "Pigs"}}
+                            {{else if eq .CategoryText "Pigs"}}
                             🐖
 
-                            {{else if eq .Category "Fish"}}
+                            {{else if eq .CategoryText "Fish"}}
                             🐟
 
-                            {{else if eq .Category "Beekeeping"}}
+                            {{else if eq .CategoryText "Beekeeping"}}
                             🐝
 
-                            {{else if eq .Category "Pests/Insects"}}
+                            {{else if eq .CategoryText "Pests/Insects"}}
                             🐛
 
-                            {{else if eq .Category "Plant Problems"}}
+                            {{else if eq .CategoryText "Plant Problems"}}
                             🌱
 
-                            {{else if eq .Category "Animal Health"}}
+                            {{else if eq .CategoryText "Animal Health"}}
                             🩺
 
-                            {{else if eq .Category "Fish Health"}}
+                            {{else if eq .CategoryText "Fish Health"}}
                             🐟
 
-                            {{else if eq .Category "Feed and Nutrition"}}
+                            {{else if eq .CategoryText "Feed and Nutrition"}}
                             🌾
 
-                            {{else if eq .Category "Storage"}}
+                            {{else if eq .CategoryText "Storage"}}
                             🏠
 
-                            {{else if eq .Category "Weather and Climate"}}
+                            {{else if eq .CategoryText "Weather and Climate"}}
                             🌦️
 
-                            {{else if eq .Category "Farm Management"}}
+                            {{else if eq .CategoryText "Farm Management"}}
                             📋
 
-                            {{else if eq .Category "Market and Pricing"}}
+                            {{else if eq .CategoryText "Market and Pricing"}}
                             💰
 
                             {{else}}
@@ -405,7 +405,7 @@
                         <div>
 
                             <h2>
-                                {{.Category}}
+                                {{.CategoryText}}
                             </h2>
 
                             <time
@@ -440,16 +440,16 @@
                         Problem Description
                     </h3>
 
-                    {{if .Description}}
+                    {{if .SymptomsText}}
 
                     <p>
-                        {{.Description}}
+                        {{.SymptomsText}}
                     </p>
 
                     {{else}}
 
                     <p class="empty-description">
-                        No description was provided.
+                        No symptoms were provided.
                     </p>
 
                     {{end}}
@@ -475,7 +475,7 @@
 
                     <div class="result-content">
 
-                        {{.Result}}
+                        {{.ResultText}}
 
                     </div>
 

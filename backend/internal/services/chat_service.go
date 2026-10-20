@@ -466,7 +466,7 @@ func (s *ChatService) SendMessage(
 					member.UserID,
 					"New chat message",
 					"You received a new message in chat.",
-					"chat_message",
+					"message",
 				)
 			}
 		}
@@ -583,6 +583,10 @@ func (s *ChatService) GetMessages(
 		conversationID,
 	)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.memberRepo.MarkRead(conversationID, userID); err != nil {
 		return nil, err
 	}
 

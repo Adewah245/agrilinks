@@ -4,6 +4,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"backend/internal/models"
 	"backend/internal/render"
 )
 
@@ -17,6 +18,13 @@ func TestDashboardTemplateHasAllRequiredDataFields(t *testing.T) {
 		FarmingTypes: []string{"Crop Farming"},
 		HealthMetrics: []HealthMetric{
 			{}, {}, {}, {},
+		},
+		StorageCrops: []models.Product{
+			{
+				Name:   "Maize",
+				Unit:   "kg",
+				Status: "active",
+			},
 		},
 	}
 

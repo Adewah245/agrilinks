@@ -201,8 +201,14 @@ func (r *ConversationRepository) ListForUser(
 			c.conversation_type,
 			c.created_by,
 			c.created_at,
-			c.updated_at
-			, 0 AS unread_count
+			c.updated_at,
+			(
+				SELECT COUNT(*)
+				FROM chat_messages m
+				WHERE m.conversation_id = c.id
+				  AND m.sender_id <> $1
+				  AND m.created_at > cm.last_read_at
+			) AS unread_count
 		FROM conversations c
 		INNER JOIN conversation_members cm
 			ON cm.conversation_id = c.id

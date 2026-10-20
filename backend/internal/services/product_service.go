@@ -249,6 +249,14 @@ func (s *ProductService) AvailableProducts() (
 	return s.repo.ListAvailable()
 }
 
+// SearchAvailable returns available products whose product, seller, or
+// location details match the buyer's search term.
+func (s *ProductService) SearchAvailable(
+	term string,
+) ([]models.Product, error) {
+	return s.repo.SearchAvailable(term)
+}
+
 // ============================================================
 // GET PRODUCT
 // ============================================================

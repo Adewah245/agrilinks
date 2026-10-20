@@ -1647,8 +1647,8 @@
 
                         <h3>
 
-                            {{if .Category}}
-                                {{.Category}}
+                            {{if .CategoryText}}
+                                {{.CategoryText}}
                             {{else}}
                                 Farm health check
                             {{end}}
@@ -1657,7 +1657,7 @@
 
 
                         <p>
-                            {{.Result}}
+                            {{.ResultText}}
                         </p>
 
 
@@ -2408,7 +2408,7 @@
                             aria-hidden="true"
                         >
 
-                            {{if .ListedForSale}}
+                            {{if eq .Status "active"}}
                                 🌾
                             {{else}}
                                 📦
@@ -2426,7 +2426,7 @@
 
                             <span>
 
-                                {{if .ListedForSale}}
+                                {{if eq .Status "active"}}
                                     Listed for sale
                                 {{else}}
                                     Stored stock
@@ -2464,7 +2464,7 @@
 
                             Empty
 
-                        {{else if .ListedForSale}}
+                        {{else if eq .Status "active"}}
 
                             Listed
 

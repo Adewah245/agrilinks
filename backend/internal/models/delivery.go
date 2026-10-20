@@ -15,15 +15,31 @@ type DeliveryPartner struct {
 
 // Delivery is the fulfilment record for one order.
 type Delivery struct {
-	ID, OrderID                       int
-	DeliveryPartnerID                 *int
-	PickupAddress, DestinationAddress string
-	DeliveryFee                       float64
-	DistanceKM                        *float64
-	Status, TrackingCode              string
-	PickedUpAt, DeliveredAt           *time.Time
-	CreatedAt, UpdatedAt              time.Time
-	PartnerName                       string
+	ID, OrderID       int
+	BuyerID           int
+	DeliveryPartnerID *int
+
+	PickupAddress          string
+	PickupStateID          *int
+	PickupLGAID            *int
+	PickupCommunityID      *int
+	DestinationAddress     string
+	DestinationStateID     *int
+	DestinationLGAID       *int
+	DestinationCommunityID *int
+
+	DeliveryFee float64
+	DistanceKM  *float64
+
+	Status       string
+	TrackingCode string
+
+	PickedUpAt, DeliveredAt *time.Time
+	CreatedAt, UpdatedAt    time.Time
+
+	// Derived display fields populated by delivery queries.
+	PartnerName string
+	BuyerName   string
 }
 
 // DeliveryTracking is an immutable location update for a delivery.

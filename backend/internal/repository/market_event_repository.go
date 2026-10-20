@@ -1,11 +1,13 @@
 package repository
 
 import (
-	"backend/internal/models"
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
 	"time"
+
+	"backend/internal/models"
 )
 
 // ============================================================
@@ -57,6 +59,7 @@ func NewMarketEventRepository(db *sql.DB) *MarketEventRepository {
 // DemandSummary calculates marketplace demand statistics for
 // a particular product name.
 func (r *MarketEventRepository) DemandSummary(
+	ctx context.Context,
 	produceType string,
 	since,
 	previousSince time.Time,
@@ -74,7 +77,7 @@ func (r *MarketEventRepository) DemandSummary(
 
 	summary.ProduceType = produceType
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT
 			COALESCE(
 				SUM(
@@ -191,7 +194,7 @@ func (r *MarketEventRepository) DemandSummary(
 		)
 	}
 
-	err = r.db.QueryRow(`
+	err = r.db.QueryRowContext(ctx, `
 		SELECT
 			COUNT(*) FILTER (
 				WHERE e.created_at >= $2
@@ -244,6 +247,7 @@ func (r *MarketEventRepository) DemandSummary(
 // ============================================================
 
 func (r *MarketEventRepository) GroupedDemandSummaries(
+	ctx context.Context,
 	userID int,
 	location string,
 	since,
@@ -254,7 +258,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 		return nil, fmt.Errorf("user id is required")
 	}
 
-	rows, err := r.db.Query(`
+	rows, err := r.db.QueryContext(ctx, `
 		SELECT DISTINCT p.name
 		FROM products p
 		WHERE p.owner_type = 'user'
@@ -304,6 +308,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 	for _, name := range names {
 
 		summary, err := r.DemandSummary(
+			ctx,
 			name,
 			since,
 			previous,
@@ -328,7 +333,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 		var maximum sql.NullFloat64
 		var localCount int
 
-		err = r.db.QueryRow(`
+		err = r.db.QueryRowContext(ctx, `
 			SELECT
 				MIN(p.price),
 				PERCENTILE_CONT(0.5)
@@ -384,7 +389,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 		// Resolve the user's state name through states.name.
 		// ========================================================
 
-		err = r.db.QueryRow(`
+		err = r.db.QueryRowContext(ctx, `
 			SELECT
 				COUNT(*),
 				COALESCE(
@@ -431,7 +436,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 		// NEARBY LGA LISTINGS
 		// ========================================================
 
-		err = r.db.QueryRow(`
+		err = r.db.QueryRowContext(ctx, `
 			SELECT
 				COUNT(*),
 				COALESCE(
@@ -453,10 +458,19 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 			  AND p.owner_id <> $2
 
 			  AND LOWER(seller.lga) IN (
-					SELECT LOWER(ln.neighbor_lga)
+					SELECT LOWER(neighbor.name)
 					FROM lga_neighbors ln
 
-					WHERE LOWER(ln.state) = LOWER(
+					JOIN lgas source_lga
+						ON source_lga.id = ln.lga_id
+
+					JOIN states source_state
+						ON source_state.id = source_lga.state_id
+
+					JOIN lgas neighbor
+						ON neighbor.id = ln.neighbor_lga_id
+
+					WHERE LOWER(source_state.name) = LOWER(
 						(
 							SELECT u.state
 							FROM users u
@@ -464,7 +478,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 						)
 					)
 
-					AND LOWER(ln.lga) = LOWER(
+					AND LOWER(source_lga.name) = LOWER(
 						(
 							SELECT u.lga
 							FROM users u
@@ -492,7 +506,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 		// NATIONAL LISTINGS
 		// ========================================================
 
-		err = r.db.QueryRow(`
+		err = r.db.QueryRowContext(ctx, `
 			SELECT
 				COUNT(*),
 				COALESCE(
@@ -550,7 +564,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 		// USER'S CURRENT PRICE
 		// ========================================================
 
-		err = r.db.QueryRow(`
+		err = r.db.QueryRowContext(ctx, `
 			SELECT
 				COALESCE(AVG(p.price), 0)
 
@@ -577,7 +591,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 		// EXTERNAL MARKET PRICE
 		// ========================================================
 
-		err = r.db.QueryRow(`
+		err = r.db.QueryRowContext(ctx, `
 			SELECT
 				COUNT(*),
 				COALESCE(
@@ -682,6 +696,7 @@ func (r *MarketEventRepository) GroupedDemandSummaries(
 // ============================================================
 
 func (r *MarketEventRepository) UserDemandSummary(
+	ctx context.Context,
 	userID int,
 	location string,
 	since,
@@ -696,7 +711,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 		return summary, fmt.Errorf("user id is required")
 	}
 
-	err := r.db.QueryRow(`
+	err := r.db.QueryRowContext(ctx, `
 		SELECT
 			COUNT(*) FILTER (
 				WHERE e.created_at >= $2
@@ -780,7 +795,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 	// MARKETPLACE SEARCHES
 	// ========================================================
 
-	err = r.db.QueryRow(`
+	err = r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM marketplace_searches
 		WHERE created_at >= $1
@@ -796,7 +811,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 	}
 
 	if strings.TrimSpace(location) != "" {
-		err = r.db.QueryRow(`
+		err = r.db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			FROM marketplace_searches
 			WHERE created_at >= $1
@@ -821,7 +836,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 	// ========================================================
 
 	if strings.TrimSpace(location) != "" {
-		err = r.db.QueryRow(`
+		err = r.db.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			FROM products p
 			JOIN communities c
@@ -846,7 +861,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 	// NEGOTIATIONS
 	// ========================================================
 
-	err = r.db.QueryRow(`
+	err = r.db.QueryRowContext(ctx, `
 		SELECT
 			COUNT(*) FILTER (
 				WHERE n.status = 'open'
@@ -894,7 +909,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 	// AVERAGE OFFER PRICE
 	// ========================================================
 
-	err = r.db.QueryRow(`
+	err = r.db.QueryRowContext(ctx, `
 		SELECT
 			COALESCE(
 				AVG(m.offer_price),
@@ -933,7 +948,7 @@ func (r *MarketEventRepository) UserDemandSummary(
 	var initial float64
 	var remaining float64
 
-	err = r.db.QueryRow(`
+	err = r.db.QueryRowContext(ctx, `
 		SELECT
 			COALESCE(
 				SUM(initial_listed_quantity),
@@ -1044,6 +1059,24 @@ func (r *MarketEventRepository) UserDemandSummary(
 		classifyActivity(current)
 
 	return summary, nil
+}
+
+// FarmerDemandSummary retains the seller-oriented name used before users and
+// organizations shared the marketplace owner model.
+func (r *MarketEventRepository) FarmerDemandSummary(
+	ctx context.Context,
+	farmerID int,
+	location string,
+	since,
+	previousSince time.Time,
+) (models.ProduceDemandSummary, error) {
+	return r.UserDemandSummary(
+		ctx,
+		farmerID,
+		location,
+		since,
+		previousSince,
+	)
 }
 
 // ============================================================
@@ -1356,6 +1389,123 @@ func (r *MarketEventRepository) Record(
 }
 
 // ============================================================
+// RECENT USER MARKET ACTIVITY
+// ============================================================
+
+// RecentForUser returns recent activity relevant to a seller's dashboard.
+// Listing views and checkout activity are deliberately excluded because those
+// are already derived from products, carts, and orders without duplication.
+func (r *MarketEventRepository) RecentForUser(
+	userID int,
+	limit int,
+) ([]models.MarketEvent, error) {
+
+	if userID <= 0 {
+		return nil, fmt.Errorf("invalid user id")
+	}
+
+	if limit <= 0 {
+		limit = 5
+	}
+
+	rows, err := r.db.Query(`
+		SELECT
+			e.id,
+			e.event_type,
+			e.product_id,
+			e.user_id,
+			COALESCE(e.session_id, ''),
+			e.metadata,
+			e.created_at,
+			COALESCE(p.name, '')
+		FROM market_events e
+		LEFT JOIN products p
+			ON p.id = e.product_id
+		WHERE e.event_type IN (
+			'product_updated',
+			'crop_updated',
+			'diagnosis_completed',
+			'delivery_delivered',
+			'negotiation_started'
+		)
+		AND (
+			(p.owner_type = 'user' AND p.owner_id = $1)
+			OR (e.product_id IS NULL AND e.user_id = $1)
+		)
+		ORDER BY e.created_at DESC, e.id DESC
+		LIMIT $2
+	`, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"load recent market activity: %w",
+			err,
+		)
+	}
+	defer rows.Close()
+
+	events := make([]models.MarketEvent, 0)
+
+	for rows.Next() {
+		var (
+			event       models.MarketEvent
+			productID   sql.NullInt64
+			eventUser   sql.NullInt64
+			sessionID   sql.NullString
+			metadata    []byte
+			productName string
+		)
+
+		if err := rows.Scan(
+			&event.ID,
+			&event.EventType,
+			&productID,
+			&eventUser,
+			&sessionID,
+			&metadata,
+			&event.CreatedAt,
+			&productName,
+		); err != nil {
+			return nil, fmt.Errorf(
+				"scan recent market activity: %w",
+				err,
+			)
+		}
+
+		if productID.Valid {
+			id := int(productID.Int64)
+			event.ProductID = &id
+		}
+		if eventUser.Valid {
+			id := int(eventUser.Int64)
+			event.UserID = &id
+		}
+		if sessionID.Valid {
+			value := sessionID.String
+			event.SessionID = &value
+		}
+
+		event.Metadata = append(event.Metadata[:0], metadata...)
+		event.ProductName = productName
+		events = append(events, event)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf(
+			"iterate recent market activity: %w",
+			err,
+		)
+	}
+
+	return events, nil
+}
+
+// RecentForFarmer retains the role-specific name used by the seller
+// dashboard. Users are the seller identity in the current schema.
+func (r *MarketEventRepository) RecentForFarmer(farmerID, limit int) ([]models.MarketEvent, error) {
+	return r.RecentForUser(farmerID, limit)
+}
+
+// ============================================================
 // RECORD MARKETPLACE SEARCH
 // ============================================================
 
@@ -1444,9 +1594,9 @@ func (r *MarketEventRepository) RecordPrice(
 	}
 
 	_, err := r.db.Exec(`
-		INSERT INTO produce_price_history (
+		INSERT INTO product_price_history (
 			product_id,
-			price_per_unit,
+			price,
 			unit,
 			source
 		)
@@ -1480,6 +1630,7 @@ func (r *MarketEventRepository) RecordExternalPrice(
 	market,
 	lga,
 	state,
+	country,
 	sourceURL string,
 	collectedAt time.Time,
 ) error {
@@ -1495,6 +1646,11 @@ func (r *MarketEventRepository) RecordExternalPrice(
 		return err
 	}
 
+	country = strings.TrimSpace(country)
+	if country == "" {
+		country = "Nigeria"
+	}
+
 	_, err := r.db.Exec(`
 		INSERT INTO external_market_prices (
 			produce_type,
@@ -1504,6 +1660,7 @@ func (r *MarketEventRepository) RecordExternalPrice(
 			market_name,
 			lga,
 			state,
+			country,
 			collected_at,
 			source_url
 		)
@@ -1516,7 +1673,8 @@ func (r *MarketEventRepository) RecordExternalPrice(
 			NULLIF($6, ''),
 			NULLIF($7, ''),
 			$8,
-			NULLIF($9, '')
+			$9,
+			NULLIF($10, '')
 		)
 	`,
 		strings.TrimSpace(produce),
@@ -1526,6 +1684,7 @@ func (r *MarketEventRepository) RecordExternalPrice(
 		strings.TrimSpace(market),
 		strings.TrimSpace(lga),
 		strings.TrimSpace(state),
+		country,
 		collectedAt,
 		strings.TrimSpace(sourceURL),
 	)
@@ -1571,17 +1730,22 @@ func (r *MarketEventRepository) UpsertLGANeighbor(
 
 	_, err := r.db.Exec(`
 		INSERT INTO lga_neighbors (
-			state,
-			lga,
-			neighbor_lga
+			lga_id,
+			neighbor_lga_id
 		)
-		VALUES ($1, $2, $3)
+		SELECT
+			source.id,
+			neighbor.id
+		FROM lgas source
+		JOIN states st
+			ON st.id = source.state_id
+		JOIN lgas neighbor
+			ON neighbor.state_id = source.state_id
+		WHERE LOWER(st.name) = LOWER($1)
+		AND LOWER(source.name) = LOWER($2)
+		AND LOWER(neighbor.name) = LOWER($3)
 
-		ON CONFLICT (
-			state,
-			lga,
-			neighbor_lga
-		)
+		ON CONFLICT (lga_id, neighbor_lga_id)
 		DO NOTHING
 	`,
 		state,
@@ -1656,6 +1820,7 @@ func validateExternalPrice(
 // ============================================================
 
 func (r *MarketEventRepository) ReconcileCheckoutAbandonments(
+	ctx context.Context,
 	timeout time.Duration,
 ) error {
 
@@ -1663,7 +1828,7 @@ func (r *MarketEventRepository) ReconcileCheckoutAbandonments(
 		timeout = 24 * time.Hour
 	}
 
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO market_events (
 			event_type,
 			user_id,

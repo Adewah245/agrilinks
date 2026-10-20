@@ -24,6 +24,10 @@ type ConversationMember struct {
 	// LeftAt is NULL while the user is still an active member.
 	LeftAt *time.Time `json:"left_at,omitempty"`
 
+	// LastReadAt is the point up to which this member has read the
+	// conversation. It drives both seen receipts and unread counts.
+	LastReadAt time.Time `json:"last_read_at"`
+
 	// ============================================================
 	// DERIVED / JOINED USER INFORMATION
 	//

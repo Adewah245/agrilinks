@@ -149,7 +149,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if h.events != nil {
-			if err := h.events.ReconcileCheckoutAbandonments(24 * time.Hour); err != nil {
+			if err := h.events.ReconcileCheckoutAbandonments(r.Context(), 24*time.Hour); err != nil {
 				log.Printf(
 					"dashboard checkout reconciliation failed: %v",
 					err,
@@ -298,6 +298,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 					previous := cutoff.Add(-30 * 24 * time.Hour)
 
 					if summary, err := h.events.UserDemandSummary(
+						r.Context(),
 						user.ID,
 						user.Location,
 						cutoff,
@@ -313,6 +314,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 					}
 
 					if summaries, err := h.events.GroupedDemandSummaries(
+						r.Context(),
 						user.ID,
 						user.Location,
 						cutoff,
@@ -632,6 +634,7 @@ func (h *Dashboard) MarketInsights(
 	cutoff := time.Now().Add(-30 * 24 * time.Hour)
 
 	summaries, err := h.events.GroupedDemandSummaries(
+		r.Context(),
 		user.ID,
 		user.Location,
 		cutoff,

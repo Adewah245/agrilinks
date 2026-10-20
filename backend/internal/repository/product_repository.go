@@ -363,12 +363,56 @@ func (r *ProductRepository) ListByOwner(
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate products: %w", err)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("close products: %w", err)
+	}
+
+	if err := r.attachImages(products); err != nil {
+		return nil, fmt.Errorf("load product images: %w", err)
+	}
 
 	return products, nil
 }
 
 // ListAvailable returns all products currently available for purchase.
 func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
+	return r.listAvailable("")
+}
+
+// SearchAvailable returns products that are currently available for purchase
+// and match the supplied search term. Matching covers the product identity,
+// seller, and location so the result agrees with what a buyer sees on a card.
+func (r *ProductRepository) SearchAvailable(term string) ([]models.Product, error) {
+	term = strings.TrimSpace(term)
+	if term == "" {
+		return r.ListAvailable()
+	}
+
+	pattern := "%" + term + "%"
+
+	return r.listAvailable(`
+		AND (
+			p.name ILIKE $1
+			OR p.category ILIKE $1
+			OR COALESCE(p.description, '') ILIKE $1
+			OR COALESCE(u.full_name, o.name, '') ILIKE $1
+			OR COALESCE(
+				CONCAT_WS(
+					', ',
+					NULLIF(BTRIM(c.name), ''),
+					NULLIF(BTRIM(l.name), ''),
+					NULLIF(BTRIM(s.name), '')
+				),
+				''
+			) ILIKE $1
+		)
+	`, pattern)
+}
+
+func (r *ProductRepository) listAvailable(
+	extraWhere string,
+	args ...any,
+) ([]models.Product, error) {
 	rows, err := r.db.Query(`
 		SELECT
 			p.id,
@@ -416,8 +460,9 @@ func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 			ON s.id = p.state_id
 		WHERE p.status = 'active'
 		AND p.quantity > 0
+	`+extraWhere+`
 		ORDER BY p.created_at DESC, p.id DESC
-	`)
+	`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list available products: %w", err)
 	}
@@ -464,8 +509,72 @@ func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate available products: %w", err)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("close available products: %w", err)
+	}
+
+	if err := r.attachImages(products); err != nil {
+		return nil, fmt.Errorf("load available product images: %w", err)
+	}
 
 	return products, nil
+}
+
+// attachImages loads every image for the supplied products in one query.
+// Product lists are small, but issuing one query per product would turn a
+// marketplace page into a burst of avoidable database round trips.
+func (r *ProductRepository) attachImages(products []models.Product) error {
+	if len(products) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, len(products))
+	args := make([]any, len(products))
+	positions := make(map[int][]int, len(products))
+
+	for i := range products {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = products[i].ID
+		positions[products[i].ID] = append(positions[products[i].ID], i)
+	}
+
+	rows, err := r.db.Query(`
+		SELECT
+			id,
+			product_id,
+			image_url,
+			is_primary,
+			sort_order,
+			created_at
+		FROM product_images
+		WHERE product_id IN (`+strings.Join(placeholders, ", ")+`)
+		ORDER BY product_id, is_primary DESC, sort_order ASC, id ASC
+	`, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var image models.ProductImage
+
+		if err := rows.Scan(
+			&image.ID,
+			&image.ProductID,
+			&image.ImageURL,
+			&image.IsPrimary,
+			&image.SortOrder,
+			&image.CreatedAt,
+		); err != nil {
+			return err
+		}
+
+		for _, index := range positions[image.ProductID] {
+			products[index].Images = append(products[index].Images, image)
+		}
+	}
+
+	return rows.Err()
 }
 
 // GetByID returns a product by its database ID.

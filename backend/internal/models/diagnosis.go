@@ -31,6 +31,23 @@ type Diagnosis struct {
 	Media []DiagnosisMedia `json:"media,omitempty"`
 }
 
+// CategoryText returns the category in a form templates can compare and
+// display without dereferencing the nullable database field.
+func (d Diagnosis) CategoryText() string { return diagnosisText(d.Category) }
+
+// SymptomsText returns the diagnosis symptoms for display.
+func (d Diagnosis) SymptomsText() string { return diagnosisText(d.Symptoms) }
+
+// ResultText returns the diagnosis result for display.
+func (d Diagnosis) ResultText() string { return diagnosisText(d.Result) }
+
+func diagnosisText(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
 // DiagnosisMedia represents a file attached to a diagnosis.
 //
 // The database supports image, video, audio, and document media.

@@ -82,7 +82,7 @@ func (r *ConversationMemberRepository) AddMember(
 			user_id
 		)
 		VALUES ($1, $2)
-		RETURNING id, joined_at
+		RETURNING id, member_role, joined_at, last_read_at
 	`
 
 	return r.db.QueryRow(
@@ -91,7 +91,9 @@ func (r *ConversationMemberRepository) AddMember(
 		member.UserID,
 	).Scan(
 		&member.ID,
+		&member.MemberRole,
 		&member.JoinedAt,
+		&member.LastReadAt,
 	)
 }
 
@@ -227,9 +229,12 @@ func (r *ConversationMemberRepository) ListMembers(
 			cm.id,
 			cm.conversation_id,
 			cm.user_id,
+			cm.member_role,
 			u.full_name,
 			COALESCE(u.photo_url, ''),
-			cm.joined_at
+			cm.joined_at,
+			cm.left_at,
+			cm.last_read_at
 		FROM conversation_members cm
 		JOIN users u
 			ON u.id = cm.user_id
@@ -258,9 +263,12 @@ func (r *ConversationMemberRepository) ListMembers(
 			&member.ID,
 			&member.ConversationID,
 			&member.UserID,
+			&member.MemberRole,
 			&member.FullName,
 			&member.PhotoURL,
 			&member.JoinedAt,
+			&member.LeftAt,
+			&member.LastReadAt,
 		)
 
 		if err != nil {
@@ -278,6 +286,32 @@ func (r *ConversationMemberRepository) ListMembers(
 	}
 
 	return members, nil
+}
+
+// MarkRead moves a member's read position to the current time.
+func (r *ConversationMemberRepository) MarkRead(
+	conversationID,
+	userID int,
+) error {
+	result, err := r.db.Exec(`
+		UPDATE conversation_members
+		SET last_read_at = CURRENT_TIMESTAMP
+		WHERE conversation_id = $1
+		  AND user_id = $2
+	`, conversationID, userID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
 
 // ============================================================
