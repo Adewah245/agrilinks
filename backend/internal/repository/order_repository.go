@@ -77,14 +77,32 @@ func (r *OrderRepository) ListByBuyer(
 			orders.status,
 			orders.created_at,
 			products.name,
+			products.unit,
 			COALESCE(
 				seller_user.full_name,
 				seller_org.name,
 				''
-			) AS seller_name
+			) AS seller_name,
+			CASE
+				WHEN products.owner_type = 'user' THEN products.owner_id
+				ELSE 0
+			END AS seller_id,
+			COALESCE(
+				(
+					SELECT image_url
+					FROM product_images
+					WHERE product_id = products.id
+					ORDER BY is_primary DESC, sort_order ASC, id ASC
+					LIMIT 1
+				),
+				''
+			) AS image_url,
+			buyer.full_name AS buyer_name
 		FROM orders
 		JOIN order_items ON order_items.order_id = orders.id
 		JOIN products ON products.id = order_items.product_id
+		JOIN users buyer
+			ON buyer.id = orders.buyer_id
 		LEFT JOIN users seller_user
 			ON products.owner_type = 'user'
 			AND seller_user.id = products.owner_id
@@ -115,7 +133,11 @@ func (r *OrderRepository) ListByBuyer(
 			&o.Status,
 			&o.CreatedAt,
 			&o.ProductName,
+			&o.ProductUnit,
 			&o.SellerName,
+			&o.SellerID,
+			&o.ImageURL,
+			&o.BuyerName,
 		); err != nil {
 			return nil, err
 		}
@@ -149,12 +171,38 @@ func (r *OrderRepository) ListSalesBySeller(
 			orders.status,
 			orders.created_at,
 			products.name,
-			buyer.full_name
+			products.unit,
+			buyer.full_name,
+			COALESCE(
+				seller_user.full_name,
+				seller_org.name,
+				''
+			) AS seller_name,
+			CASE
+				WHEN products.owner_type = 'user' THEN products.owner_id
+				ELSE 0
+			END AS seller_id,
+			COALESCE(
+				(
+					SELECT image_url
+					FROM product_images
+					WHERE product_id = products.id
+					ORDER BY is_primary DESC, sort_order ASC, id ASC
+					LIMIT 1
+				),
+				''
+			) AS image_url
 		FROM orders
 		JOIN order_items ON order_items.order_id = orders.id
 		JOIN products ON products.id = order_items.product_id
 		JOIN users buyer
 			ON buyer.id = orders.buyer_id
+		LEFT JOIN users seller_user
+			ON products.owner_type = 'user'
+			AND seller_user.id = products.owner_id
+		LEFT JOIN organizations seller_org
+			ON products.owner_type = 'organization'
+			AND seller_org.id = products.owner_id
 		WHERE products.owner_type = $1
 			AND products.owner_id = $2
 		ORDER BY orders.created_at DESC, orders.id DESC
@@ -184,7 +232,11 @@ func (r *OrderRepository) ListSalesBySeller(
 			&o.Status,
 			&o.CreatedAt,
 			&o.ProductName,
+			&o.ProductUnit,
 			&o.BuyerName,
+			&o.SellerName,
+			&o.SellerID,
+			&o.ImageURL,
 		); err != nil {
 			return nil, err
 		}

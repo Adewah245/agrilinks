@@ -21,7 +21,7 @@ import (
 //
 // Example:
 //
-// backend/internal/database/migrations/
+// backend/migrations/
 //     001_users.sql
 //     002_farmer_type.sql
 //     003_users_verification.sql
@@ -29,7 +29,7 @@ import (
 //
 // ============================================================
 
-const migrationsDir = "internal/database/migrations"
+const migrationsDir = "migrations"
 
 // ============================================================
 // 1. RUN DATABASE MIGRATIONS
@@ -264,7 +264,7 @@ func createMigrationTable(db *sql.DB) error {
 //
 // Reads:
 //
-// backend/internal/database/migrations/
+// backend/migrations/
 //
 // and returns only .sql files.
 //

@@ -36,13 +36,38 @@ type User struct {
 	// Farming information
 	FarmingTypes []string
 
+	// Payment details.
+	// These fields are populated only by payment-specific queries.
+	BankName      string
+	BankCode      string
+	AccountName   string
+	AccountNumber string
+	WalletNumber  string
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// UserBankAccount represents the payout account belonging to a user.
+type UserBankAccount struct {
+	ID            int
+	UserID        int
+	BankName      string
+	BankCode      string
+	AccountName   string
+	AccountNumber string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // IsBuyer reports whether the user has a buyer role.
 func (u *User) IsBuyer() bool {
 	return u.Role == "buyer"
+}
+
+// IsLearner reports whether the user has a learner role.
+func (u *User) IsLearner() bool {
+	return u.Role == "learner"
 }
 
 // IsFarmer reports whether the user has a farmer role.

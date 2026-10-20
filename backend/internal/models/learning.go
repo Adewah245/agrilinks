@@ -34,9 +34,9 @@ type FarmingType struct {
 //	Poultry      -> learning
 //	Fisheries    -> interested
 type UserFarmingType struct {
-	ID            int       `json:"id"`
-	UserID        int       `json:"user_id"`
-	FarmingTypeID int       `json:"farming_type_id"`
+	ID            int `json:"id"`
+	UserID        int `json:"user_id"`
+	FarmingTypeID int `json:"farming_type_id"`
 
 	Status string `json:"status"`
 	Source string `json:"source"`
@@ -58,9 +58,9 @@ type UserFarmingType struct {
 // farming types, but only one active/paused journey
 // for the same farming type at a time.
 type LearningJourney struct {
-	ID               int `json:"id"`
-	UserID           int `json:"user_id"`
-	FarmingTypeID    int `json:"farming_type_id"`
+	ID                int `json:"id"`
+	UserID            int `json:"user_id"`
+	FarmingTypeID     int `json:"farming_type_id"`
 	UserFarmingTypeID int `json:"user_farming_type_id"`
 
 	Status          string `json:"status"`
@@ -102,7 +102,7 @@ type LearningJourney struct {
 //	milestone
 //	warning
 type LearningMessage struct {
-	ID       int `json:"id"`
+	ID        int `json:"id"`
 	JourneyID int `json:"journey_id"`
 
 	SenderType  string `json:"sender_type"`
@@ -133,7 +133,7 @@ type LearningMessage struct {
 //	  land_available
 //	  seed_source_identified
 type LearningCheckpoint struct {
-	ID       int `json:"id"`
+	ID        int `json:"id"`
 	JourneyID int `json:"journey_id"`
 
 	CheckpointKey string `json:"checkpoint_key"`

@@ -33,6 +33,10 @@ type MarketEvent struct {
 	SessionID *string         `json:"session_id,omitempty"`
 	Metadata  json.RawMessage `json:"metadata"`
 	CreatedAt time.Time       `json:"created_at"`
+
+	// ProductName is display-only and is populated by joins when needed.
+	// It is not stored on the market_events table.
+	ProductName string `json:"product_name,omitempty"`
 }
 
 // ProduceDemandSummary is the dashboard projection built from marketplace

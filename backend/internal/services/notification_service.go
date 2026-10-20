@@ -48,7 +48,7 @@ func NewNotificationService(
 // Current notification architecture:
 //
 //	UserID
-//	NotificationType
+//	Type
 //	Title
 //	Message
 //	ReferenceType
@@ -95,11 +95,11 @@ func (s *NotificationService) CreateNotification(
 	}
 
 	notification := &models.Notification{
-		UserID:           userID,
-		NotificationType: notificationType,
-		Title:            title,
-		Message:          message,
-		IsRead:           false,
+		UserID:  userID,
+		Type:    notificationType,
+		Title:   title,
+		Message: message,
+		IsRead:  false,
 	}
 
 	return s.repo.Create(notification)
@@ -171,13 +171,13 @@ func (s *NotificationService) CreateNotificationWithReference(
 	}
 
 	notification := &models.Notification{
-		UserID:           userID,
-		NotificationType: notificationType,
-		Title:            title,
-		Message:          message,
-		ReferenceType:    referenceType,
-		ReferenceID:      referenceID,
-		IsRead:           false,
+		UserID:        userID,
+		Type:          notificationType,
+		Title:         title,
+		Message:       message,
+		ReferenceType: referenceType,
+		ReferenceID:   referenceID,
+		IsRead:        false,
 	}
 
 	return s.repo.Create(notification)

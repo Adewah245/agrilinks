@@ -34,4 +34,3 @@ type AIRequest struct {
 type DiagnosisResult struct {
 	Result string
 }
-

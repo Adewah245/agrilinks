@@ -30,9 +30,9 @@ const (
 	LearningStatusCompleted = "completed"
 	LearningStatusAbandoned = "abandoned"
 
-	ExperienceBeginner     = "beginner"
-	ExperienceSome         = "some_experience"
-	ExperienceExperienced  = "experienced"
+	ExperienceBeginner    = "beginner"
+	ExperienceSome        = "some_experience"
+	ExperienceExperienced = "experienced"
 
 	StageInterest     = "interest"
 	StageLearning     = "learning"
@@ -41,10 +41,10 @@ const (
 	StageConfirmation = "confirmation"
 	StageConfirmed    = "confirmed"
 
-	FarmingStatusInterested  = "interested"
-	FarmingStatusLearning    = "learning"
-	FarmingStatusPreparing   = "preparing"
-	FarmingStatusConfirmed   = "confirmed"
+	FarmingStatusInterested = "interested"
+	FarmingStatusLearning   = "learning"
+	FarmingStatusPreparing  = "preparing"
+	FarmingStatusConfirmed  = "confirmed"
 
 	FarmingSourceUserSelection = "user_selection"
 	FarmingSourceLearning      = "learning_journey"
@@ -232,7 +232,7 @@ func (s *LearningService) StartLearningJourney(
 		Status:            LearningStatusActive,
 		ExperienceLevel:   experienceLevel,
 		Goal:              goal,
-		CurrentStage:     StageLearning,
+		CurrentStage:      StageLearning,
 		ReadinessScore:    0,
 	}
 
@@ -435,10 +435,10 @@ func (s *LearningService) SendLearningMessage(
 	}
 
 	message := &models.LearningMessage{
-		JourneyID:  journeyID,
-		SenderType: senderType,
+		JourneyID:   journeyID,
+		SenderType:  senderType,
 		MessageType: messageType,
-		Content:    content,
+		Content:     content,
 	}
 
 	if err := s.repo.CreateLearningMessage(message); err != nil {

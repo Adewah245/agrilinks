@@ -32,7 +32,7 @@ func NewAuthService(repo *repository.UserRepository) *AuthService {
 // Important architecture:
 //
 // - role is the user's platform identity.
-// - learning is NOT a role.
+// - learner is a valid platform role.
 // - account_type describes the account structure.
 // - farmingTypes represent farming activities the user
 //   already practices.
@@ -149,11 +149,11 @@ func (s *AuthService) Register(
 	// --------------------------------------------------------
 	// Role
 	//
-	// Learning is NOT a role.
+	// Learner is a valid platform role.
 	// --------------------------------------------------------
 
 	switch role {
-	case "farmer", "buyer", "ministry", "organisation":
+	case "farmer", "buyer", "learner", "ministry", "organisation":
 		// Valid role.
 	default:
 		return errors.New("invalid user role")
@@ -327,7 +327,7 @@ func (s *AuthService) Login(
 		[]byte(password),
 	); err != nil {
 		return nil, errors.New(
-		"invalid phone number or password",
+			"invalid phone number or password",
 		)
 	}
 

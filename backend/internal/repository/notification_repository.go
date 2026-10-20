@@ -81,7 +81,7 @@ func (r *NotificationRepository) Create(
 	return r.db.QueryRow(
 		query,
 		notification.UserID,
-		notification.NotificationType,
+		notification.Type,
 		notification.Title,
 		notification.Message,
 		notification.ReferenceType,
@@ -140,7 +140,7 @@ func (r *NotificationRepository) GetUserNotifications(
 		err := rows.Scan(
 			&notification.ID,
 			&notification.UserID,
-			&notification.NotificationType,
+			&notification.Type,
 			&notification.Title,
 			&notification.Message,
 			&notification.ReferenceType,

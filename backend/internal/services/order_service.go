@@ -11,12 +11,18 @@ import (
 // OrderService handles business logic related to product orders.
 //
 // Handler
+//
 //	↓
+//
 // OrderService
+//
 //	↓
+//
 // OrderRepository + ProductRepository
+//
 //	↓
-// PostgreSQL
+//
+// # PostgreSQL
 //
 // The service is responsible for:
 //   - validating buyers
@@ -167,15 +173,15 @@ func (s *OrderService) PlaceOrder(
 	// --------------------------------------------------------
 
 	order := &models.Order{
-		BuyerID: buyerID,
-		Status:  "confirmed",
+		BuyerID:     buyerID,
+		Status:      "confirmed",
 		TotalAmount: totalPrice,
 		Items: []models.OrderItem{
 			{
-				ProductID: productID,
-				Quantity:  quantity,
-				UnitPrice: product.Price,
-				TotalPrice: totalPrice,
+				ProductID:   productID,
+				Quantity:    quantity,
+				UnitPrice:   product.Price,
+				TotalPrice:  totalPrice,
 				ProductName: product.Name,
 				SellerName:  product.SellerName,
 			},

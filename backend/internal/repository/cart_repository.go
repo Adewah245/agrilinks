@@ -30,7 +30,7 @@ func (r *CartRepository) Create(item *models.CartItem) error {
 			total_price
 		)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, created_at
+		RETURNING id, created_at, updated_at
 	`
 
 	return r.db.QueryRow(
@@ -44,6 +44,7 @@ func (r *CartRepository) Create(item *models.CartItem) error {
 	).Scan(
 		&item.ID,
 		&item.CreatedAt,
+		&item.UpdatedAt,
 	)
 }
 
@@ -62,6 +63,7 @@ func (r *CartRepository) ListByBuyer(buyerID int) ([]models.CartItem, error) {
 			cart_items.price_per_unit,
 			cart_items.total_price,
 			cart_items.created_at,
+			cart_items.updated_at,
 
 			products.name,
 			products.unit,
@@ -78,7 +80,7 @@ func (r *CartRepository) ListByBuyer(buyerID int) ([]models.CartItem, error) {
 				''
 			),
 
-			COALESCE(seller.id, organization.id),
+			COALESCE(seller.id, organization.id, 0),
 			COALESCE(seller.full_name, organization.name, ''),
 			COALESCE(seller.email, ''),
 			COALESCE(seller.phone, ''),
@@ -132,6 +134,7 @@ func (r *CartRepository) ListByBuyer(buyerID int) ([]models.CartItem, error) {
 			&item.PricePerUnit,
 			&item.TotalPrice,
 			&item.CreatedAt,
+			&item.UpdatedAt,
 
 			&item.ProductName,
 			&item.Unit,
@@ -177,6 +180,7 @@ func (r *CartRepository) GetByID(cartID, buyerID int) (*models.CartItem, error) 
 			cart_items.price_per_unit,
 			cart_items.total_price,
 			cart_items.created_at,
+			cart_items.updated_at,
 
 			products.name,
 			products.unit,
@@ -193,7 +197,7 @@ func (r *CartRepository) GetByID(cartID, buyerID int) (*models.CartItem, error) 
 				''
 			),
 
-			COALESCE(seller.id, organization.id),
+			COALESCE(seller.id, organization.id, 0),
 			COALESCE(seller.full_name, organization.name, ''),
 			COALESCE(seller.email, ''),
 			COALESCE(seller.phone, ''),
@@ -237,6 +241,7 @@ func (r *CartRepository) GetByID(cartID, buyerID int) (*models.CartItem, error) 
 		&item.PricePerUnit,
 		&item.TotalPrice,
 		&item.CreatedAt,
+		&item.UpdatedAt,
 
 		&item.ProductName,
 		&item.Unit,

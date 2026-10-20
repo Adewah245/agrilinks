@@ -13,7 +13,7 @@ type Notification struct {
 	UserID int `json:"user_id"`
 
 	// Notification classification.
-	NotificationType string `json:"notification_type"`
+	Type string `json:"type"`
 
 	// Notification content.
 	Title   string `json:"title"`

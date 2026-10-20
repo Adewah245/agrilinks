@@ -11,12 +11,18 @@ import (
 // ProductService contains the business logic for agricultural products.
 //
 // Handler
+//
 //	↓
+//
 // ProductService
+//
 //	↓
+//
 // ProductRepository
+//
 //	↓
-// PostgreSQL
+//
+// # PostgreSQL
 //
 // The service is responsible for:
 //   - validating product input
@@ -174,7 +180,7 @@ func (s *ProductService) AddProduct(
 		Latitude:         latitude,
 		Longitude:        longitude,
 		LocationAccuracy: accuracy,
-		Status:            status,
+		Status:           status,
 	}
 
 	// --------------------------------------------------------

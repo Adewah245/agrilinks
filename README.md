@@ -5,9 +5,9 @@
 **Primary backend:** Go  
 **Frontend:** HTML, CSS, JavaScript  
 **Database:** PostgreSQL  
-**Payment provider:** B-Moni (`bmoni`)  
+**Payment provider:** Flutterwave (`flutterwave`)
 **Primary deployment database direction:** Neon PostgreSQL  
-**Last updated:** 2026-09-08
+**Last updated:** 2026-10-20
 
 ---
 
@@ -178,7 +178,7 @@ This workflow applies to future Agro-Shield database/schema work.
                  │                 │                  │
                  ▼                 ▼                  ▼
              Payments          Weather            Future
-             B-Moni            Integration        Services
+             Flutterwave       Integration        Services
 ```
 
 ---
@@ -211,35 +211,49 @@ The frontend is not being rebuilt around React at this stage.
 - Neon is the cloud PostgreSQL direction
 - SQL migrations are maintained as separate migration files
 
+The database pool is configured with:
+
+- `DB_MAX_OPEN_CONNS` (default `20`)
+- `DB_MAX_IDLE_CONNS` (default `10`)
+- `DB_CONN_MAX_LIFETIME` (default `30m`)
+- `DB_CONN_MAX_IDLE_TIME` (default `5m`)
+
+The initial connection check has a bounded 10-second timeout.
+
 ---
 
 # 6. Proposed Backend Organization
 
 The backend should follow domain-oriented separation rather than placing all logic into large handlers.
 
-A representative structure is:
+The backend structure is:
 
 ```text
 backend/
 ├── cmd/
-│   └── ...
+│   └── server/
+│       └── main.go
 ├── internal/
+│   ├── app/
+│   ├── chat/
+│   ├── config/
+│   ├── database/
+│   ├── dto/
 │   ├── handlers/
-│   ├── services/
-│   ├── repositories/
-│   ├── models/
 │   ├── middleware/
-│   └── ...
+│   ├── models/
+│   ├── render/
+│   ├── repository/
+│   │   └── memory/
+│   ├── routes/
+│   ├── services/
+│   └── ussd/
 ├── migrations/
-│   ├── 001_users.sql
-│   ├── 002_farming_types.sql
-│   ├── ...
-│   └── ...
 ├── go.mod
-└── ...
+└── go.sum
 ```
 
-The exact directory names may evolve as the implementation is cleaned up, but the responsibility boundaries should remain clear.
+All backend application code lives under one `internal` tree. The responsibility boundaries remain `handler → service → repository`.
 
 ---
 
@@ -663,7 +677,7 @@ A transaction represents the financial movement/state.
 
 The selected payment provider direction is:
 
-**B-Moni (`bmoni`)**
+**Flutterwave (`flutterwave`)**
 
 The architecture should therefore allow payment integration through a dedicated payment/transaction boundary rather than coupling payment-provider logic directly to marketplace handlers.
 
@@ -674,7 +688,7 @@ Order
   ↓
 Payment Request
   ↓
-B-Moni
+Flutterwave
   ↓
 Transaction
   ↓
@@ -929,7 +943,7 @@ Orders
 Transactions
   │
   ▼
-B-Moni
+Flutterwave
 
 Users
   │
@@ -1293,7 +1307,7 @@ The project should be developed in a controlled order.
 ## Phase 5 — Payments
 
 - Transactions
-- B-Moni integration
+- Flutterwave integration
 - Payment state handling
 
 ## Phase 6 — Logistics
@@ -1334,7 +1348,7 @@ The project should be developed in a controlled order.
 | Frontend | HTML/CSS/JavaScript |
 | Database | PostgreSQL |
 | Cloud PostgreSQL | Neon direction |
-| Payment provider | B-Moni |
+| Payment provider | Flutterwave |
 | Core identity | Users |
 | User roles | Farmer, Buyer, Learner |
 | Farming model | Farming Types |
@@ -1370,7 +1384,7 @@ Handlers should not become the application's business layer.
 
 ### Avoid provider lock-in
 
-B-Moni-specific logic should remain behind a payment boundary.
+Flutterwave-specific logic should remain behind a payment boundary.
 
 ### Avoid duplicate location strings
 
@@ -1428,7 +1442,7 @@ The most important mental model for the new Agro-Shield architecture is:
                ▼         ▼           AI Learning
             Transactions │
                │         │
-             B-Moni      │
+             Flutterwave │
                          │
                    Negotiations
                          │

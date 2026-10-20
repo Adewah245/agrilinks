@@ -26,6 +26,9 @@ type Order struct {
 	TotalPrice  float64
 	ProductName string
 	SellerName  string
+	SellerID    int
+	ProductUnit string
+	ImageURL    string
 
 	// Timestamps.
 	CreatedAt time.Time

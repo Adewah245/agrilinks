@@ -277,32 +277,44 @@ func (r *ProductRepository) ListByOwner(
 
 	rows, err := r.db.Query(`
 		SELECT
-			id,
-			owner_type,
-			owner_id,
-			name,
-			COALESCE(description, ''),
-			category,
-			quantity,
-			unit,
-			price,
-			state_id,
-			lga_id,
-			community_id,
-			COALESCE(latitude, 0),
-			COALESCE(longitude, 0),
-			COALESCE(location_accuracy, 0),
-			status,
-			COALESCE(initial_listed_quantity, 0),
-			first_listed_at,
-			first_order_at,
-			sold_out_at,
-			created_at,
-			updated_at
-		FROM products
-		WHERE owner_type = $1
-		AND owner_id = $2
-		ORDER BY created_at DESC, id DESC
+			p.id,
+			p.owner_type,
+			p.owner_id,
+			p.name,
+			COALESCE(p.description, ''),
+			p.category,
+			p.quantity,
+			p.unit,
+			p.price,
+			p.state_id,
+			p.lga_id,
+			p.community_id,
+			COALESCE(p.latitude, 0),
+			COALESCE(p.longitude, 0),
+			COALESCE(p.location_accuracy, 0),
+			CONCAT_WS(
+				', ',
+				NULLIF(BTRIM(c.name), ''),
+				NULLIF(BTRIM(l.name), ''),
+				NULLIF(BTRIM(s.name), '')
+			),
+			p.status,
+			COALESCE(p.initial_listed_quantity, 0),
+			p.first_listed_at,
+			p.first_order_at,
+			p.sold_out_at,
+			p.created_at,
+			p.updated_at
+		FROM products p
+		LEFT JOIN communities c
+			ON c.id = p.community_id
+		LEFT JOIN lgas l
+			ON l.id = p.lga_id
+		LEFT JOIN states s
+			ON s.id = p.state_id
+		WHERE p.owner_type = $1
+		AND p.owner_id = $2
+		ORDER BY p.created_at DESC, p.id DESC
 	`,
 		ownerType,
 		ownerID,
@@ -333,6 +345,7 @@ func (r *ProductRepository) ListByOwner(
 			&product.Latitude,
 			&product.Longitude,
 			&product.LocationAccuracy,
+			&product.Location,
 			&product.Status,
 			&product.InitialListedQuantity,
 			&product.FirstListedAt,
@@ -373,6 +386,12 @@ func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 			COALESCE(p.latitude, 0),
 			COALESCE(p.longitude, 0),
 			COALESCE(p.location_accuracy, 0),
+			CONCAT_WS(
+				', ',
+				NULLIF(BTRIM(c.name), ''),
+				NULLIF(BTRIM(l.name), ''),
+				NULLIF(BTRIM(s.name), '')
+			),
 			p.status,
 			COALESCE(p.initial_listed_quantity, 0),
 			p.first_listed_at,
@@ -389,6 +408,12 @@ func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 		LEFT JOIN organizations o
 			ON p.owner_type = 'organization'
 			AND o.id = p.owner_id
+		LEFT JOIN communities c
+			ON c.id = p.community_id
+		LEFT JOIN lgas l
+			ON l.id = p.lga_id
+		LEFT JOIN states s
+			ON s.id = p.state_id
 		WHERE p.status = 'active'
 		AND p.quantity > 0
 		ORDER BY p.created_at DESC, p.id DESC
@@ -419,6 +444,7 @@ func (r *ProductRepository) ListAvailable() ([]models.Product, error) {
 			&product.Latitude,
 			&product.Longitude,
 			&product.LocationAccuracy,
+			&product.Location,
 			&product.Status,
 			&product.InitialListedQuantity,
 			&product.FirstListedAt,
@@ -452,30 +478,42 @@ func (r *ProductRepository) GetByID(id int) (*models.Product, error) {
 
 	err := r.db.QueryRow(`
 		SELECT
-			id,
-			owner_type,
-			owner_id,
-			name,
-			COALESCE(description, ''),
-			category,
-			quantity,
-			unit,
-			price,
-			state_id,
-			lga_id,
-			community_id,
-			COALESCE(latitude, 0),
-			COALESCE(longitude, 0),
-			COALESCE(location_accuracy, 0),
-			status,
-			COALESCE(initial_listed_quantity, 0),
-			first_listed_at,
-			first_order_at,
-			sold_out_at,
-			created_at,
-			updated_at
-		FROM products
-		WHERE id = $1
+			p.id,
+			p.owner_type,
+			p.owner_id,
+			p.name,
+			COALESCE(p.description, ''),
+			p.category,
+			p.quantity,
+			p.unit,
+			p.price,
+			p.state_id,
+			p.lga_id,
+			p.community_id,
+			COALESCE(p.latitude, 0),
+			COALESCE(p.longitude, 0),
+			COALESCE(p.location_accuracy, 0),
+			CONCAT_WS(
+				', ',
+				NULLIF(BTRIM(c.name), ''),
+				NULLIF(BTRIM(l.name), ''),
+				NULLIF(BTRIM(s.name), '')
+			),
+			p.status,
+			COALESCE(p.initial_listed_quantity, 0),
+			p.first_listed_at,
+			p.first_order_at,
+			p.sold_out_at,
+			p.created_at,
+			p.updated_at
+		FROM products p
+		LEFT JOIN communities c
+			ON c.id = p.community_id
+		LEFT JOIN lgas l
+			ON l.id = p.lga_id
+		LEFT JOIN states s
+			ON s.id = p.state_id
+		WHERE p.id = $1
 	`,
 		id,
 	).Scan(
@@ -494,6 +532,7 @@ func (r *ProductRepository) GetByID(id int) (*models.Product, error) {
 		&product.Latitude,
 		&product.Longitude,
 		&product.LocationAccuracy,
+		&product.Location,
 		&product.Status,
 		&product.InitialListedQuantity,
 		&product.FirstListedAt,
