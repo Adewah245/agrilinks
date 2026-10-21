@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -537,9 +538,8 @@ func (h *Negotiation) handleReject(
 
 // render loads a negotiation thread and renders the negotiation page.
 //
-// Authorization is enforced by the negotiation service when the
-// thread is loaded, so this handler does not incorrectly treat an
-// organization ID as a user ID.
+// Authorization is enforced by the negotiation service when the thread
+// is loaded.
 func (h *Negotiation) render(
 	w http.ResponseWriter,
 	negotiationID int,
@@ -548,13 +548,19 @@ func (h *Negotiation) render(
 ) {
 	negotiation, messages, err := h.service.Thread(
 		negotiationID,
+		userID,
 	)
 
 	if err != nil || negotiation == nil {
+		status := http.StatusNotFound
+		if errors.Is(err, services.ErrNegotiationAccessDenied) {
+			status = http.StatusForbidden
+		}
+
 		http.Error(
 			w,
 			"Negotiation not found",
-			http.StatusNotFound,
+			status,
 		)
 		return
 	}

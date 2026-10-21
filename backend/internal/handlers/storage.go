@@ -311,7 +311,7 @@ func (h *Storage) createProduct(
 			w,
 			userID,
 			fullName,
-			"Invalid quantity",
+			"Enter a valid amount.",
 		)
 		return
 	}
@@ -328,7 +328,7 @@ func (h *Storage) createProduct(
 			w,
 			userID,
 			fullName,
-			"Invalid price",
+			"Enter a valid price.",
 		)
 		return
 	}
@@ -485,7 +485,7 @@ func (h *Storage) updateProduct(
 			w,
 			userID,
 			fullName,
-			"Invalid quantity",
+			"Enter a valid amount.",
 		)
 		return
 	}
@@ -502,7 +502,7 @@ func (h *Storage) updateProduct(
 			w,
 			userID,
 			fullName,
-			"Invalid price",
+			"Enter a valid price.",
 		)
 		return
 	}

@@ -1,1 +1,106 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payments | Agro-Shield</title><link rel="stylesheet" href="/static/css/style.css"></head><body><main class="dashboard"><p><a href="/dashboard">← Dashboard</a></p><h1>Payments</h1><p>Secure payment requests are created for confirmed orders. Flutterwave confirmation is pending until the provider verifies the payment.</p>{{if .Error}}<p role="alert">{{.Error}}</p>{{end}}{{if .Notice}}<p role="status">{{.Notice}}</p>{{end}}<section class="panel"><h2>Start a Flutterwave payment</h2><form method="post" action="/payments"><label for="order_id">Confirmed order ID</label><input id="order_id" name="order_id" type="number" min="1" required><button type="submit">Create payment request</button></form></section><section class="panel"><h2>Payment history</h2>{{if .Payments}}<table><thead><tr><th>Order</th><th>Product</th><th>Amount</th><th>Status</th><th>Reference</th></tr></thead><tbody>{{range .Payments}}<tr><td>#{{.OrderID}}</td><td>{{.ProductName}}</td><td>₦{{.Amount}}</td><td>{{.Status}}</td><td>{{.Reference}}</td></tr>{{end}}</tbody></table>{{else}}<p>No payment requests yet.</p>{{end}}</section></main></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payments | Agro-Shield</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="navbar">
+        <a class="logo" href="/dashboard" aria-label="Agro-Shield dashboard">
+            <img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield">
+        </a>
+        <nav aria-label="Main navigation">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/marketplace">Marketplace</a>
+            <a href="/cart">Cart</a>
+            <a href="/orders">Orders</a>
+            <a href="/payments">Payments</a>
+            <a href="/logout">Logout</a>
+        </nav>
+    </header>
+
+    <main class="dashboard">
+        <p><a href="/dashboard">← Dashboard</a></p>
+        <h1>Payments</h1>
+        <p>Payments are verified with Flutterwave before an order is confirmed.</p>
+
+        {{if .Error}}
+        <p role="alert">{{.Error}}</p>
+        {{end}}
+
+        {{if .Notice}}
+        <p role="status">{{.Notice}}</p>
+        {{end}}
+
+        <section class="panel">
+            <h2>Orders awaiting payment</h2>
+            {{if .Orders}}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order</th>
+                        <th>Product</th>
+                        <th>Amount</th>
+                        <th>Seller</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Orders}}
+                    <tr>
+                        <td>#{{.ID}}</td>
+                        <td>{{.ProductName}}</td>
+                        <td>{{.Quantity}} {{.ProductUnit}}</td>
+                        <td>{{.SellerName}}</td>
+                        <td>{{$.Currency}} {{money .TotalPrice}}</td>
+                        <td>
+                            <form method="POST" action="/payments">
+                                <input type="hidden" name="order_id" value="{{.ID}}">
+                                <button type="submit">Pay with Flutterwave</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p>No orders are waiting for payment.</p>
+            <a href="/orders">View orders</a>
+            {{end}}
+        </section>
+
+        <section class="panel">
+            <h2>Payment history</h2>
+            {{if .Payments}}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order</th>
+                        <th>Product</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Payments}}
+                    <tr>
+                        <td>#{{.OrderID}}</td>
+                        <td>{{.ProductName}}</td>
+                        <td>{{.Currency}} {{.Amount}}</td>
+                        <td>{{humanPaymentStatus .Status}}</td>
+                        <td>{{.Reference}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <p>No payment attempts yet.</p>
+            {{end}}
+        </section>
+    </main>
+</body>
+</html>

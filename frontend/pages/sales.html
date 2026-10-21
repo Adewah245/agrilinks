@@ -290,7 +290,7 @@
                         </th>
 
                         <th scope="col">
-                            Quantity
+                            Amount
                         </th>
 
                         <th scope="col">
@@ -336,7 +336,7 @@
                         <!-- QUANTITY -->
 
                         <td>
-                            {{printf "%.0f" .Quantity}}
+                            {{printf "%.0f" .Quantity}} {{.ProductUnit}}
                         </td>
 
 
@@ -353,7 +353,7 @@
 
                             <span class="sale-status">
 
-                                {{.Status}}
+                                {{humanOrderStatus .Status}}
 
                             </span>
 

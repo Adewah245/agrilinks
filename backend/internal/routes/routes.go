@@ -481,6 +481,7 @@ func RegisterRoutes(container *app.Container) {
 
 	productHandler := handlers.NewProductHandler(
 		container.Product,
+		container.Review,
 		container.MarketEvents,
 	)
 
@@ -578,8 +579,72 @@ func RegisterRoutes(container *app.Container) {
 	// PAYMENTS
 	// ========================================================
 
+	orderHandler := handlers.NewOrderHandler(container.Order)
+	http.HandleFunc(
+		"/orders",
+		middleware.OnlyPath(
+			"/orders",
+			middleware.OnlyGet(
+				middleware.RequireAuth(
+					container.UserRepo,
+					orderHandler.ListHandler,
+				),
+			),
+		),
+	)
+	http.HandleFunc(
+		"/orders/place",
+		middleware.OnlyPath(
+			"/orders/place",
+			middleware.RequireAuth(
+				container.UserRepo,
+				orderHandler.PlaceHandler,
+			),
+		),
+	)
+
+	reviewHandler := handlers.NewReviewHandler(container.Review)
+	http.HandleFunc(
+		"/reviews",
+		middleware.OnlyPath(
+			"/reviews",
+			middleware.RequireAuth(
+				container.UserRepo,
+				reviewHandler.CreateHandler,
+			),
+		),
+	)
+
 	paymentHandler := handlers.NewPaymentHandler(container.Payment)
-	http.HandleFunc("/payments", middleware.OnlyPath("/payments", middleware.RequireAuth(container.UserRepo, paymentHandler.Handler)))
+	http.HandleFunc(
+		"/payments",
+		middleware.OnlyPath(
+			"/payments",
+			middleware.RequireAuth(
+				container.UserRepo,
+				paymentHandler.Handler,
+			),
+		),
+	)
+
+	// The provider redirect and webhook are deliberately unauthenticated:
+	// Flutterwave cannot hold an Agro-Shield session. Both are authenticated
+	// by provider verification, and the webhook additionally uses verif-hash.
+	http.HandleFunc(
+		"/payments/callback",
+		middleware.OnlyPath(
+			"/payments/callback",
+			paymentHandler.CallbackHandler,
+		),
+	)
+	http.HandleFunc(
+		"/webhooks/flutterwave",
+		middleware.OnlyPath(
+			"/webhooks/flutterwave",
+			paymentHandler.WebhookHandler,
+		),
+	)
+
 	deliveryHandler := handlers.NewDeliveryHandler(container.Delivery)
 	http.HandleFunc("/deliveries", middleware.OnlyPath("/deliveries", middleware.OnlyGet(middleware.RequireAuth(container.UserRepo, deliveryHandler.Handler))))
 

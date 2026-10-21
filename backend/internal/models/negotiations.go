@@ -42,6 +42,7 @@ type Negotiation struct {
 
 	// Populated for display only.
 	ProductName    string
+	ProductUnit    string
 	BuyerName      string
 	SellerName     string
 	BuyerPhotoURL  string

@@ -49,9 +49,17 @@ func TestMarketplaceTemplateRendersProductModel(t *testing.T) {
 		"Maize",
 		"₦1,250.00",
 		"/uploads/products/maize.jpg",
+		"per kg",
+		"Amount in kg",
 	} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("marketplace template missing %q", expected)
+		}
+	}
+
+	for _, unwanted := range []string{"Quantity of Maize", "Price per unit"} {
+		if strings.Contains(body, unwanted) {
+			t.Fatalf("marketplace template still uses technical wording %q", unwanted)
 		}
 	}
 }

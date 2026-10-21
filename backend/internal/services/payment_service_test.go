@@ -6,7 +6,7 @@ import (
 )
 
 func TestPaymentProfileRejectsInvalidUser(t *testing.T) {
-	service := NewPaymentService(nil)
+	service := NewPaymentService(nil, nil, nil, nil, nil, "", "")
 
 	profile, err := service.PaymentProfile(0)
 	if err == nil || !strings.Contains(err.Error(), "invalid user") {
@@ -18,7 +18,7 @@ func TestPaymentProfileRejectsInvalidUser(t *testing.T) {
 }
 
 func TestUpdateBankAccountValidation(t *testing.T) {
-	service := NewPaymentService(nil)
+	service := NewPaymentService(nil, nil, nil, nil, nil, "", "")
 
 	tests := []struct {
 		name          string

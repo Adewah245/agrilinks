@@ -40,6 +40,7 @@ type CartItem struct {
 	// They are not stored directly in cart_items.
 	// ============================================================
 
+	SellerType     string `json:"seller_type"`
 	SellerID       int    `json:"seller_id"`
 	SellerName     string `json:"seller_name"`
 	SellerEmail    string `json:"seller_email"`

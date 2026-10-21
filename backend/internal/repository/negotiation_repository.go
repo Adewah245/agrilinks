@@ -307,6 +307,8 @@ func (r *NegotiationRepository) GetByID(
 			n.id,
 			n.product_id,
 			n.buyer_id,
+			p.owner_type,
+			p.owner_id,
 			n.quantity,
 			n.initial_offer_price,
 			n.current_offer_price,
@@ -320,6 +322,7 @@ func (r *NegotiationRepository) GetByID(
 			n.updated_at,
 
 			p.name,
+			p.unit,
 
 			COALESCE(
 				b.full_name,
@@ -391,6 +394,8 @@ func (r *NegotiationRepository) GetByID(
 		&n.ID,
 		&n.ProductID,
 		&n.BuyerID,
+		&n.OwnerType,
+		&n.OwnerID,
 		&n.Quantity,
 		&n.InitialOfferPrice,
 		&n.CurrentOfferPrice,
@@ -404,6 +409,7 @@ func (r *NegotiationRepository) GetByID(
 		&n.UpdatedAt,
 
 		&n.ProductName,
+		&n.ProductUnit,
 		&n.BuyerName,
 		&n.SellerName,
 		&n.BuyerPhotoURL,
@@ -448,6 +454,8 @@ func (r *NegotiationRepository) ListForUser(
 			n.id,
 			n.product_id,
 			n.buyer_id,
+			p.owner_type,
+			p.owner_id,
 			n.quantity,
 			n.initial_offer_price,
 			n.current_offer_price,
@@ -461,6 +469,7 @@ func (r *NegotiationRepository) ListForUser(
 			n.updated_at,
 
 			p.name,
+			p.unit,
 
 			COALESCE(
 				b.full_name,
@@ -565,6 +574,8 @@ func (r *NegotiationRepository) ListForUser(
 			&n.ID,
 			&n.ProductID,
 			&n.BuyerID,
+			&n.OwnerType,
+			&n.OwnerID,
 			&n.Quantity,
 			&n.InitialOfferPrice,
 			&n.CurrentOfferPrice,
@@ -578,6 +589,7 @@ func (r *NegotiationRepository) ListForUser(
 			&n.UpdatedAt,
 
 			&n.ProductName,
+			&n.ProductUnit,
 			&n.BuyerName,
 			&n.SellerName,
 			&n.BuyerPhotoURL,
@@ -599,4 +611,40 @@ func (r *NegotiationRepository) ListForUser(
 	}
 
 	return negotiations, nil
+}
+
+// IsOrganizationMember reports whether a user belongs to an organization.
+func (r *NegotiationRepository) IsOrganizationMember(
+	organizationID,
+	userID int,
+) (bool, error) {
+	if r == nil || r.db == nil {
+		return false, fmt.Errorf(
+			"negotiation repository database is not configured",
+		)
+	}
+
+	if organizationID <= 0 {
+		return false, fmt.Errorf("invalid organization ID")
+	}
+
+	if userID <= 0 {
+		return false, fmt.Errorf("invalid user ID")
+	}
+
+	var isMember bool
+
+	err := r.db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM organization_members
+			WHERE organization_id = $1
+			  AND user_id = $2
+		)
+	`, organizationID, userID).Scan(&isMember)
+	if err != nil {
+		return false, err
+	}
+
+	return isMember, nil
 }

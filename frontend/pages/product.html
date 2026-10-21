@@ -231,7 +231,7 @@
         <p class="product-price">
 
             ₦{{money0 .Product.Price}}
-            / {{.Product.Unit}}
+            per {{.Product.Unit}}
 
         </p>
 
@@ -261,13 +261,13 @@
 
 
             <!-- =================================================
-                 AVAILABLE QUANTITY
+                 AVAILABLE AMOUNT
                  ================================================= -->
 
             <div class="product-detail-box">
 
                 <span class="product-detail-label">
-                    Available Quantity
+                    How much is available
                 </span>
 
                 <span class="product-detail-value">
@@ -279,19 +279,19 @@
 
 
             <!-- =================================================
-                 PRICE PER UNIT
+                 PRICE
                  ================================================= -->
 
             <div class="product-detail-box">
 
                 <span class="product-detail-label">
-                    Price Per Unit
+                    Price per {{.Product.Unit}}
                 </span>
 
                 <span class="product-detail-value">
 
                     ₦{{money0 .Product.Price}}
-                    / {{.Product.Unit}}
+                    per {{.Product.Unit}}
 
                 </span>
 
@@ -467,6 +467,24 @@
 
         </div>
 
+    </section>
+
+    <section id="reviews" class="product-detail-box">
+        <h2>Product Reviews</h2>
+
+        {{if .Reviews}}
+        <ul>
+            {{range .Reviews}}
+            <li>
+                <strong>{{.Rating}}/5</strong>
+                {{if .Comment}}— {{.Comment}}{{end}}
+                <small>{{.CreatedAt.Format "02 Jan 2006"}}</small>
+            </li>
+            {{end}}
+        </ul>
+        {{else}}
+        <p>No reviews yet.</p>
+        {{end}}
     </section>
 
 </main>

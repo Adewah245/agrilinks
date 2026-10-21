@@ -7,7 +7,7 @@
 **Database:** PostgreSQL  
 **Payment provider:** Flutterwave (`flutterwave`)
 **Primary deployment database direction:** Neon PostgreSQL  
-**Last updated:** 2026-10-20
+**Last updated:** 2026-10-21
 
 ---
 
@@ -604,6 +604,10 @@ The current business rule discussed for the negotiation system is:
 - Maximum of 5 rounds
 - Negotiation expires after 24 hours
 
+These values are runtime-configurable through `NEGOTIATION_MAX_ROUNDS`
+and `NEGOTIATION_WINDOW` (for example, `24h`). The values above remain the
+defaults when the variables are not set.
+
 ---
 
 # 20. Negotiation Messages
@@ -698,6 +702,20 @@ Order/Notification Update
 ```
 
 Provider-specific implementation details should remain isolated so that the core business logic does not become dependent on provider-specific code.
+
+The payment boundary is configured at runtime:
+
+- `FLUTTERWAVE_SECRET_KEY` — provider secret used for checkout and verification
+- `FLUTTERWAVE_SECRET_HASH` — secret used to authenticate webhook deliveries
+- `PAYMENT_REDIRECT_URL` — absolute URL for the browser callback, normally `/payments/callback`
+- `PAYMENT_CURRENCY` — three-letter transaction currency (defaults to `NGN`)
+- `FLUTTERWAVE_PAYMENT_OPTIONS` — checkout funding methods (defaults to `card,banktransfer`)
+
+Flutterwave calls the unauthenticated `POST /webhooks/flutterwave` endpoint. The
+handler authenticates the `verif-hash` header, verifies the transaction directly
+with Flutterwave, and only then marks the transaction successful and confirms the
+order. Payment completion and webhook deduplication are committed atomically.
+The browser callback is a user-experience aid; the webhook remains authoritative.
 
 ---
 

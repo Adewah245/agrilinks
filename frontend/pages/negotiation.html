@@ -117,14 +117,14 @@
                 <span
                     class="status status-{{.Negotiation.Status}}"
                 >
-                    {{.Negotiation.Status}}
+                    {{humanNegotiationStatus .Negotiation.Status}}
                 </span>
 
-                • Round
-                {{.Negotiation.RoundCount}}/{{.Negotiation.MaxRounds}}
+                • Offers used:
+                {{.Negotiation.RoundCount}} of {{.Negotiation.MaxRounds}}
 
-                • Quantity:
-                {{.Negotiation.Quantity}}
+                • Amount:
+                {{.Negotiation.Quantity}} {{.Negotiation.ProductUnit}}
 
             </p>
 
@@ -183,7 +183,7 @@
             <span
                 class="offer-status offer-status-{{.OfferStatus}}"
             >
-                {{.OfferStatus}}
+                {{humanOfferStatus .OfferStatus}}
             </span>
 
             {{end}}
@@ -389,7 +389,7 @@
             for="offer-price"
             class="sr-only"
         >
-            Your offer price
+            Your offer
         </label>
 
         <input
@@ -467,7 +467,7 @@
         role="status"
     >
         <strong>
-            This negotiation is {{.Negotiation.Status}}.
+            This negotiation is {{humanNegotiationStatus .Negotiation.Status}}.
         </strong>
     </p>
 

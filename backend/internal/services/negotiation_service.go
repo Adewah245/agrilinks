@@ -11,14 +11,10 @@ import (
 	"backend/internal/repository"
 )
 
-const (
-	// MaxNegotiationRounds defines the maximum number of offers
-	// that can be exchanged in one negotiation.
-	MaxNegotiationRounds = 15
-
-	// NegotiationWindow defines how long a negotiation remains
-	// active after it is started.
-	NegotiationWindow = 24 * time.Hour
+// ErrNegotiationAccessDenied is returned when a user is not a buyer in
+// the negotiation and cannot act for the product owner.
+var ErrNegotiationAccessDenied = errors.New(
+	"you're not part of this negotiation",
 )
 
 // NegotiationService handles negotiation business logic.
@@ -57,6 +53,8 @@ type NegotiationService struct {
 	cartService  *CartService
 	notification *NotificationService
 	eventRepo    *repository.MarketEventRepository
+	maxRounds    int
+	window       time.Duration
 }
 
 // NewNegotiationService creates a new NegotiationService connected
@@ -69,6 +67,8 @@ func NewNegotiationService(
 	cartService *CartService,
 	notification *NotificationService,
 	eventRepo *repository.MarketEventRepository,
+	maxRounds int,
+	window time.Duration,
 ) *NegotiationService {
 	return &NegotiationService{
 		repo:         repo,
@@ -77,13 +77,15 @@ func NewNegotiationService(
 		cartService:  cartService,
 		notification: notification,
 		eventRepo:    eventRepo,
+		maxRounds:    maxRounds,
+		window:       window,
 	}
 }
 
 // StartNegotiation creates a new negotiation for an available product.
 //
 // The buyer's first offer is stored as the first negotiation message.
-// The negotiation remains open for NegotiationWindow.
+// The negotiation remains open for the configured negotiation window.
 func (s *NegotiationService) StartNegotiation(
 	buyerID,
 	productID int,
@@ -91,6 +93,12 @@ func (s *NegotiationService) StartNegotiation(
 	offerPrice float64,
 	message string,
 ) (*models.Negotiation, error) {
+	if s.maxRounds <= 0 || s.window <= 0 {
+		return nil, errors.New(
+			"negotiation policy is not configured",
+		)
+	}
+
 	if buyerID <= 0 {
 		return nil, errors.New("invalid buyer")
 	}
@@ -101,13 +109,13 @@ func (s *NegotiationService) StartNegotiation(
 
 	if quantity <= 0 {
 		return nil, errors.New(
-			"quantity must be greater than zero",
+			"Enter how much you want.",
 		)
 	}
 
 	if offerPrice <= 0 {
 		return nil, errors.New(
-			"offer price must be greater than zero",
+			"Enter an offer greater than zero.",
 		)
 	}
 
@@ -137,6 +145,22 @@ func (s *NegotiationService) StartNegotiation(
 		)
 	}
 
+	if product.OwnerType == "organization" {
+		isMember, err := s.repo.IsOrganizationMember(
+			product.OwnerID,
+			buyerID,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if isMember {
+			return nil, errors.New(
+				"you can't negotiate on your own organization's product",
+			)
+		}
+	}
+
 	// Organization ownership is supported by the product model,
 	// but organization-member authorization is handled by the
 	// organization layer. We must not treat an organization ID
@@ -150,7 +174,7 @@ func (s *NegotiationService) StartNegotiation(
 
 	if quantity > product.Quantity {
 		return nil, errors.New(
-			"not enough quantity available",
+			"There is not enough available.",
 		)
 	}
 
@@ -161,8 +185,8 @@ func (s *NegotiationService) StartNegotiation(
 		OwnerID:   product.OwnerID,
 		Quantity:  quantity,
 		Status:    "open",
-		MaxRounds: MaxNegotiationRounds,
-		ExpiresAt: time.Now().Add(NegotiationWindow),
+		MaxRounds: s.maxRounds,
+		ExpiresAt: time.Now().Add(s.window),
 	}
 
 	if err := s.repo.Create(negotiation); err != nil {
@@ -252,13 +276,11 @@ func (s *NegotiationService) SendMessage(
 		)
 	}
 
-	if !s.isNegotiationParticipant(
+	if err := s.requireParticipant(
 		negotiation,
 		senderID,
-	) {
-		return errors.New(
-			"you're not part of this negotiation",
-		)
+	); err != nil {
+		return err
 	}
 
 	chatMessage := &models.NegotiationMessage{
@@ -315,7 +337,7 @@ func (s *NegotiationService) SendOffer(
 
 	if offerPrice <= 0 {
 		return errors.New(
-			"offer price must be greater than zero",
+			"Enter an offer greater than zero.",
 		)
 	}
 
@@ -334,13 +356,11 @@ func (s *NegotiationService) SendOffer(
 		)
 	}
 
-	if !s.isNegotiationParticipant(
+	if err := s.requireParticipant(
 		negotiation,
 		senderID,
-	) {
-		return errors.New(
-			"you're not part of this negotiation",
-		)
+	); err != nil {
+		return err
 	}
 
 	if negotiation.Status != "open" {
@@ -440,13 +460,11 @@ func (s *NegotiationService) Accept(
 		)
 	}
 
-	if !s.isNegotiationParticipant(
+	if err := s.requireParticipant(
 		negotiation,
 		accepterID,
-	) {
-		return errors.New(
-			"you're not part of this negotiation",
-		)
+	); err != nil {
+		return err
 	}
 
 	if negotiation.Status != "open" {
@@ -524,7 +542,7 @@ func (s *NegotiationService) Accept(
 
 	if negotiation.Quantity > product.Quantity {
 		return errors.New(
-			"the requested quantity is no longer available",
+			"The amount you asked for is no longer available.",
 		)
 	}
 
@@ -538,10 +556,10 @@ func (s *NegotiationService) Accept(
 	// the negotiation. This prevents an accepted negotiation from
 	// being finalized when the cart operation cannot succeed.
 	if offer.OfferPrice == nil {
-		return errors.New("offer price is missing")
+		return errors.New("This offer has no price.")
 	}
 
-	if err := s.cartService.AddFromNegotiation(
+	if err := s.cartService.addFromNegotiation(
 		negotiation,
 		*offer.OfferPrice,
 	); err != nil {
@@ -635,13 +653,11 @@ func (s *NegotiationService) Reject(
 		)
 	}
 
-	if !s.isNegotiationParticipant(
+	if err := s.requireParticipant(
 		negotiation,
 		rejecterID,
-	) {
-		return errors.New(
-			"you're not part of this negotiation",
-		)
+	); err != nil {
+		return err
 	}
 
 	if negotiation.Status != "open" {
@@ -766,13 +782,11 @@ func (s *NegotiationService) End(
 		)
 	}
 
-	if !s.isNegotiationParticipant(
+	if err := s.requireParticipant(
 		negotiation,
 		userID,
-	) {
-		return errors.New(
-			"you're not part of this negotiation",
-		)
+	); err != nil {
+		return err
 	}
 
 	if negotiation.Status != "open" {
@@ -812,7 +826,8 @@ func (s *NegotiationService) End(
 // The returned messages include normal messages, offers,
 // rejected offers, and accepted offers.
 func (s *NegotiationService) Thread(
-	negotiationID int,
+	negotiationID,
+	userID int,
 ) (*models.Negotiation, []models.NegotiationMessage, error) {
 	if negotiationID <= 0 {
 		return nil, nil, errors.New(
@@ -831,6 +846,13 @@ func (s *NegotiationService) Thread(
 		return nil, nil, errors.New(
 			"negotiation not found",
 		)
+	}
+
+	if err := s.requireParticipant(
+		negotiation,
+		userID,
+	); err != nil {
+		return nil, nil, err
 	}
 
 	messages, err := s.msgRepo.ListByNegotiation(
@@ -856,31 +878,51 @@ func (s *NegotiationService) MyNegotiations(
 	return s.repo.ListForUser(userID)
 }
 
-// isNegotiationParticipant determines whether a user is an authorized
-// participant in a negotiation.
-//
-// Buyers are always represented by BuyerID.
-//
-// Individual product owners are represented by OwnerID when
-// OwnerType is "user".
-//
-// Organization ownership is intentionally not treated as a user
-// relationship here. Organization-member authorization should be
-// handled by the organization access layer.
+// isNegotiationParticipant determines whether a user may act in a
+// negotiation as either the buyer or a representative of the product owner.
 func (s *NegotiationService) isNegotiationParticipant(
 	negotiation *models.Negotiation,
 	userID int,
-) bool {
+) (bool, error) {
 	if negotiation == nil || userID <= 0 {
-		return false
+		return false, nil
 	}
 
 	if negotiation.BuyerID == userID {
-		return true
+		return true, nil
 	}
 
-	return negotiation.OwnerType == "user" &&
-		negotiation.OwnerID == userID
+	if negotiation.OwnerType == "user" {
+		return negotiation.OwnerID == userID, nil
+	}
+
+	if negotiation.OwnerType == "organization" {
+		return s.repo.IsOrganizationMember(
+			negotiation.OwnerID,
+			userID,
+		)
+	}
+
+	return false, nil
+}
+
+func (s *NegotiationService) requireParticipant(
+	negotiation *models.Negotiation,
+	userID int,
+) error {
+	allowed, err := s.isNegotiationParticipant(
+		negotiation,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	if !allowed {
+		return ErrNegotiationAccessDenied
+	}
+
+	return nil
 }
 
 // otherParticipantID returns the user ID of the other participant

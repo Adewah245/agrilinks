@@ -7,8 +7,15 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
+)
+
+const (
+	defaultNegotiationMaxRounds = 5
+	defaultNegotiationWindow    = 24 * time.Hour
+	defaultPaymentCurrency      = "NGN"
 )
 
 // Config holds all application settings in one place.
@@ -45,6 +52,7 @@ type Config struct {
 	FlutterwaveSecretKey  string
 	FlutterwaveSecretHash string
 	PaymentRedirectURL    string
+	PaymentCurrency       string
 
 	// FlutterwavePaymentOptions is the comma-separated list of funding methods
 	// offered on the hosted checkout, e.g. "card,banktransfer". Sent explicitly
@@ -75,6 +83,22 @@ type Config struct {
 	TermiiBaseURL  string
 }
 
+// NegotiationPolicy controls how long a negotiation remains active and
+// how many offers may be exchanged.
+type NegotiationPolicy struct {
+	MaxRounds int
+	Window    time.Duration
+}
+
+// FlutterwaveConfig holds the payment boundary settings.
+type FlutterwaveConfig struct {
+	SecretKey      string
+	SecretHash     string
+	RedirectURL    string
+	Currency       string
+	PaymentOptions string
+}
+
 // LoadDatabaseURL reads only the database URL.
 // It lets database tools run without requiring AI API keys.
 func LoadDatabaseURL() (string, error) {
@@ -90,6 +114,80 @@ func LoadDatabaseURL() (string, error) {
 	}
 
 	return databaseURL, nil
+}
+
+// LoadNegotiationPolicy reads the marketplace negotiation policy.
+//
+// Defaults match the product rules documented in README.md.
+func LoadNegotiationPolicy() (NegotiationPolicy, error) {
+	_ = godotenv.Load()
+
+	policy := NegotiationPolicy{
+		MaxRounds: defaultNegotiationMaxRounds,
+		Window:    defaultNegotiationWindow,
+	}
+
+	if raw := strings.TrimSpace(os.Getenv("NEGOTIATION_MAX_ROUNDS")); raw != "" {
+		maxRounds, err := strconv.Atoi(raw)
+		if err != nil || maxRounds <= 0 {
+			return NegotiationPolicy{}, fmt.Errorf(
+				"NEGOTIATION_MAX_ROUNDS must be a positive integer",
+			)
+		}
+		policy.MaxRounds = maxRounds
+	}
+
+	if raw := strings.TrimSpace(os.Getenv("NEGOTIATION_WINDOW")); raw != "" {
+		window, err := time.ParseDuration(raw)
+		if err != nil || window <= 0 {
+			return NegotiationPolicy{}, fmt.Errorf(
+				"NEGOTIATION_WINDOW must be a positive duration such as 24h",
+			)
+		}
+		policy.Window = window
+	}
+
+	return policy, nil
+}
+
+// LoadFlutterwaveConfig reads the payment-provider settings required to
+// initialize checkout and authenticate webhooks.
+func LoadFlutterwaveConfig() (FlutterwaveConfig, error) {
+	_ = godotenv.Load()
+
+	cfg := FlutterwaveConfig{
+		SecretKey:      strings.TrimSpace(os.Getenv("FLUTTERWAVE_SECRET_KEY")),
+		SecretHash:     strings.TrimSpace(os.Getenv("FLUTTERWAVE_SECRET_HASH")),
+		RedirectURL:    strings.TrimSpace(os.Getenv("PAYMENT_REDIRECT_URL")),
+		Currency:       strings.ToUpper(strings.TrimSpace(os.Getenv("PAYMENT_CURRENCY"))),
+		PaymentOptions: strings.TrimSpace(os.Getenv("FLUTTERWAVE_PAYMENT_OPTIONS")),
+	}
+
+	if cfg.SecretKey == "" {
+		return FlutterwaveConfig{}, fmt.Errorf("FLUTTERWAVE_SECRET_KEY must not be empty")
+	}
+
+	if cfg.SecretHash == "" {
+		return FlutterwaveConfig{}, fmt.Errorf("FLUTTERWAVE_SECRET_HASH must not be empty")
+	}
+
+	if cfg.PaymentOptions == "" {
+		cfg.PaymentOptions = "card,banktransfer"
+	}
+
+	if cfg.Currency == "" {
+		cfg.Currency = defaultPaymentCurrency
+	}
+	if len(cfg.Currency) != 3 {
+		return FlutterwaveConfig{}, fmt.Errorf("PAYMENT_CURRENCY must be a three-letter currency code")
+	}
+
+	redirect, err := url.Parse(cfg.RedirectURL)
+	if err != nil || (redirect.Scheme != "http" && redirect.Scheme != "https") || redirect.Host == "" {
+		return FlutterwaveConfig{}, fmt.Errorf("PAYMENT_REDIRECT_URL must be an absolute http(s) URL")
+	}
+
+	return cfg, nil
 }
 
 // Load reads the application settings from environment variables.
@@ -122,6 +220,7 @@ func Load() (Config, error) {
 		FlutterwaveSecretKey:  strings.TrimSpace(os.Getenv("FLUTTERWAVE_SECRET_KEY")),
 		FlutterwaveSecretHash: strings.TrimSpace(os.Getenv("FLUTTERWAVE_SECRET_HASH")),
 		PaymentRedirectURL:    strings.TrimSpace(os.Getenv("PAYMENT_REDIRECT_URL")),
+		PaymentCurrency:       strings.ToUpper(strings.TrimSpace(os.Getenv("PAYMENT_CURRENCY"))),
 
 		FlutterwavePaymentOptions: strings.TrimSpace(os.Getenv("FLUTTERWAVE_PAYMENT_OPTIONS")),
 

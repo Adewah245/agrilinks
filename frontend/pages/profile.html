@@ -367,7 +367,7 @@
                                 </th>
 
                                 <th>
-                                    Quantity
+                                    Amount
                                 </th>
 
                                 <th>
@@ -398,7 +398,7 @@
                                 </td>
 
                                 <td>
-                                    {{.Quantity}}
+                                    {{.Quantity}} {{.ProductUnit}}
                                 </td>
 
                                 <td>
@@ -466,7 +466,7 @@
                                 </th>
 
                                 <th>
-                                    Quantity
+                                    Amount
                                 </th>
 
                                 <th>
@@ -474,7 +474,7 @@
                                 </th>
 
                                 <th>
-                                    Price / Unit
+                                    Price
                                 </th>
 
                             </tr>
@@ -497,8 +497,7 @@
                                 </td>
 
                                 <td>
-                                    {{.Quantity}}
-                                    {{.Unit}}
+                                    {{.Quantity}} {{.Unit}}
                                 </td>
 
                                 <td>
@@ -520,7 +519,7 @@
                                 </td>
 
                                 <td>
-                                    ₦{{money .Price}}
+                                    ₦{{money .Price}} per {{.Unit}}
                                 </td>
 
                             </tr>
@@ -577,7 +576,7 @@
                                 </th>
 
                                 <th>
-                                    Quantity
+                                    Amount
                                 </th>
 
                                 <th>
@@ -608,7 +607,7 @@
                                 </td>
 
                                 <td>
-                                    {{.Quantity}}
+                                    {{.Quantity}} {{.ProductUnit}}
                                 </td>
 
                                 <td>

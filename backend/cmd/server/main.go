@@ -35,6 +35,16 @@ func main() {
 		log.Fatal(err)
 	}
 
+	negotiationPolicy, err := config.LoadNegotiationPolicy()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	paymentConfig, err := config.LoadFlutterwaveConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	db, err := database.ConnectDB(databaseURL)
 	if err != nil {
 		log.Fatal(err)
@@ -241,6 +251,7 @@ func main() {
 
 	paymentRepo := repository.NewPaymentRepository(db)
 	deliveryRepo := repository.NewDeliveryRepository(db)
+	reviewRepo := repository.NewReviewRepository(db)
 
 	// ============================================================
 	// CHAT REPOSITORIES
@@ -290,6 +301,11 @@ func main() {
 	priceRepo := memory.NewPriceRepo()
 	submitterRepo := memory.NewSubmitterRepo()
 	priceService := services.NewPriceService(priceRepo, submitterRepo)
+	paymentGateway := services.NewFlutterwaveClient(
+		paymentConfig.SecretKey,
+		paymentConfig.RedirectURL,
+		paymentConfig.PaymentOptions,
+	)
 
 	// ============================================================
 	// 4. CREATE AI PROVIDER
@@ -340,6 +356,7 @@ func main() {
 		learningRepo,
 		paymentRepo,
 		deliveryRepo,
+		reviewRepo,
 
 		// --------------------------------------------------------
 		// CHAT REPOSITORIES
@@ -355,6 +372,10 @@ func main() {
 
 		aiProvider,
 		priceService,
+		negotiationPolicy,
+		paymentGateway,
+		paymentConfig.SecretHash,
+		paymentConfig.Currency,
 	)
 
 	// ============================================================

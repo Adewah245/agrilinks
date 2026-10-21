@@ -257,8 +257,7 @@
             <p class="price">
 
                 ₦{{money .Price}}
-                /
-                {{.Unit}}
+                per {{.Unit}}
 
             </p>
 
@@ -295,7 +294,7 @@
 
 
             <!-- =========================
-                 AVAILABLE QUANTITY
+                 AVAILABLE AMOUNT
             ========================== -->
             <p>
 
@@ -374,7 +373,7 @@
                     for="buy-quantity-{{.ID}}"
                     class="sr-only"
                 >
-                    Quantity of {{.Name}} to buy
+                    How much {{.Name}} do you want to buy?
                 </label>
 
                 <input
@@ -384,10 +383,10 @@
                     min="0.01"
                     max="{{.Quantity}}"
                     step="0.01"
-                    placeholder="Qty"
+                    placeholder="Amount in {{.Unit}}"
                     required
                     inputmode="decimal"
-                    aria-label="Quantity of {{.Name}} to buy"
+                    aria-label="How much {{.Name}} do you want to buy?"
                 >
 
                 <button
@@ -422,7 +421,7 @@
                     for="negotiation-quantity-{{.ID}}"
                     class="sr-only"
                 >
-                    Quantity of {{.Name}} to negotiate
+                    How much {{.Name}} do you want to negotiate for?
                 </label>
 
                 <input
@@ -432,7 +431,7 @@
                     min="0.01"
                     max="{{.Quantity}}"
                     step="0.01"
-                    placeholder="Qty"
+                    placeholder="Amount in {{.Unit}}"
                     required
                     inputmode="decimal"
                 >
@@ -442,7 +441,7 @@
                     for="offer-price-{{.ID}}"
                     class="sr-only"
                 >
-                    Your offer price for {{.Name}}
+                    Your offer for {{.Name}}
                 </label>
 
                 <input

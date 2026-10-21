@@ -44,6 +44,29 @@ func (s *CartService) AddFromNegotiation(
 		return errors.New("negotiation is required")
 	}
 
+	if negotiation.Status != "accepted" {
+		return errors.New(
+			"only accepted negotiations can be added to cart",
+		)
+	}
+
+	return s.addFromNegotiation(negotiation, agreedPrice)
+}
+
+// addFromNegotiation adds a validated negotiation to the buyer's cart.
+//
+// The negotiation acceptance flow calls this before changing the
+// negotiation status so a cart failure leaves the negotiation open.
+// AddFromNegotiation is the public path for negotiations that have
+// already reached the accepted state.
+func (s *CartService) addFromNegotiation(
+	negotiation *models.Negotiation,
+	agreedPrice float64,
+) error {
+	if negotiation == nil {
+		return errors.New("negotiation is required")
+	}
+
 	if negotiation.ID <= 0 {
 		return errors.New("invalid negotiation")
 	}
@@ -56,14 +79,8 @@ func (s *CartService) AddFromNegotiation(
 		return errors.New("invalid product")
 	}
 
-	if negotiation.Status != "accepted" {
-		return errors.New(
-			"only accepted negotiations can be added to cart",
-		)
-	}
-
 	if negotiation.Quantity <= 0 {
-		return errors.New("invalid negotiation quantity")
+		return errors.New("The negotiated amount is invalid.")
 	}
 
 	if agreedPrice <= 0 {
@@ -90,7 +107,7 @@ func (s *CartService) AddFromNegotiation(
 	// Verify that the negotiated quantity is still available.
 	if negotiation.Quantity > product.Quantity {
 		return errors.New(
-			"the requested quantity is no longer available",
+			"The amount you asked for is no longer available.",
 		)
 	}
 

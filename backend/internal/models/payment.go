@@ -30,4 +30,15 @@ const (
 	PaymentPending    = "pending"
 	PaymentSuccessful = "successful"
 	PaymentFailed     = "failed"
+
+	PaymentProviderFlutterwave = "flutterwave"
 )
+
+// WebhookEvent is an authenticated provider event persisted in the same
+// transaction as the payment and order changes it caused.
+type WebhookEvent struct {
+	Provider      string
+	TransactionID string
+	Event         string
+	Payload       []byte
+}

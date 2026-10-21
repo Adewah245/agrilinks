@@ -16,16 +16,19 @@ import (
 // ProductHandler handles requests related to viewing one product.
 type ProductHandler struct {
 	product *services.ProductService
+	review  *services.ReviewService
 	events  *repository.MarketEventRepository
 }
 
 // NewProductHandler creates a new ProductHandler.
 func NewProductHandler(
 	product *services.ProductService,
+	review *services.ReviewService,
 	events *repository.MarketEventRepository,
 ) *ProductHandler {
 	return &ProductHandler{
 		product: product,
+		review:  review,
 		events:  events,
 	}
 }
@@ -141,9 +144,18 @@ func (h *ProductHandler) ProductDetailsHandler(
 	// 6. PREPARE TEMPLATE DATA
 	// ========================================================
 
+	var reviews []models.ProductReview
+	if h.review != nil {
+		reviews, err = h.review.ProductReviews(productID)
+		if err != nil {
+			log.Println("failed to load product reviews:", err)
+		}
+	}
+
 	data := ProductPageData{
 		Product: product,
 		Images:  images,
+		Reviews: reviews,
 	}
 
 	// ========================================================
@@ -164,5 +176,6 @@ func (h *ProductHandler) ProductDetailsHandler(
 type ProductPageData struct {
 	Product *models.Product
 	Images  []models.ProductImage
+	Reviews []models.ProductReview
 	Error   string
 }

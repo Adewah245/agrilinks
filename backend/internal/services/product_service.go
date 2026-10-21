@@ -102,11 +102,11 @@ func (s *ProductService) AddProduct(
 	}
 
 	if unit == "" {
-		return errors.New("unit is required")
+		return errors.New("Say how this product is sold, for example kg or bag.")
 	}
 
 	if quantity <= 0 {
-		return errors.New("quantity must be greater than zero")
+		return errors.New("Enter how much you have.")
 	}
 
 	if price < 0 {
@@ -357,11 +357,11 @@ func (s *ProductService) UpdateProduct(
 	}
 
 	if unit == "" {
-		return errors.New("unit is required")
+		return errors.New("Say how this product is sold, for example kg or bag.")
 	}
 
 	if quantity <= 0 {
-		return errors.New("quantity must be greater than zero")
+		return errors.New("Enter how much you have.")
 	}
 
 	if price < 0 {
@@ -558,7 +558,7 @@ func (s *ProductService) RelistProduct(
 
 	if product.Quantity <= 0 {
 		return errors.New(
-			"cannot relist a product with no quantity available",
+			"There is nothing available to relist.",
 		)
 	}
 

@@ -2018,7 +2018,7 @@
                 <div>
 
                     <span>
-                        Median price / unit
+                        Typical price
                     </span>
 
 
@@ -2088,7 +2088,7 @@
                     <div>
 
                         <span>
-                            Cart adds · 30 days
+                            Times added to cart · 30 days
                         </span>
 
 
@@ -2102,7 +2102,7 @@
                     <div>
 
                         <span>
-                            Units ordered · 30 days
+                            Amount ordered · 30 days
                         </span>
 
 
@@ -2234,7 +2234,7 @@
                     <div>
 
                         <span>
-                            Average offer price
+                            Typical offer price
                         </span>
 
 
@@ -2258,7 +2258,7 @@
                     <div>
 
                         <span>
-                            Negotiated units · 30 days
+                            Amount negotiated · 30 days
                         </span>
 
 
@@ -2272,7 +2272,7 @@
                     <div>
 
                         <span>
-                            Sell-through · 30 days
+                            Share sold · 30 days
                         </span>
 
 
@@ -2371,19 +2371,19 @@
             <div>
 
                 <p class="eyebrow">
-                    Inventory
+                    Products
                 </p>
 
 
                 <h2 id="storage-overview-title">
-                    Storage overview
+                    Your products
                 </h2>
 
             </div>
 
 
             <a href="/storage">
-                Manage storage
+                Manage products
             </a>
 
 
@@ -2429,7 +2429,7 @@
                                 {{if eq .Status "active"}}
                                     Listed for sale
                                 {{else}}
-                                    Stored stock
+                                    Not listed
                                 {{end}}
 
                             </span>
@@ -2706,8 +2706,7 @@
                             ·
 
 
-                            {{printf "%.0f" .Quantity}}
-                            units
+                            {{printf "%.0f" .Quantity}} {{.ProductUnit}}
 
 
                         </p>
@@ -2726,7 +2725,7 @@
 
 
                         <span>
-                            {{.Status}}
+                            {{humanOrderStatus .Status}}
                         </span>
 
 
@@ -2997,7 +2996,7 @@
             >
 
                 <span>
-                    Storage
+                    Products
                 </span>
 
 
@@ -3007,8 +3006,8 @@
 
 
                 <p>
-                    Register stock and update
-                    product availability.
+                    Add products and keep
+                    availability up to date.
                 </p>
 
             </a>

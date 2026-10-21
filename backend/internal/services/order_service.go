@@ -36,17 +36,125 @@ import (
 type OrderService struct {
 	orderRepo   *repository.OrderRepository
 	productRepo *repository.ProductRepository
+	cartRepo    *repository.CartRepository
 }
 
 // NewOrderService creates a new OrderService.
 func NewOrderService(
 	orderRepo *repository.OrderRepository,
 	productRepo *repository.ProductRepository,
+	cartRepo *repository.CartRepository,
 ) *OrderService {
 	return &OrderService{
 		orderRepo:   orderRepo,
 		productRepo: productRepo,
+		cartRepo:    cartRepo,
 	}
+}
+
+// Checkout converts the buyer's cart into one order.
+//
+// A cart may contain several products from the same seller. Checkout keeps
+// them in one order and uses the prices stored in the cart, preserving any
+// negotiated agreement. Separate sellers must be checked out separately so a
+// payment can be attributed to exactly one seller.
+func (s *OrderService) Checkout(buyerID int) (*models.Order, error) {
+	if buyerID <= 0 {
+		return nil, errors.New("invalid buyer")
+	}
+
+	if s.cartRepo == nil || s.orderRepo == nil {
+		return nil, errors.New("checkout is not configured")
+	}
+
+	items, err := s.cartRepo.ListByBuyer(buyerID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(items) == 0 {
+		return nil, errors.New("your cart is empty")
+	}
+
+	order, cartIDs, err := buildOrderFromCart(buyerID, items)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.orderRepo.CreateFromCart(order, cartIDs); err != nil {
+		return nil, err
+	}
+
+	return order, nil
+}
+
+func buildOrderFromCart(
+	buyerID int,
+	items []models.CartItem,
+) (*models.Order, []int, error) {
+	if buyerID <= 0 {
+		return nil, nil, errors.New("invalid buyer")
+	}
+
+	if len(items) == 0 {
+		return nil, nil, errors.New("your cart is empty")
+	}
+
+	order := &models.Order{
+		BuyerID: buyerID,
+		Status:  "pending",
+		Items:   make([]models.OrderItem, 0, len(items)),
+	}
+	cartIDs := make([]int, 0, len(items))
+
+	var sellerType string
+	var sellerID int
+
+	for i := range items {
+		item := &items[i]
+
+		if item.ID <= 0 || item.ProductID <= 0 {
+			return nil, nil, errors.New("cart contains an invalid item")
+		}
+		if item.Quantity <= 0 {
+			return nil, nil, errors.New("The cart contains an invalid amount.")
+		}
+		if item.PricePerUnit < 0 {
+			return nil, nil, errors.New("cart item price cannot be negative")
+		}
+		if item.SellerType != "user" && item.SellerType != "organization" {
+			return nil, nil, errors.New("product has an invalid owner type")
+		}
+		if item.SellerID <= 0 {
+			return nil, nil, errors.New("product seller is invalid")
+		}
+		if item.SellerType == "user" && item.SellerID == buyerID {
+			return nil, nil, errors.New("you cannot buy your own product")
+		}
+
+		if i == 0 {
+			sellerType = item.SellerType
+			sellerID = item.SellerID
+		} else if item.SellerType != sellerType || item.SellerID != sellerID {
+			return nil, nil, errors.New(
+				"check out products from one seller at a time",
+			)
+		}
+
+		totalPrice := item.Quantity * item.PricePerUnit
+		order.TotalAmount += totalPrice
+		order.Items = append(order.Items, models.OrderItem{
+			ProductID:   item.ProductID,
+			Quantity:    item.Quantity,
+			UnitPrice:   item.PricePerUnit,
+			TotalPrice:  totalPrice,
+			ProductName: item.ProductName,
+			SellerName:  item.SellerName,
+		})
+		cartIDs = append(cartIDs, item.ID)
+	}
+
+	return order, cartIDs, nil
 }
 
 // ============================================================
@@ -95,7 +203,7 @@ func (s *OrderService) PlaceOrder(
 
 	if quantity <= 0 {
 		return errors.New(
-			"quantity must be greater than zero",
+			"Enter how much you want.",
 		)
 	}
 
@@ -154,7 +262,7 @@ func (s *OrderService) PlaceOrder(
 
 	if quantity > product.Quantity {
 		return errors.New(
-			"not enough quantity available",
+			"There is not enough available.",
 		)
 	}
 

@@ -159,7 +159,7 @@
                         </th>
 
                         <th scope="col">
-                            Rounds Used
+                            Offers exchanged
                         </th>
 
                         <th scope="col">
@@ -249,7 +249,7 @@
                             <span
                                 class="status status-{{.Status}}"
                             >
-                                {{.Status}}
+                                {{humanNegotiationStatus .Status}}
                             </span>
 
                         </td>
@@ -259,7 +259,7 @@
                              ROUNDS
                         ========================== -->
                         <td>
-                            {{.RoundCount}}/{{.MaxRounds}}
+                            {{.RoundCount}} of {{.MaxRounds}}
                         </td>
 
 
@@ -273,7 +273,7 @@
                                 href="/negotiation?id={{.ID}}"
                                 aria-label="Open negotiation for {{.ProductName}}"
                             >
-                                Open Chat
+                                Open conversation
                             </a>
 
                         </td>

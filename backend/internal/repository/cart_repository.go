@@ -67,6 +67,7 @@ func (r *CartRepository) ListByBuyer(buyerID int) ([]models.CartItem, error) {
 
 			products.name,
 			products.unit,
+			products.owner_type,
 
 			COALESCE(
 				(
@@ -138,6 +139,7 @@ func (r *CartRepository) ListByBuyer(buyerID int) ([]models.CartItem, error) {
 
 			&item.ProductName,
 			&item.Unit,
+			&item.SellerType,
 			&item.ImageURL,
 
 			&item.SellerID,
@@ -184,6 +186,7 @@ func (r *CartRepository) GetByID(cartID, buyerID int) (*models.CartItem, error) 
 
 			products.name,
 			products.unit,
+			products.owner_type,
 
 			COALESCE(
 				(
@@ -245,6 +248,7 @@ func (r *CartRepository) GetByID(cartID, buyerID int) (*models.CartItem, error) 
 
 		&item.ProductName,
 		&item.Unit,
+		&item.SellerType,
 		&item.ImageURL,
 
 		&item.SellerID,

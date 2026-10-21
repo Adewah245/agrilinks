@@ -7,10 +7,10 @@
 
 <meta
     name="description"
-    content="Agro-Shield storage management for agricultural products, inventory, GPS location, and marketplace listings."
+    content="Manage the agricultural products you have, their location, and marketplace listings."
 >
 
-<title>Storage | Agro-Shield</title>
+<title>My products | Agro-Shield</title>
 
 <link
     rel="stylesheet"
@@ -143,11 +143,11 @@
 >
     <div>
         <h1 id="storage-title">
-            Storage Management
+            My products
         </h1>
 
         <p>
-            Manage your agricultural products, monitor stored inventory,
+            Manage your agricultural products and keep track of what you have,
             and choose what to list on the Marketplace.
         </p>
     </div>
@@ -204,10 +204,10 @@
                 <th scope="col">Photo</th>
                 <th scope="col">Product</th>
                 <th scope="col">Category</th>
-                <th scope="col">Quantity</th>
-                <th scope="col">Unit</th>
+                <th scope="col">Available amount</th>
+                <th scope="col">Sold by</th>
                 <th scope="col">Location</th>
-                <th scope="col">Price / Unit</th>
+                <th scope="col">Price</th>
                 <th scope="col">Marketplace</th>
                 <th scope="col">Date Stored</th>
                 <th scope="col">Actions</th>
@@ -286,7 +286,7 @@
 
 
                 <td>
-                    ₦{{money .Price}}
+                    ₦{{money .Price}} per {{.Unit}}
                 </td>
 
 
@@ -570,7 +570,7 @@
 
 
         <label for="quantity">
-            Quantity
+            How much do you have?
         </label>
 
         <input
@@ -585,7 +585,7 @@
 
 
         <label for="unit">
-            Unit
+            How is it sold?
         </label>
 
         <input
@@ -593,7 +593,7 @@
             name="unit"
             id="unit"
             value="{{if .EditProduct}}{{.EditProduct.Unit}}{{end}}"
-            placeholder="Bags, Kg, Tons, Litres, Crates..."
+            placeholder="kg, bag, crate, litre..."
             maxlength="50"
             required
         >
@@ -684,7 +684,7 @@
 
 
         <label for="price">
-            Price per Unit (₦)
+            Price for each kg, bag, crate, etc. (₦)
         </label>
 
         <input
@@ -694,7 +694,7 @@
             name="price"
             id="price"
             value="{{if .EditProduct}}{{.EditProduct.Price}}{{end}}"
-            placeholder="Enter price per unit"
+            placeholder="Example: 5000"
             required
         >
 

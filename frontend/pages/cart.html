@@ -205,14 +205,14 @@
                 </h2>
 
                 <p>
-                    Quantity:
+                    Amount:
                     <strong>
                         {{.Quantity}} {{.Unit}}
                     </strong>
                 </p>
 
                 <p>
-                    Price per unit:
+                    Price per {{.Unit}}:
                     <strong>
                         ₦{{money .PricePerUnit}}
                     </strong>
@@ -374,7 +374,7 @@
 
                 <p>
 
-                    Agreed Price:
+                    Agreed price per {{.Unit}}:
 
                     <strong>
                         ₦{{money .PricePerUnit}}
@@ -478,6 +478,15 @@
             These prices are the prices agreed during
             negotiation.
         </p>
+
+        <form
+            method="POST"
+            action="/orders/place"
+        >
+            <button type="submit">
+                Place Order
+            </button>
+        </form>
 
     </section>
 

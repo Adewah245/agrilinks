@@ -1,6 +1,7 @@
 package app
 
 import (
+	"backend/internal/config"
 	"backend/internal/repository"
 	"backend/internal/services"
 )
@@ -40,6 +41,7 @@ type Container struct {
 	Payment      *services.PaymentService
 	Delivery     *services.DeliveryService
 	Price        *services.PriceService
+	Review       *services.ReviewService
 
 	// --------------------------------------------------------
 	// REPOSITORIES USED DIRECTLY BY THE APPLICATION
@@ -68,6 +70,7 @@ func NewContainer(
 	learningRepo *repository.LearningRepository,
 	paymentRepo *repository.PaymentRepository,
 	deliveryRepo *repository.DeliveryRepository,
+	reviewRepo *repository.ReviewRepository,
 
 	// ========================================================
 	// CHAT REPOSITORIES
@@ -79,6 +82,10 @@ func NewContainer(
 
 	aiProvider services.AIProvider,
 	priceService *services.PriceService,
+	negotiationPolicy config.NegotiationPolicy,
+	paymentGateway services.PaymentGateway,
+	paymentWebhookHash string,
+	paymentCurrency string,
 ) *Container {
 
 	// ========================================================
@@ -110,6 +117,8 @@ func NewContainer(
 		cartService,
 		notificationService,
 		marketEventRepo,
+		negotiationPolicy.MaxRounds,
+		negotiationPolicy.Window,
 	)
 
 	// ========================================================
@@ -187,6 +196,7 @@ func NewContainer(
 		Order: services.NewOrderService(
 			orderRepo,
 			productRepo,
+			cartRepo,
 		),
 
 		// ----------------------------------------------------
@@ -227,9 +237,18 @@ func NewContainer(
 		// ----------------------------------------------------
 
 		Learning: learningService,
-		Payment:  services.NewPaymentService(paymentRepo),
+		Payment: services.NewPaymentService(
+			paymentRepo,
+			orderRepo,
+			userRepo,
+			paymentGateway,
+			notificationService,
+			paymentWebhookHash,
+			paymentCurrency,
+		),
 		Delivery: services.NewDeliveryService(deliveryRepo),
 		Price:    priceService,
+		Review:   services.NewReviewService(reviewRepo),
 
 		// ----------------------------------------------------
 		// MARKET EVENTS

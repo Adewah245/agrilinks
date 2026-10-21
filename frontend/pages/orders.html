@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orders | Agro-Shield</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="navbar">
+        <a class="logo" href="/dashboard" aria-label="Agro-Shield dashboard">
+            <img src="/static/assets/logo/Agro-Shield_logo.png" alt="Agro-Shield">
+        </a>
+        <nav aria-label="Main navigation">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/marketplace">Marketplace</a>
+            <a href="/cart">Cart</a>
+            <a href="/orders">Orders</a>
+            <a href="/payments">Payments</a>
+            <a href="/logout">Logout</a>
+        </nav>
+    </header>
+
+    <main class="dashboard">
+        <p><a href="/dashboard">← Dashboard</a></p>
+        <h1>My Orders</h1>
+
+        {{if .Error}}
+        <p role="alert">{{.Error}}</p>
+        {{end}}
+
+        {{if .Orders}}
+        <section class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order</th>
+                        <th>Product</th>
+                        <th>Amount</th>
+                        <th>Seller</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Placed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Orders}}
+                    <tr>
+                        <td>#{{.ID}}</td>
+                        <td>{{.ProductName}}</td>
+                        <td>{{.Quantity}} {{.ProductUnit}}</td>
+                        <td>{{.SellerName}}</td>
+                        <td>₦{{money .TotalPrice}}</td>
+                        <td>{{humanOrderStatus .Status}}</td>
+                        <td>{{.CreatedAt.Format "02 Jan 2006 03:04 PM"}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="panel">
+            <h2>Review a purchase</h2>
+            {{range .Orders}}
+            <form method="POST" action="/reviews">
+                <h3>{{.ProductName}} — order #{{.ID}}</h3>
+                <input type="hidden" name="product_id" value="{{.ProductID}}">
+                <input type="hidden" name="order_id" value="{{.ID}}">
+                <label>
+                    Rating
+                    <select name="rating" required>
+                        <option value="5">5 — Excellent</option>
+                        <option value="4">4 — Good</option>
+                        <option value="3">3 — Fair</option>
+                        <option value="2">2 — Poor</option>
+                        <option value="1">1 — Bad</option>
+                    </select>
+                </label>
+                <label>
+                    Comment
+                    <textarea name="comment" rows="2"></textarea>
+                </label>
+                <button type="submit">Submit review</button>
+            </form>
+            {{end}}
+        </section>
+        {{else}}
+        <section class="panel">
+            <p>No orders yet.</p>
+            <a href="/marketplace">Browse the marketplace</a>
+        </section>
+        {{end}}
+
+        <p><a href="/payments">Continue to payments</a></p>
+    </main>
+</body>
+</html>

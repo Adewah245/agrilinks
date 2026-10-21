@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 func commaNumber(value float64, decimals int) string {
@@ -36,12 +37,120 @@ func hasCoordinates(latitude, longitude float64) bool {
 	return latitude != 0 && longitude != 0
 }
 
+func readableStatus(status string) string {
+	status = strings.TrimSpace(strings.ReplaceAll(status, "_", " "))
+	if status == "" {
+		return ""
+	}
+	runes := []rune(strings.ToLower(status))
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+func humanOrderStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "pending":
+		return "Waiting for payment"
+	case "confirmed":
+		return "Order confirmed"
+	case "processing":
+		return "Being prepared"
+	case "ready_for_delivery":
+		return "Ready for delivery"
+	case "shipped":
+		return "On the way"
+	case "delivered":
+		return "Delivered"
+	case "cancelled", "canceled":
+		return "Cancelled"
+	default:
+		return readableStatus(status)
+	}
+}
+
+func humanPaymentStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "pending":
+		return "Waiting"
+	case "successful":
+		return "Paid"
+	case "failed":
+		return "Payment failed"
+	case "cancelled", "canceled":
+		return "Cancelled"
+	case "refunded":
+		return "Refunded"
+	default:
+		return readableStatus(status)
+	}
+}
+
+func humanNegotiationStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "open":
+		return "Open"
+	case "accepted":
+		return "Accepted"
+	case "rejected":
+		return "Declined"
+	case "expired":
+		return "Expired"
+	case "closed":
+		return "Closed"
+	default:
+		return readableStatus(status)
+	}
+}
+
+func humanOfferStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "pending":
+		return "Waiting for reply"
+	case "accepted":
+		return "Accepted"
+	case "rejected":
+		return "Declined"
+	default:
+		return readableStatus(status)
+	}
+}
+
+func humanStatus(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "pending":
+		return "Waiting"
+	case "assigned":
+		return "Driver assigned"
+	case "picked_up":
+		return "Picked up"
+	case "in_transit":
+		return "On the way"
+	case "completed":
+		return "Completed"
+	case "failed":
+		return "Not successful"
+	case "active":
+		return "Active"
+	case "paused":
+		return "Paused"
+	case "in_progress":
+		return "In progress"
+	default:
+		return readableStatus(status)
+	}
+}
+
 func loadTemplates() *template.Template {
 	funcs := template.FuncMap{
-		"money":          money,
-		"money0":         money0,
-		"comma":          func(v int) string { return commaNumber(float64(v), 0) },
-		"hasCoordinates": hasCoordinates,
+		"money":                  money,
+		"money0":                 money0,
+		"comma":                  func(v int) string { return commaNumber(float64(v), 0) },
+		"hasCoordinates":         hasCoordinates,
+		"humanOrderStatus":       humanOrderStatus,
+		"humanPaymentStatus":     humanPaymentStatus,
+		"humanNegotiationStatus": humanNegotiationStatus,
+		"humanOfferStatus":       humanOfferStatus,
+		"humanStatus":            humanStatus,
 	}
 	for _, pattern := range []string{"../frontend/pages/*.html", "../../frontend/pages/*.html", "../../../frontend/pages/*.html", "frontend/pages/*.html"} {
 		if matches, err := os.ReadDir("."); err == nil && matches != nil {

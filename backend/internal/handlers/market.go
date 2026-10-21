@@ -134,7 +134,7 @@ func (h *Marketplace) MarketplaceHandler(
 				user.IsBuyer(),
 				user.ID,
 				"",
-				"Invalid product",
+				"Choose a valid product.",
 			)
 			return
 		}
@@ -150,7 +150,7 @@ func (h *Marketplace) MarketplaceHandler(
 				user.IsBuyer(),
 				user.ID,
 				"",
-				"Invalid quantity",
+				"Enter a valid amount.",
 			)
 			return
 		}

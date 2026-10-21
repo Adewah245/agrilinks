@@ -10,14 +10,14 @@
   <main class="dashboard">
     <p><a href="/learn">← All learning journeys</a></p>
     <h1>{{with .Journey.FarmingType}}{{.Name}}{{else}}Learning journey{{end}}</h1>
-    <p>Stage: {{.Journey.CurrentStage}} · Readiness: {{.Journey.ReadinessScore}}% · Status: {{.Journey.Status}}</p>
+    <p>Stage: {{.Journey.CurrentStage}} · Readiness: {{.Journey.ReadinessScore}}% · Progress: {{humanStatus .Journey.Status}}</p>
 
     <section class="panel">
       <h2>Preparation checklist</h2>
       {{if .Checkpoints}}
         <ul>
         {{range .Checkpoints}}
-          <li><strong>{{.Title}}</strong> — {{.Status}} ({{.Progress}}%){{if .Description}}: {{.Description}}{{end}}</li>
+          <li><strong>{{.Title}}</strong> — {{humanStatus .Status}} ({{.Progress}}%){{if .Description}}: {{.Description}}{{end}}</li>
         {{end}}
         </ul>
       {{else}}
