@@ -61,4 +61,20 @@ func TestPrepareDeliveryTimestamps(t *testing.T) {
 	}
 }
 
+func TestOrderStatusForDelivery(t *testing.T) {
+	tests := map[string]string{
+		"assigned":   "",
+		"picked_up":  "shipped",
+		"in_transit": "shipped",
+		"delivered":  "delivered",
+		"cancelled":  "",
+	}
+
+	for deliveryStatus, want := range tests {
+		if got := orderStatusForDelivery(deliveryStatus); got != want {
+			t.Fatalf("orderStatusForDelivery(%q) = %q, want %q", deliveryStatus, got, want)
+		}
+	}
+}
+
 func timePtr(value time.Time) *time.Time { return &value }

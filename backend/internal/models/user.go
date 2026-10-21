@@ -22,6 +22,7 @@ type User struct {
 	// Account
 	Role        string
 	AccountType string
+	IsAdmin     bool
 
 	// Verification
 	NIN                string
@@ -83,4 +84,10 @@ func (u *User) IsOrganisation() bool {
 // IsMinistry reports whether the user has a ministry role.
 func (u *User) IsMinistry() bool {
 	return u.Role == "ministry"
+}
+
+// IsAdministrator reports whether the account can review platform-wide
+// operations such as delivery partner approval.
+func (u *User) IsAdministrator() bool {
+	return u != nil && u.IsAdmin
 }

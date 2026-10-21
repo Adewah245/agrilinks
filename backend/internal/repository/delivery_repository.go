@@ -3,9 +3,22 @@ package repository
 import (
 	"backend/internal/models"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
+)
+
+var (
+	// ErrDeliveryStatusConflict means a delivery moved out of the state the
+	// caller was acting on. The service turns this into a normal "already
+	// updated" reply.
+	ErrDeliveryStatusConflict = errors.New("delivery status has already changed")
+
+	// ErrDeliveryAlreadyExists means another request created the delivery for
+	// this order first. The database's unique order_id constraint is the final
+	// arbiter so two concurrent requests cannot both succeed.
+	ErrDeliveryAlreadyExists = errors.New("delivery already exists for this order")
 )
 
 // DeliveryRepository owns delivery records and their tracking history.
@@ -36,6 +49,7 @@ const deliverySelectColumns = `
 	d.delivery_fee,
 	d.distance_km,
 	d.status,
+	o.status,
 	COALESCE(d.tracking_code, ''),
 	d.picked_up_at,
 	d.delivered_at,
@@ -94,7 +108,7 @@ func (r *DeliveryRepository) Create(delivery *models.Delivery) error {
 		return err
 	}
 
-	return r.db.QueryRow(`
+	err = r.db.QueryRow(`
 		INSERT INTO deliveries (
 			order_id,
 			delivery_partner_id,
@@ -136,6 +150,10 @@ func (r *DeliveryRepository) Create(delivery *models.Delivery) error {
 		nullableTime(delivery.PickedUpAt),
 		nullableTime(delivery.DeliveredAt),
 	).Scan(&delivery.ID, &delivery.CreatedAt, &delivery.UpdatedAt)
+	if uniqueViolationConstraint(err) == "deliveries_order_id_key" {
+		return ErrDeliveryAlreadyExists
+	}
+	return err
 }
 
 // GetByID returns one delivery, or nil when it does not exist.
@@ -182,6 +200,147 @@ func (r *DeliveryRepository) GetByOrder(orderID int) (*models.Delivery, error) {
 	return &delivery, nil
 }
 
+// ListDeliveryOrderOptions returns paid orders that do not have a delivery
+// record yet. An order can contain several products, so product names are
+// combined for display while the order itself remains the delivery unit.
+func (r *DeliveryRepository) ListDeliveryOrderOptions(
+	buyerID int,
+) ([]models.DeliveryOrderOption, error) {
+	if buyerID <= 0 {
+		return nil, fmt.Errorf("invalid buyer")
+	}
+
+	rows, err := r.db.Query(`
+		SELECT
+			o.id,
+			o.buyer_id,
+			o.status,
+			STRING_AGG(p.name, ', ' ORDER BY oi.id) AS product_names,
+			COALESCE(seller_user.full_name, seller_org.name, '') AS seller_name,
+			o.created_at
+		FROM orders o
+		JOIN order_items oi ON oi.order_id = o.id
+		JOIN products p ON p.id = oi.product_id
+		LEFT JOIN users seller_user
+			ON p.owner_type = 'user' AND seller_user.id = p.owner_id
+		LEFT JOIN organizations seller_org
+			ON p.owner_type = 'organization' AND seller_org.id = p.owner_id
+		LEFT JOIN deliveries d ON d.order_id = o.id
+		WHERE o.buyer_id = $1
+		  AND d.id IS NULL
+		  AND o.status IN ('confirmed', 'processing', 'ready_for_delivery', 'shipped')
+		GROUP BY o.id, o.buyer_id, o.status, seller_user.full_name, seller_org.name, o.created_at
+		ORDER BY o.created_at DESC, o.id DESC
+	`, buyerID)
+	if err != nil {
+		return nil, fmt.Errorf("list orders waiting for delivery: %w", err)
+	}
+	defer rows.Close()
+
+	options := make([]models.DeliveryOrderOption, 0)
+	for rows.Next() {
+		var option models.DeliveryOrderOption
+		if err := rows.Scan(
+			&option.ID,
+			&option.BuyerID,
+			&option.Status,
+			&option.ProductNames,
+			&option.SellerName,
+			&option.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan order waiting for delivery: %w", err)
+		}
+		options = append(options, option)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate orders waiting for delivery: %w", err)
+	}
+	return options, nil
+}
+
+// GetOrderForBuyerDelivery returns the address snapshot inputs for one paid
+// order. It returns nil when the order does not belong to the buyer.
+func (r *DeliveryRepository) GetOrderForBuyerDelivery(
+	orderID,
+	buyerID int,
+) (*models.DeliveryOrderContext, error) {
+	if orderID <= 0 || buyerID <= 0 {
+		return nil, fmt.Errorf("invalid delivery request")
+	}
+
+	var contextData models.DeliveryOrderContext
+	var pickupStateID, pickupLGAID, pickupCommunityID sql.NullInt64
+	var communityName, lgaName, stateName string
+
+	err := r.db.QueryRow(`
+		SELECT
+			o.id,
+			o.buyer_id,
+			o.status,
+			buyer.full_name,
+			COALESCE(buyer.location, ''),
+			COALESCE(buyer.lga, ''),
+			COALESCE(buyer.state, ''),
+			COALESCE(buyer.country, 'Nigeria'),
+			p.state_id,
+			p.lga_id,
+			p.community_id,
+			COALESCE(community.name, ''),
+			COALESCE(lga.name, ''),
+			COALESCE(state.name, ''),
+			COALESCE(seller_user.full_name, seller_org.name, '')
+		FROM orders o
+		JOIN users buyer ON buyer.id = o.buyer_id
+		JOIN order_items oi ON oi.order_id = o.id
+		JOIN products p ON p.id = oi.product_id
+		LEFT JOIN users seller_user
+			ON p.owner_type = 'user' AND seller_user.id = p.owner_id
+		LEFT JOIN organizations seller_org
+			ON p.owner_type = 'organization' AND seller_org.id = p.owner_id
+		LEFT JOIN states state ON state.id = p.state_id
+		LEFT JOIN lgas lga ON lga.id = p.lga_id
+		LEFT JOIN communities community ON community.id = p.community_id
+		WHERE o.id = $1 AND o.buyer_id = $2
+		ORDER BY oi.id ASC
+		LIMIT 1
+	`, orderID, buyerID).Scan(
+		&contextData.OrderID,
+		&contextData.BuyerID,
+		&contextData.Status,
+		&contextData.BuyerName,
+		&contextData.BuyerLocation,
+		&contextData.BuyerLGA,
+		&contextData.BuyerState,
+		&contextData.BuyerCountry,
+		&pickupStateID,
+		&pickupLGAID,
+		&pickupCommunityID,
+		&communityName,
+		&lgaName,
+		&stateName,
+		&contextData.SellerName,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get order for delivery: %w", err)
+	}
+
+	contextData.PickupStateID = intPointer(pickupStateID)
+	contextData.PickupLGAID = intPointer(pickupLGAID)
+	contextData.PickupCommunityID = intPointer(pickupCommunityID)
+	contextData.PickupAddress = deliveryPickupAddress(
+		communityName,
+		lgaName,
+		stateName,
+		contextData.SellerName,
+	)
+
+	return &contextData, nil
+}
+
 // ListByBuyer returns deliveries for orders owned by the supplied buyer.
 func (r *DeliveryRepository) ListByBuyer(buyerID int) ([]models.Delivery, error) {
 	if buyerID <= 0 {
@@ -193,6 +352,56 @@ func (r *DeliveryRepository) ListByBuyer(buyerID int) ([]models.Delivery, error)
 		WHERE o.buyer_id = $1
 		ORDER BY d.created_at DESC, d.id DESC
 	`, buyerID)
+}
+
+// ListForSeller returns deliveries for products owned directly by the user or
+// by an organization the user belongs to.
+func (r *DeliveryRepository) ListForSeller(userID int) ([]models.Delivery, error) {
+	if userID <= 0 {
+		return nil, fmt.Errorf("invalid seller")
+	}
+
+	return r.queryDeliveries(`
+		SELECT DISTINCT `+deliverySelectColumns+deliveryJoins+`
+		JOIN order_items oi ON oi.order_id = d.order_id
+		JOIN products pr ON pr.id = oi.product_id
+		WHERE (
+			pr.owner_type = 'user' AND pr.owner_id = $1
+		) OR (
+			pr.owner_type = 'organization'
+			AND EXISTS (
+				SELECT 1
+				FROM organization_members om
+				WHERE om.organization_id = pr.owner_id
+				AND om.user_id = $1
+			)
+		)
+		ORDER BY d.created_at DESC, d.id DESC
+	`, userID)
+}
+
+// ListByPartnerUser returns deliveries assigned to any partner the user can
+// operate.
+func (r *DeliveryRepository) ListByPartnerUser(userID int) ([]models.Delivery, error) {
+	if userID <= 0 {
+		return nil, fmt.Errorf("invalid delivery partner account")
+	}
+
+	return r.queryDeliveries(`
+		SELECT DISTINCT `+deliverySelectColumns+deliveryJoins+`
+		JOIN delivery_partner_members dpm
+			ON dpm.delivery_partner_id = d.delivery_partner_id
+		WHERE dpm.user_id = $1
+		ORDER BY d.created_at DESC, d.id DESC
+	`, userID)
+}
+
+// ListAll returns every delivery for administrator review.
+func (r *DeliveryRepository) ListAll() ([]models.Delivery, error) {
+	return r.queryDeliveries(`
+		SELECT ` + deliverySelectColumns + deliveryJoins + `
+		ORDER BY d.created_at DESC, d.id DESC
+	`)
 }
 
 // ListByOwner returns deliveries containing products owned by a user or
@@ -231,19 +440,37 @@ func (r *DeliveryRepository) ListByPartner(partnerID int) ([]models.Delivery, er
 	`, partnerID)
 }
 
-// UpdateStatus moves a delivery through its lifecycle and records the matching
-// timestamps. The database status constraint remains the final authority.
-func (r *DeliveryRepository) UpdateStatus(deliveryID int, status string) error {
+// UpdateStatusFrom moves a delivery through its lifecycle only when it is
+// still in the expected state. This makes two people trying the same update at
+// once resolve to one winner instead of silently applying both.
+func (r *DeliveryRepository) UpdateStatusFrom(
+	deliveryID int,
+	expectedStatus,
+	status string,
+) error {
 	if deliveryID <= 0 {
 		return fmt.Errorf("invalid delivery ID")
 	}
 
-	status, err := normalizeDeliveryStatus(status)
+	expectedStatus, err := normalizeDeliveryStatus(expectedStatus)
+	if err != nil {
+		return err
+	}
+	status, err = normalizeDeliveryStatus(status)
 	if err != nil {
 		return err
 	}
 
-	result, err := r.db.Exec(`
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin delivery update: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	var orderID int
+	err = tx.QueryRow(`
 		UPDATE deliveries
 		SET
 			status = $1,
@@ -258,16 +485,48 @@ func (r *DeliveryRepository) UpdateStatus(deliveryID int, status string) error {
 				ELSE delivered_at
 			END,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE id = $2
-	`, status, deliveryID)
+		WHERE id = $2 AND status = $3
+		RETURNING order_id
+	`, status, deliveryID, expectedStatus).Scan(&orderID)
+	if err == sql.ErrNoRows {
+		return ErrDeliveryStatusConflict
+	}
 	if err != nil {
 		return fmt.Errorf("update delivery status: %w", err)
 	}
 
-	return requireDeliveryUpdated(result)
+	if nextOrderStatus := orderStatusForDelivery(status); nextOrderStatus != "" {
+		if _, err := tx.Exec(`
+			UPDATE orders
+			SET status = $1, updated_at = CURRENT_TIMESTAMP
+			WHERE id = $2
+			  AND status NOT IN ('cancelled', 'delivered')
+		`, nextOrderStatus, orderID); err != nil {
+			return fmt.Errorf("update order from delivery: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit delivery update: %w", err)
+	}
+	return nil
 }
 
-// AssignPartner assigns or reassigns a logistics provider.
+// UpdateStatus moves a delivery to a new state without a caller-supplied
+// expected state. Service code should prefer UpdateStatusFrom.
+func (r *DeliveryRepository) UpdateStatus(deliveryID int, status string) error {
+	delivery, err := r.GetByID(deliveryID)
+	if err != nil {
+		return err
+	}
+	if delivery == nil {
+		return sql.ErrNoRows
+	}
+	return r.UpdateStatusFrom(deliveryID, delivery.Status, status)
+}
+
+// AssignPartner assigns or reassigns a logistics provider. A pending delivery
+// becomes assigned in the same statement.
 func (r *DeliveryRepository) AssignPartner(deliveryID, partnerID int) error {
 	if deliveryID <= 0 {
 		return fmt.Errorf("invalid delivery ID")
@@ -278,14 +537,53 @@ func (r *DeliveryRepository) AssignPartner(deliveryID, partnerID int) error {
 
 	result, err := r.db.Exec(`
 		UPDATE deliveries
-		SET delivery_partner_id = $1, updated_at = CURRENT_TIMESTAMP
+		SET
+			delivery_partner_id = $1,
+			status = CASE WHEN status = 'pending' THEN 'assigned' ELSE status END,
+			updated_at = CURRENT_TIMESTAMP
 		WHERE id = $2
+		  AND status IN ('pending', 'assigned')
 	`, partnerID, deliveryID)
 	if err != nil {
 		return fmt.Errorf("assign delivery partner: %w", err)
 	}
 
 	return requireDeliveryUpdated(result)
+}
+
+// CanManageDelivery reports whether a user sells at least one product in the
+// delivery's order, either directly or through an organization membership.
+func (r *DeliveryRepository) CanManageDelivery(userID, deliveryID int) (bool, error) {
+	if userID <= 0 || deliveryID <= 0 {
+		return false, fmt.Errorf("invalid delivery management request")
+	}
+
+	var allowed bool
+	err := r.db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM deliveries d
+			JOIN order_items oi ON oi.order_id = d.order_id
+			JOIN products p ON p.id = oi.product_id
+			WHERE d.id = $1
+			  AND (
+				(p.owner_type = 'user' AND p.owner_id = $2)
+				OR (
+					p.owner_type = 'organization'
+					AND EXISTS (
+						SELECT 1
+						FROM organization_members om
+						WHERE om.organization_id = p.owner_id
+						  AND om.user_id = $2
+					)
+				)
+			  )
+		)
+	`, deliveryID, userID).Scan(&allowed)
+	if err != nil {
+		return false, fmt.Errorf("check delivery management access: %w", err)
+	}
+	return allowed, nil
 }
 
 // UpdateTracking updates the public tracking code for a delivery.
@@ -409,6 +707,56 @@ func (r *DeliveryRepository) TrackingForBuyer(buyerID, deliveryID int) ([]models
 	return tracking, nil
 }
 
+// TrackingForDelivery returns the location history after the service layer has
+// authorized the viewer. It intentionally contains no authorization logic.
+func (r *DeliveryRepository) TrackingForDelivery(
+	deliveryID int,
+) ([]models.DeliveryTracking, error) {
+	if deliveryID <= 0 {
+		return nil, fmt.Errorf("invalid delivery tracking request")
+	}
+
+	rows, err := r.db.Query(`
+		SELECT
+			id,
+			delivery_id,
+			latitude,
+			longitude,
+			COALESCE(location_name, ''),
+			COALESCE(note, ''),
+			created_at
+		FROM delivery_tracking
+		WHERE delivery_id = $1
+		ORDER BY created_at DESC, id DESC
+	`, deliveryID)
+	if err != nil {
+		return nil, fmt.Errorf("list delivery tracking: %w", err)
+	}
+	defer rows.Close()
+
+	tracking := make([]models.DeliveryTracking, 0)
+	for rows.Next() {
+		var update models.DeliveryTracking
+		if err := rows.Scan(
+			&update.ID,
+			&update.DeliveryID,
+			&update.Latitude,
+			&update.Longitude,
+			&update.LocationName,
+			&update.Note,
+			&update.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan delivery tracking: %w", err)
+		}
+		tracking = append(tracking, update)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate delivery tracking: %w", err)
+	}
+	return tracking, nil
+}
+
 func (r *DeliveryRepository) queryDeliveries(query string, args ...any) ([]models.Delivery, error) {
 	rows, err := r.db.Query(query, args...)
 	if err != nil {
@@ -462,6 +810,7 @@ func scanDelivery(scanner deliveryScanner, delivery *models.Delivery) error {
 		&delivery.DeliveryFee,
 		&distanceKM,
 		&delivery.Status,
+		&delivery.OrderStatus,
 		&delivery.TrackingCode,
 		&pickedUpAt,
 		&deliveredAt,
@@ -499,6 +848,44 @@ func normalizeDeliveryStatus(status string) (string, error) {
 	default:
 		return "", fmt.Errorf("invalid delivery status: %s", status)
 	}
+}
+
+func orderStatusForDelivery(status string) string {
+	switch status {
+	case "picked_up", "in_transit":
+		return "shipped"
+	case "delivered":
+		return "delivered"
+	default:
+		return ""
+	}
+}
+
+func deliveryPickupAddress(
+	community,
+	lga,
+	state,
+	sellerName string,
+) string {
+	parts := make([]string, 0, 3)
+	for _, value := range []string{community, lga, state} {
+		if value = strings.TrimSpace(value); value != "" {
+			parts = append(parts, value)
+		}
+	}
+
+	address := strings.Join(parts, ", ")
+	sellerName = strings.TrimSpace(sellerName)
+	if address == "" {
+		if sellerName == "" {
+			return "Seller pickup point"
+		}
+		return "Pickup from " + sellerName
+	}
+	if sellerName != "" {
+		return address + " (pickup from " + sellerName + ")"
+	}
+	return address
 }
 
 func validateDeliveryLocationIDs(delivery *models.Delivery) error {

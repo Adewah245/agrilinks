@@ -48,6 +48,15 @@ func (h *OrderHandler) ListHandler(
 		Orders: orders,
 	}
 
+	switch r.URL.Query().Get("review_error") {
+	case "not_delivered":
+		data.Error = "You can review this product after the order has been delivered."
+	case "already_reviewed":
+		data.Error = "You have already reviewed this purchase."
+	case "failed":
+		data.Error = "We could not save your review. Please try again."
+	}
+
 	if err != nil {
 		log.Println("failed to load orders:", err)
 		data.Error = "Could not load orders."

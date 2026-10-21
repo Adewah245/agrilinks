@@ -389,6 +389,7 @@ func RegisterRoutes(container *app.Container) {
 	profileHandler := handlers.NewProfileHandler(
 		container.Product,
 		container.Order,
+		container.Review,
 		container.UserRepo,
 	)
 
@@ -614,6 +615,16 @@ func RegisterRoutes(container *app.Container) {
 			),
 		),
 	)
+	http.HandleFunc(
+		"/trust",
+		middleware.OnlyPath(
+			"/trust",
+			middleware.RequireAuth(
+				container.UserRepo,
+				reviewHandler.TrustHandler,
+			),
+		),
+	)
 
 	paymentHandler := handlers.NewPaymentHandler(container.Payment)
 	http.HandleFunc(
@@ -647,6 +658,12 @@ func RegisterRoutes(container *app.Container) {
 
 	deliveryHandler := handlers.NewDeliveryHandler(container.Delivery)
 	http.HandleFunc("/deliveries", middleware.OnlyPath("/deliveries", middleware.OnlyGet(middleware.RequireAuth(container.UserRepo, deliveryHandler.Handler))))
+	http.HandleFunc("/deliveries/request", middleware.OnlyPath("/deliveries/request", middleware.RequireAuth(container.UserRepo, deliveryHandler.RequestDeliveryHandler)))
+	http.HandleFunc("/deliveries/assign", middleware.OnlyPath("/deliveries/assign", middleware.RequireAuth(container.UserRepo, deliveryHandler.AssignPartnerHandler)))
+	http.HandleFunc("/deliveries/status", middleware.OnlyPath("/deliveries/status", middleware.RequireAuth(container.UserRepo, deliveryHandler.UpdateStatusHandler)))
+	http.HandleFunc("/deliveries/tracking", middleware.OnlyPath("/deliveries/tracking", middleware.RequireAuth(container.UserRepo, deliveryHandler.TrackingHandler)))
+	http.HandleFunc("/delivery-partner", middleware.OnlyPath("/delivery-partner", middleware.RequireAuth(container.UserRepo, deliveryHandler.PartnerPageHandler)))
+	http.HandleFunc("/delivery-partner/review", middleware.OnlyPath("/delivery-partner/review", middleware.RequireAuth(container.UserRepo, deliveryHandler.PartnerReviewHandler)))
 
 	// ========================================================
 	// AI ASSISTANT

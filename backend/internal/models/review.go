@@ -4,7 +4,7 @@ import "time"
 
 type ProductReview struct {
 	ID, ProductID, ReviewerID, OrderID, Rating int
-	Comment                                    string
+	ReviewerName, Comment                      string
 	CreatedAt, UpdatedAt                       time.Time
 }
 type UserReview struct {
@@ -32,4 +32,12 @@ type VerificationBadge struct {
 	IssuedAt    time.Time
 	ExpiresAt   *time.Time
 	Active      bool
+}
+
+// TrustSummary is the public trust information shown for a product or seller.
+// It deliberately contains aggregates and badges only, never verification data.
+type TrustSummary struct {
+	AverageRating float64
+	ReviewCount   int
+	Badges        []VerificationBadge
 }

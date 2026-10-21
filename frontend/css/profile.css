@@ -42,6 +42,23 @@
     margin-bottom:20px;
 }
 
+.profile-badges{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    margin-top:10px;
+}
+
+.profile-badge{
+    display:inline-block;
+    padding:4px 9px;
+    border-radius:999px;
+    background:#e7f5ec;
+    color:#17633c;
+    font-size:0.78rem;
+    font-weight:700;
+}
+
 .profile-grid{
     display:grid;
     grid-template-columns:repeat(auto-fit,minmax(320px,1fr));

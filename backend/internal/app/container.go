@@ -70,6 +70,7 @@ func NewContainer(
 	learningRepo *repository.LearningRepository,
 	paymentRepo *repository.PaymentRepository,
 	deliveryRepo *repository.DeliveryRepository,
+	deliveryPartnerRepo *repository.DeliveryPartnerRepository,
 	reviewRepo *repository.ReviewRepository,
 
 	// ========================================================
@@ -246,7 +247,7 @@ func NewContainer(
 			paymentWebhookHash,
 			paymentCurrency,
 		),
-		Delivery: services.NewDeliveryService(deliveryRepo),
+		Delivery: services.NewDeliveryService(deliveryRepo, deliveryPartnerRepo),
 		Price:    priceService,
 		Review:   services.NewReviewService(reviewRepo),
 

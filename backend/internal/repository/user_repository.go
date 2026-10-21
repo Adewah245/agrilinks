@@ -184,6 +184,7 @@ const userSelectColumns = `
 	COALESCE(country, 'Nigeria') AS country,
 	COALESCE(role, 'farmer') AS role,
 	COALESCE(account_type, 'individual') AS account_type,
+	COALESCE(is_admin, FALSE) AS is_admin,
 	COALESCE(organisation_name, '') AS organisation_name,
 	COALESCE(photo_url, '') AS photo_url,
 	COALESCE(
@@ -217,6 +218,7 @@ func scanUser(scanner interface {
 		&user.Country,
 		&user.Role,
 		&user.AccountType,
+		&user.IsAdmin,
 		&user.OrganisationName,
 		&user.PhotoURL,
 		pq.Array(&user.FarmingTypes),

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Partner | Agro-Shield</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <main class="dashboard">
+        <p><a href="/deliveries">← Deliveries</a></p>
+        <h1>Delivery partner</h1>
+
+        {{if .Error}}<p role="alert">{{.Error}}</p>{{end}}
+        {{if .Notice}}<p role="status">{{.Notice}}</p>{{end}}
+
+        {{if .PartnerAccounts}}
+        <section class="panel">
+            <h2>Your delivery business</h2>
+            {{range .PartnerAccounts}}
+            <article>
+                <h3>{{.Name}}</h3>
+                <p>Phone: {{.Phone}}</p>
+                {{if .Email}}<p>Email: {{.Email}}</p>{{end}}
+                {{if .VehicleType}}<p>Vehicle: {{.VehicleType}}</p>{{end}}
+                <p>Status: {{humanStatus .Status}}</p>
+                <p>
+                    Approval:
+                    {{if .Verified}}Approved{{else}}Waiting for approval{{end}}
+                </p>
+                <p>Your access: {{.MemberRole}}</p>
+            </article>
+            {{end}}
+        </section>
+        {{end}}
+
+        <section class="panel">
+            <h2>Register a delivery business</h2>
+            <p>
+                Registering lets you receive delivery jobs, update their progress,
+                and share locations with buyers.
+            </p>
+            <form method="POST" action="/delivery-partner">
+                <label>
+                    Business or driver name
+                    <input type="text" name="name" value="{{.User.FullName}}" required>
+                </label>
+                <label>
+                    Phone number
+                    <input type="tel" name="phone" value="{{.User.Phone}}" required>
+                </label>
+                <label>
+                    Email address
+                    <input type="email" name="email" value="{{.User.Email}}">
+                </label>
+                <label>
+                    State
+                    <select name="state_id" id="partner-state">
+                        <option value="">Select your state</option>
+                    </select>
+                </label>
+                <label>
+                    Local Government Area (LGA)
+                    <select name="lga_id" id="partner-lga" disabled>
+                        <option value="">Select your LGA</option>
+                    </select>
+                </label>
+                <label>
+                    Vehicle type
+                    <input type="text" name="vehicle_type" placeholder="For example: motorcycle, pickup, truck">
+                </label>
+                <label>
+                    Vehicle registration number
+                    <input type="text" name="registration_number">
+                </label>
+                <button type="submit">Register delivery business</button>
+            </form>
+        </section>
+
+        {{if .PartnersForReview}}
+        <section class="panel">
+            <h2>Delivery partners waiting for review</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Business</th>
+                        <th>Driver</th>
+                        <th>Vehicle</th>
+                        <th>Approval</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .PartnersForReview}}
+                    <tr>
+                        <td>{{.Name}}</td>
+                        <td>{{.Phone}}</td>
+                        <td>{{if .VehicleType}}{{.VehicleType}}{{else}}Not given{{end}}</td>
+                        <td>{{if .Verified}}Approved{{else}}Waiting{{end}}</td>
+                        <td>{{humanStatus .Status}}</td>
+                        <td>
+                            <form method="POST" action="/delivery-partner/review">
+                                <input type="hidden" name="partner_id" value="{{.ID}}">
+                                <select name="action" required>
+                                    <option value="approve">Approve</option>
+                                    <option value="unapprove">Remove approval</option>
+                                    <option value="activate">Mark active</option>
+                                    <option value="pause">Pause</option>
+                                    <option value="suspend">Suspend</option>
+                                </select>
+                                <button type="submit">Save</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </section>
+        {{end}}
+    </main>
+    <script src="/static/js/delivery_partner.js" defer></script>
+</body>
+</html>

@@ -9,25 +9,186 @@
 <body>
     <main class="dashboard">
         <p><a href="/dashboard">← Dashboard</a></p>
-        <h1>My deliveries</h1>
+        <h1>Deliveries</h1>
 
-        {{if .Error}}
-        <p role="alert">{{.Error}}</p>
+        {{if .Error}}<p role="alert">{{.Error}}</p>{{end}}
+        {{if .Notice}}<p role="status">{{.Notice}}</p>{{end}}
+
+        <p>
+            <a href="/delivery-partner">Delivery partner account</a>
+        </p>
+
+        {{if .EligibleOrders}}
+        <section class="panel">
+            <h2>Arrange delivery</h2>
+            <p>These orders are paid. Tell us where each one should go.</p>
+            {{range .EligibleOrders}}
+            <form method="POST" action="/deliveries/request">
+                <h3>Order #{{.ID}} — {{.ProductNames}}</h3>
+                <p>Seller: {{.SellerName}} · {{humanOrderStatus .Status}}</p>
+                <input type="hidden" name="order_id" value="{{.ID}}">
+                <label>
+                    Delivery address
+                    <input
+                        type="text"
+                        name="destination_address"
+                        placeholder="Street, community, town or landmark"
+                        required
+                    >
+                </label>
+                <button type="submit">Request delivery</button>
+            </form>
+            {{end}}
+        </section>
         {{end}}
 
         {{if .Deliveries}}
-        <ul>
+        <section class="panel">
+            <h2>My deliveries</h2>
             {{range .Deliveries}}
-            <li>
-                <strong>Order #{{.OrderID}}</strong> —
-                {{humanStatus .Status}}
-                {{if .PartnerName}}with {{.PartnerName}}{{end}}
-                · <a href="/deliveries?id={{.ID}}">View tracking</a>
-            </li>
+            <article>
+                <h3>Order #{{.OrderID}} — {{humanStatus .Status}}</h3>
+                <p>From: {{.PickupAddress}}</p>
+                <p>To: {{.DestinationAddress}}</p>
+                {{if .PartnerName}}<p>Delivery partner: {{.PartnerName}}</p>{{end}}
+                {{if .TrackingCode}}<p>Tracking code: {{.TrackingCode}}</p>{{end}}
+                <p><a href="/deliveries?id={{.ID}}">View tracking</a></p>
+                {{if eq .Status "pending"}}
+                <form method="POST" action="/deliveries/status">
+                    <input type="hidden" name="delivery_id" value="{{.ID}}">
+                    <input type="hidden" name="status" value="cancelled">
+                    <button type="submit">Cancel delivery request</button>
+                </form>
+                {{end}}
+            </article>
             {{end}}
-        </ul>
+        </section>
         {{else}}
-        <p>No deliveries yet.</p>
+            {{if .User.IsBuyer}}<p>No deliveries have been arranged yet.</p>{{end}}
+        {{end}}
+
+        {{if .SellerDeliveries}}
+        <section class="panel">
+            <h2>Deliveries for your sales</h2>
+            {{range .SellerDeliveries}}
+            <article>
+                <h3>Order #{{.OrderID}} — {{humanStatus .Status}}</h3>
+                <p>Buyer: {{.BuyerName}}</p>
+                <p>Pick up from: {{.PickupAddress}}</p>
+                <p>Deliver to: {{.DestinationAddress}}</p>
+                {{if .PartnerName}}<p>Delivery partner: {{.PartnerName}}</p>{{end}}
+
+                {{if or (eq .Status "pending") (eq .Status "assigned")}}
+                    {{if $.AvailablePartners}}
+                    <form method="POST" action="/deliveries/assign">
+                        <input type="hidden" name="delivery_id" value="{{.ID}}">
+                        <label>
+                            Delivery partner
+                            <select name="partner_id" required>
+                                <option value="">Choose an approved partner</option>
+                                {{range $.AvailablePartners}}
+                                <option value="{{.ID}}">{{.Name}}{{if .VehicleType}} — {{.VehicleType}}{{end}}</option>
+                                {{end}}
+                            </select>
+                        </label>
+                        <button type="submit">Assign partner</button>
+                    </form>
+                    {{else}}
+                    <p>No approved delivery partners are available yet.</p>
+                    {{end}}
+
+                    <form method="POST" action="/deliveries/status">
+                        <input type="hidden" name="delivery_id" value="{{.ID}}">
+                        <input type="hidden" name="status" value="cancelled">
+                        <button type="submit">Cancel this delivery</button>
+                    </form>
+                {{end}}
+            </article>
+            {{end}}
+        </section>
+        {{else}}
+            {{if not .User.IsBuyer}}<p>No deliveries have been requested for your sales yet.</p>{{end}}
+        {{end}}
+
+        {{if .PartnerDeliveries}}
+        <section class="panel">
+            <h2>Deliveries assigned to you</h2>
+            {{range .PartnerDeliveries}}
+            <article>
+                <h3>Order #{{.OrderID}} — {{humanStatus .Status}}</h3>
+                <p>Buyer: {{.BuyerName}}</p>
+                <p>Pick up from: {{.PickupAddress}}</p>
+                <p>Deliver to: {{.DestinationAddress}}</p>
+                {{if .TrackingCode}}<p>Tracking code: {{.TrackingCode}}</p>{{end}}
+
+                {{if eq .Status "assigned"}}
+                <form method="POST" action="/deliveries/status">
+                    <input type="hidden" name="delivery_id" value="{{.ID}}">
+                    <input type="hidden" name="status" value="picked_up">
+                    <button type="submit">Mark as picked up</button>
+                </form>
+                {{else if eq .Status "picked_up"}}
+                <form method="POST" action="/deliveries/status">
+                    <input type="hidden" name="delivery_id" value="{{.ID}}">
+                    <input type="hidden" name="status" value="in_transit">
+                    <button type="submit">Mark as on the way</button>
+                </form>
+                {{else if eq .Status "in_transit"}}
+                <form method="POST" action="/deliveries/status">
+                    <input type="hidden" name="delivery_id" value="{{.ID}}">
+                    <input type="hidden" name="status" value="delivered">
+                    <button type="submit">Mark as delivered</button>
+                </form>
+                {{end}}
+
+                {{if or (eq .Status "assigned") (eq .Status "picked_up") (eq .Status "in_transit")}}
+                <form method="POST" action="/deliveries/tracking">
+                    <h4>Add a location update</h4>
+                    <input type="hidden" name="delivery_id" value="{{.ID}}">
+                    <label>
+                        Latitude
+                        <input type="number" name="latitude" step="any" min="-90" max="90" required>
+                    </label>
+                    <label>
+                        Longitude
+                        <input type="number" name="longitude" step="any" min="-180" max="180" required>
+                    </label>
+                    <label>
+                        Place or landmark
+                        <input type="text" name="location_name" placeholder="For example: Kano central market">
+                    </label>
+                    <label>
+                        Note for the buyer
+                        <textarea name="note" rows="2"></textarea>
+                    </label>
+                    <button type="submit">Add tracking update</button>
+                </form>
+                {{end}}
+            </article>
+            {{end}}
+        </section>
+        {{end}}
+
+        {{if .AllDeliveries}}
+        <section class="panel">
+            <h2>All deliveries</h2>
+            <table>
+                <thead>
+                    <tr><th>Order</th><th>Buyer</th><th>Partner</th><th>Status</th><th>Tracking</th></tr>
+                </thead>
+                <tbody>
+                    {{range .AllDeliveries}}
+                    <tr>
+                        <td>#{{.OrderID}}</td>
+                        <td>{{.BuyerName}}</td>
+                        <td>{{if .PartnerName}}{{.PartnerName}}{{else}}Not assigned{{end}}</td>
+                        <td>{{humanStatus .Status}}</td>
+                        <td><a href="/deliveries?id={{.ID}}">View</a></td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </section>
         {{end}}
 
         {{if .SelectedID}}
@@ -38,7 +199,7 @@
                 {{range .Tracking}}
                 <li>
                     {{.CreatedAt.Format "2 Jan 2006 3:04 PM"}} —
-                    {{.LocationName}}{{if .Note}}: {{.Note}}{{end}}
+                    {{if .LocationName}}{{.LocationName}}{{else}}Location shared{{end}}{{if .Note}}: {{.Note}}{{end}}
                 </li>
                 {{end}}
             </ol>

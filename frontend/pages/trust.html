@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trust Badges | Agro-Shield</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <main class="dashboard">
+        <p><a href="/dashboard">← Dashboard</a></p>
+        <h1>Trust badges</h1>
+        <p>
+            Badges help buyers recognise verified farmers, organizations, and
+            trusted sellers. Identity documents and NIN details are never shown here.
+        </p>
+
+        {{if .Error}}<p role="alert">{{.Error}}</p>{{end}}
+        {{if .Notice}}<p role="status">{{.Notice}}</p>{{end}}
+
+        <section class="panel">
+            <h2>Issue a badge</h2>
+            <form method="POST" action="/trust">
+                <input type="hidden" name="action" value="issue">
+                <label>
+                    Who is this badge for?
+                    <select name="owner_type" required>
+                        <option value="user" {{if eq .OwnerType "user"}}selected{{end}}>User</option>
+                        <option value="organization" {{if eq .OwnerType "organization"}}selected{{end}}>Organization</option>
+                    </select>
+                </label>
+                <label>
+                    Their account ID
+                    <input type="number" name="owner_id" min="1" value="{{if gt .OwnerID 0}}{{.OwnerID}}{{end}}" required>
+                </label>
+                <label>
+                    Badge
+                    <select name="badge_type" required>
+                        <option value="verified_farmer">Verified farmer</option>
+                        <option value="verified_organization">Verified organization</option>
+                        <option value="government_partner">Government partner</option>
+                        <option value="trusted_seller">Trusted seller</option>
+                    </select>
+                </label>
+                <label>
+                    Public note
+                    <textarea name="description" rows="2" placeholder="Optional explanation shown with the badge"></textarea>
+                </label>
+                <label>
+                    Expires on
+                    <input type="date" name="expires_at">
+                </label>
+                <button type="submit">Issue badge</button>
+            </form>
+        </section>
+
+        <section class="panel">
+            <h2>Check an account</h2>
+            <form method="GET" action="/trust">
+                <label>
+                    Account type
+                    <select name="owner_type">
+                        <option value="user" {{if eq .OwnerType "user"}}selected{{end}}>User</option>
+                        <option value="organization" {{if eq .OwnerType "organization"}}selected{{end}}>Organization</option>
+                    </select>
+                </label>
+                <label>
+                    Account ID
+                    <input type="number" name="owner_id" min="1" value="{{if gt .OwnerID 0}}{{.OwnerID}}{{end}}" required>
+                </label>
+                <button type="submit">Show badges</button>
+            </form>
+
+            {{if .Badges}}
+            <table>
+                <thead>
+                    <tr><th>Badge</th><th>Note</th><th>Issued</th><th>Expires</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                    {{range .Badges}}
+                    <tr>
+                        <td>{{humanBadge .BadgeType}}</td>
+                        <td>{{if .Description}}{{.Description}}{{else}}—{{end}}</td>
+                        <td>{{.IssuedAt.Format "02 Jan 2006"}}</td>
+                        <td>{{if .ExpiresAt}}{{.ExpiresAt.Format "02 Jan 2006"}}{{else}}No expiry{{end}}</td>
+                        <td>
+                            <form method="POST" action="/trust">
+                                <input type="hidden" name="action" value="revoke">
+                                <input type="hidden" name="badge_id" value="{{.ID}}">
+                                <input type="hidden" name="owner_type" value="{{$.OwnerType}}">
+                                <input type="hidden" name="owner_id" value="{{$.OwnerID}}">
+                                <button type="submit">Remove badge</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else if gt .OwnerID 0}}
+            <p>No active trust badges for this account.</p>
+            {{end}}
+        </section>
+    </main>
+</body>
+</html>

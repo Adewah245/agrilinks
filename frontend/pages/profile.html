@@ -201,8 +201,20 @@
 
             </p>
 
+            {{if .Badges}}
+            <p class="profile-badges" aria-label="Trust badges">
+                {{range .Badges}}
+                <span class="profile-badge">{{humanBadge .BadgeType}}</span>
+                {{end}}
+            </p>
+            {{end}}
+
 
             {{if .IsOwner}}
+
+            {{if .IsAdministrator}}
+            <p><a href="/trust">Manage trust badges</a></p>
+            {{end}}
 
             <button
                 type="button"
@@ -367,7 +379,7 @@
                                 </th>
 
                                 <th>
-                                    Amount
+                                    How much
                                 </th>
 
                                 <th>
@@ -466,7 +478,7 @@
                                 </th>
 
                                 <th>
-                                    Amount
+                                    How much
                                 </th>
 
                                 <th>
@@ -519,7 +531,7 @@
                                 </td>
 
                                 <td>
-                                    ₦{{money .Price}} per {{.Unit}}
+                                    ₦{{money .Price}} for each {{.Unit}}
                                 </td>
 
                             </tr>
@@ -576,7 +588,7 @@
                                 </th>
 
                                 <th>
-                                    Amount
+                                    How much
                                 </th>
 
                                 <th>

@@ -231,7 +231,11 @@ The backend structure is:
 ```text
 backend/
 ├── cmd/
-│   └── server/
+│   ├── server/
+│   │   └── main.go
+│   ├── migrate/
+│   │   └── main.go
+│   └── legacy-cutover/
 │       └── main.go
 ├── internal/
 │   ├── app/
@@ -249,11 +253,36 @@ backend/
 │   ├── services/
 │   └── ussd/
 ├── migrations/
+├── scripts/
+│   ├── legacy_archive.sql
+│   └── legacy_backfill.sql
 ├── go.mod
 └── go.sum
 ```
 
 All backend application code lives under one `internal` tree. The responsibility boundaries remain `handler → service → repository`.
+
+Schema commands run from `backend/`:
+
+```bash
+# Apply pending migrations to a fresh or already-upgraded database.
+go run ./cmd/migrate
+
+# Start the application server.
+go run ./cmd/server
+```
+
+For a database that still contains the original crop/farmer schema, use the
+guarded cutover command instead of applying migrations directly:
+
+```bash
+CONFIRM_LEGACY_CUTOVER=archive-and-backfill go run ./cmd/legacy-cutover
+```
+
+The cutover moves the old tables into `legacy_agro_shield` without dropping
+them, applies every pending migration, backfills the current tables, and
+verifies that legacy accounts, listings, messages, orders, and wallet history
+were preserved. It refuses to run without the explicit confirmation value.
 
 ---
 
@@ -558,17 +587,34 @@ Orders should preserve enough information to determine:
 
 # 18. Delivery Partners
 
-The architecture includes a `delivery_partners` concept.
+The architecture separates logistics from products and orders through delivery
+partners and delivery records.
 
-This allows logistics to be separated from the product and order entities.
+The implemented workflow is:
 
-Future delivery capabilities can include:
+```text
+Paid order
+   ↓
+Buyer requests delivery and provides the destination address
+   ↓
+Seller assigns an approved delivery partner
+   ↓
+Partner picks up, moves the delivery through transit, and marks it delivered
+   ↓
+Buyer follows status and location updates
+```
 
-- Delivery partner registration
-- Assignment
-- Delivery status
-- Tracking
-- Delivery fees
+Delivery partner businesses are separate records. User accounts operate them
+through membership records, so an owner and drivers can use normal Agro-Shield
+logins without adding logistics-specific credentials to `delivery_partners`.
+
+Partner approval, assignment, status transitions, and tracking are enforced in
+the service layer. Delivery records snapshot their pickup and destination
+addresses because profiles and product locations may change later.
+
+Partner registration can use the shared state/LGA location API, and the
+repository verifies that a selected LGA belongs to the selected state. An
+administrator approves and activates partners before sellers can assign them.
 
 ---
 
@@ -731,6 +777,17 @@ The review system supports:
 - Product reputation
 - Seller/product trust
 - Future marketplace ranking/recommendation features
+
+The implemented review rules are:
+
+- A buyer can review a product only when the matching order is delivered.
+- One buyer can review a product once per order.
+- Public product reviews show the buyer's display name, rating, and comment.
+- Product pages show the product rating and the seller's aggregate rating.
+- Administrators can issue, replace, and revoke public trust badges from
+  `/trust`; expired badges are hidden automatically.
+- Public badges and rating summaries never expose NIN values, verification
+  references, or other private identity data.
 
 ---
 
@@ -1336,9 +1393,10 @@ The project should be developed in a controlled order.
 
 ## Phase 7 — Trust
 
-- Product reviews
-- Verification improvements
-- Reputation mechanisms
+- Delivered-order product reviews
+- Public seller/product rating summaries
+- Administrator-managed public trust badges
+- Private verification data kept outside public reputation views
 
 ## Phase 8 — Learning
 

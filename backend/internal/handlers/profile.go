@@ -16,6 +16,7 @@ import (
 type Profile struct {
 	product *services.ProductService
 	order   *services.OrderService
+	review  *services.ReviewService
 	users   *repository.UserRepository
 }
 
@@ -23,11 +24,13 @@ type Profile struct {
 func NewProfileHandler(
 	product *services.ProductService,
 	order *services.OrderService,
+	review *services.ReviewService,
 	users *repository.UserRepository,
 ) *Profile {
 	return &Profile{
 		product: product,
 		order:   order,
+		review:  review,
 		users:   users,
 	}
 }
@@ -43,6 +46,7 @@ type ProfilePageData struct {
 	Products  []models.Product
 	Purchases []models.Order
 	Sales     []models.Order
+	Badges    []models.VerificationBadge
 }
 
 // ProfileHandler displays the authenticated user's profile or
@@ -116,6 +120,15 @@ func (h *Profile) ProfileHandler(
 	data := ProfilePageData{
 		User:    user,
 		IsOwner: idValue == "",
+	}
+
+	if h.review != nil {
+		badges, badgeErr := h.review.ActiveBadges("user", user.ID)
+		if badgeErr != nil {
+			log.Println("failed to load profile badges:", badgeErr)
+		} else {
+			data.Badges = badges
+		}
 	}
 
 	// ========================================================

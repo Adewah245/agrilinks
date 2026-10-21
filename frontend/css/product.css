@@ -526,6 +526,30 @@
     font-weight: 700;
 }
 
+.seller-trust-line {
+    display: block;
+    margin-top: 6px;
+    color: var(--color-muted, #66756c);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.trust-badge {
+    display: inline-block;
+    margin: 6px 6px 0 0;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #e7f5ec;
+    color: #17633c;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.review-summary {
+    color: var(--color-muted, #66756c);
+    font-size: 0.95rem;
+}
+
 
 /* ============================================================
    PRODUCT DESCRIPTION

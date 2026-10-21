@@ -231,7 +231,7 @@
         <p class="product-price">
 
             ₦{{money0 .Product.Price}}
-            per {{.Product.Unit}}
+            for each {{.Product.Unit}}
 
         </p>
 
@@ -285,13 +285,13 @@
             <div class="product-detail-box">
 
                 <span class="product-detail-label">
-                    Price per {{.Product.Unit}}
+                    Price for each {{.Product.Unit}}
                 </span>
 
                 <span class="product-detail-value">
 
                     ₦{{money0 .Product.Price}}
-                    per {{.Product.Unit}}
+                    for each {{.Product.Unit}}
 
                 </span>
 
@@ -406,6 +406,16 @@
 
                     </span>
 
+                    {{if gt .SellerTrust.ReviewCount 0}}
+                    <span class="seller-trust-line">
+                        {{money .SellerTrust.AverageRating}}/5 from {{.SellerTrust.ReviewCount}} reviews
+                    </span>
+                    {{end}}
+
+                    {{range .SellerTrust.Badges}}
+                    <span class="trust-badge">{{humanBadge .BadgeType}}</span>
+                    {{end}}
+
                 </span>
 
             </div>
@@ -472,11 +482,19 @@
     <section id="reviews" class="product-detail-box">
         <h2>Product Reviews</h2>
 
+        {{if gt .ProductTrust.ReviewCount 0}}
+        <p class="review-summary">
+            <strong>{{money .ProductTrust.AverageRating}} out of 5</strong>
+            from {{.ProductTrust.ReviewCount}} buyer reviews.
+        </p>
+        {{end}}
+
         {{if .Reviews}}
         <ul>
             {{range .Reviews}}
             <li>
                 <strong>{{.Rating}}/5</strong>
+                {{if .ReviewerName}}— {{.ReviewerName}}{{end}}
                 {{if .Comment}}— {{.Comment}}{{end}}
                 <small>{{.CreatedAt.Format "02 Jan 2006"}}</small>
             </li>

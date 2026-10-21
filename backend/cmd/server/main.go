@@ -251,6 +251,7 @@ func main() {
 
 	paymentRepo := repository.NewPaymentRepository(db)
 	deliveryRepo := repository.NewDeliveryRepository(db)
+	deliveryPartnerRepo := repository.NewDeliveryPartnerRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 
 	// ============================================================
@@ -356,6 +357,7 @@ func main() {
 		learningRepo,
 		paymentRepo,
 		deliveryRepo,
+		deliveryPartnerRepo,
 		reviewRepo,
 
 		// --------------------------------------------------------

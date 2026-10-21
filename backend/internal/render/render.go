@@ -140,6 +140,21 @@ func humanStatus(status string) string {
 	}
 }
 
+func humanBadge(badge string) string {
+	switch strings.ToLower(strings.TrimSpace(badge)) {
+	case "verified_farmer":
+		return "Verified farmer"
+	case "verified_organization":
+		return "Verified organization"
+	case "government_partner":
+		return "Government partner"
+	case "trusted_seller":
+		return "Trusted seller"
+	default:
+		return readableStatus(badge)
+	}
+}
+
 func loadTemplates() *template.Template {
 	funcs := template.FuncMap{
 		"money":                  money,
@@ -151,6 +166,7 @@ func loadTemplates() *template.Template {
 		"humanNegotiationStatus": humanNegotiationStatus,
 		"humanOfferStatus":       humanOfferStatus,
 		"humanStatus":            humanStatus,
+		"humanBadge":             humanBadge,
 	}
 	for _, pattern := range []string{"../frontend/pages/*.html", "../../frontend/pages/*.html", "../../../frontend/pages/*.html", "frontend/pages/*.html"} {
 		if matches, err := os.ReadDir("."); err == nil && matches != nil {

@@ -26,3 +26,18 @@ func TestHumanStatusLabels(t *testing.T) {
 		})
 	}
 }
+
+func TestHumanBadgeLabels(t *testing.T) {
+	tests := map[string]string{
+		"verified_farmer":       "Verified farmer",
+		"verified_organization": "Verified organization",
+		"government_partner":    "Government partner",
+		"trusted_seller":        "Trusted seller",
+	}
+
+	for raw, want := range tests {
+		if got := humanBadge(raw); got != want {
+			t.Fatalf("humanBadge(%q) = %q, want %q", raw, got, want)
+		}
+	}
+}

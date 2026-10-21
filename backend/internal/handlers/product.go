@@ -145,17 +145,31 @@ func (h *ProductHandler) ProductDetailsHandler(
 	// ========================================================
 
 	var reviews []models.ProductReview
+	var productTrust models.TrustSummary
+	var sellerTrust models.TrustSummary
 	if h.review != nil {
 		reviews, err = h.review.ProductReviews(productID)
 		if err != nil {
 			log.Println("failed to load product reviews:", err)
 		}
+		if summary, trustErr := h.review.ProductTrust(productID); trustErr != nil {
+			log.Println("failed to load product rating:", trustErr)
+		} else if summary != nil {
+			productTrust = *summary
+		}
+		if summary, trustErr := h.review.SellerTrust(product.OwnerType, product.OwnerID); trustErr != nil {
+			log.Println("failed to load seller trust:", trustErr)
+		} else if summary != nil {
+			sellerTrust = *summary
+		}
 	}
 
 	data := ProductPageData{
-		Product: product,
-		Images:  images,
-		Reviews: reviews,
+		Product:      product,
+		Images:       images,
+		Reviews:      reviews,
+		ProductTrust: productTrust,
+		SellerTrust:  sellerTrust,
 	}
 
 	// ========================================================
@@ -174,8 +188,10 @@ func (h *ProductHandler) ProductDetailsHandler(
 
 // ProductPageData contains the data passed to the product page template.
 type ProductPageData struct {
-	Product *models.Product
-	Images  []models.ProductImage
-	Reviews []models.ProductReview
-	Error   string
+	Product      *models.Product
+	Images       []models.ProductImage
+	Reviews      []models.ProductReview
+	ProductTrust models.TrustSummary
+	SellerTrust  models.TrustSummary
+	Error        string
 }
