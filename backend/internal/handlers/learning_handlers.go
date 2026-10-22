@@ -1,665 +1,249 @@
 package handlers
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
-
 	"backend/internal/middleware"
 	"backend/internal/models"
 	"backend/internal/render"
+	"backend/internal/repository"
 	"backend/internal/services"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
 )
 
-type LearningHandler struct {
-	service *services.LearningService
-}
+type LearningHandler struct{ service *services.LearningService }
 
 func NewLearningHandler(service *services.LearningService) *LearningHandler {
-	return &LearningHandler{
-		service: service,
-	}
+	return &LearningHandler{service: service}
 }
-
-// ============================================================
-// LEARNING HOME
-// ============================================================
-
-// LearningHome renders the main Learning page.
-//
-// GET /learn
-func (h *LearningHandler) LearningHome(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID, ok := getLearningUserID(r)
-	if !ok {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	farmingTypes, err := h.service.GetFarmingTypes()
-	if err != nil {
-		http.Error(
-			w,
-			"failed to load farming types",
-			http.StatusInternalServerError,
-		)
-		return
-	}
-
-	userFarmingTypes, err := h.service.GetUserFarmingTypes(userID)
-	if err != nil {
-		http.Error(
-			w,
-			"failed to load learning interests",
-			http.StatusInternalServerError,
-		)
-		return
-	}
-
-	activeJourney, err := h.service.GetActiveLearningJourney(userID)
-	if err != nil {
-		http.Error(
-			w,
-			"failed to load learning journey",
-			http.StatusInternalServerError,
-		)
-		return
-	}
-
-	data := LearningHomeData{
-		FarmingTypes:     farmingTypes,
-		UserFarmingTypes: userFarmingTypes,
-		ActiveJourney:    activeJourney,
-	}
-
-	h.renderTemplate(w, "learn.html", data)
-}
-
-// ============================================================
-// START LEARNING
-// ============================================================
-
-// StartLearning creates a learning journey.
-//
-// POST /learn/start
-func (h *LearningHandler) StartLearning(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID, ok := getLearningUserID(r)
-	if !ok {
-		h.writeJSONError(
-			w,
-			http.StatusUnauthorized,
-			"you must be logged in",
-		)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid form data",
-		)
-		return
-	}
-
-	farmingTypeID, err := strconv.Atoi(
-		strings.TrimSpace(r.FormValue("farming_type_id")),
-	)
-	if err != nil || farmingTypeID <= 0 {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid farming type",
-		)
-		return
-	}
-
-	experienceLevel := strings.TrimSpace(
-		r.FormValue("experience_level"),
-	)
-
-	goal := strings.TrimSpace(
-		r.FormValue("goal"),
-	)
-
-	journey, err := h.service.StartLearningJourney(
-		userID,
-		farmingTypeID,
-		experienceLevel,
-		goal,
-	)
-	if err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			err.Error(),
-		)
-		return
-	}
-
-	// JSON response for AJAX/frontend requests.
-	if wantsJSON(r) {
-		h.writeJSON(
-			w,
-			http.StatusCreated,
-			map[string]interface{}{
-				"success": true,
-				"message": "learning journey started",
-				"journey": journey,
-			},
-		)
-		return
-	}
-
-	http.Redirect(
-		w,
-		r,
-		fmt.Sprintf("/learn/journey?id=%d", journey.ID),
-		http.StatusSeeOther,
-	)
-}
-
-// ============================================================
-// LEARNING JOURNEY
-// ============================================================
-
-// LearningJourney renders a user's learning journey.
-//
-// GET /learn/journey?id=1
-func (h *LearningHandler) LearningJourney(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID, ok := getLearningUserID(r)
-	if !ok {
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
-		return
-	}
-
-	journeyID, err := strconv.Atoi(
-		strings.TrimSpace(r.URL.Query().Get("id")),
-	)
-	if err != nil || journeyID <= 0 {
-		http.Error(
-			w,
-			"invalid learning journey",
-			http.StatusBadRequest,
-		)
-		return
-	}
-
-	journey, err := h.getJourneyForUser(
-		userID,
-		journeyID,
-	)
-	if err != nil {
-		http.Error(
-			w,
-			err.Error(),
-			http.StatusNotFound,
-		)
-		return
-	}
-
-	checkpoints, err := h.service.GetLearningCheckpoints(
-		userID,
-		journeyID,
-	)
-	if err != nil {
-		http.Error(
-			w,
-			"failed to load checkpoints",
-			http.StatusInternalServerError,
-		)
-		return
-	}
-
-	messages, err := h.service.GetLearningMessages(
-		userID,
-		journeyID,
-	)
-	if err != nil {
-		http.Error(
-			w,
-			"failed to load learning messages",
-			http.StatusInternalServerError,
-		)
-		return
-	}
-
-	data := LearningJourneyData{
-		Journey:     journey,
-		Checkpoints: checkpoints,
-		Messages:    messages,
-	}
-
-	h.renderTemplate(
-		w,
-		"learning_journey.html",
-		data,
-	)
-}
-
-// ============================================================
-// UPDATE JOURNEY
-// ============================================================
-
-// UpdateJourneyProgress updates the learner's progress.
-//
-// POST /learn/journey/update
-func (h *LearningHandler) UpdateJourneyProgress(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID, ok := getLearningUserID(r)
-	if !ok {
-		h.writeJSONError(
-			w,
-			http.StatusUnauthorized,
-			"you must be logged in",
-		)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid form data",
-		)
-		return
-	}
-
-	journeyID, err := strconv.Atoi(
-		r.FormValue("journey_id"),
-	)
-	if err != nil || journeyID <= 0 {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid journey",
-		)
-		return
-	}
-
-	stage := strings.TrimSpace(
-		r.FormValue("stage"),
-	)
-
-	status := strings.TrimSpace(
-		r.FormValue("status"),
-	)
-
-	readinessScore, err := strconv.Atoi(
-		r.FormValue("readiness_score"),
-	)
-	if err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid readiness score",
-		)
-		return
-	}
-
-	if err := h.service.UpdateJourneyProgress(
-		userID,
-		journeyID,
-		stage,
-		readinessScore,
-		status,
-	); err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			err.Error(),
-		)
-		return
-	}
-
-	if wantsJSON(r) {
-		h.writeJSON(
-			w,
-			http.StatusOK,
-			map[string]interface{}{
-				"success": true,
-				"message": "learning journey updated",
-			},
-		)
-		return
-	}
-
-	http.Redirect(
-		w,
-		r,
-		fmt.Sprintf("/learn/journey?id=%d", journeyID),
-		http.StatusSeeOther,
-	)
-}
-
-// ============================================================
-// LEARNING MESSAGES
-// ============================================================
-
-// SendMessage sends a message into a learning journey.
-//
-// POST /learn/message
-func (h *LearningHandler) SendMessage(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID, ok := getLearningUserID(r)
-	if !ok {
-		h.writeJSONError(
-			w,
-			http.StatusUnauthorized,
-			"you must be logged in",
-		)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid form data",
-		)
-		return
-	}
-
-	journeyID, err := strconv.Atoi(
-		r.FormValue("journey_id"),
-	)
-	if err != nil || journeyID <= 0 {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid journey",
-		)
-		return
-	}
-
-	content := strings.TrimSpace(
-		r.FormValue("content"),
-	)
-
-	message, err := h.service.SendLearningMessage(
-		userID,
-		journeyID,
-		"user",
-		"text",
-		content,
-	)
-	if err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			err.Error(),
-		)
-		return
-	}
-
-	h.writeJSON(
-		w,
-		http.StatusCreated,
-		map[string]interface{}{
-			"success": true,
-			"message": message,
-		},
-	)
-}
-
-// ============================================================
-// CHECKPOINT
-// ============================================================
-
-// UpdateCheckpoint updates one learning checkpoint.
-//
-// POST /learn/checkpoint/update
-func (h *LearningHandler) UpdateCheckpoint(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	userID, ok := getLearningUserID(r)
-	if !ok {
-		h.writeJSONError(
-			w,
-			http.StatusUnauthorized,
-			"you must be logged in",
-		)
-		return
-	}
-
-	if err := r.ParseForm(); err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid form data",
-		)
-		return
-	}
-
-	checkpointID, err := strconv.Atoi(
-		r.FormValue("checkpoint_id"),
-	)
-	if err != nil || checkpointID <= 0 {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid checkpoint",
-		)
-		return
-	}
-
-	journeyID, err := strconv.Atoi(
-		r.FormValue("journey_id"),
-	)
-	if err != nil || journeyID <= 0 {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid journey",
-		)
-		return
-	}
-
-	progress, err := strconv.Atoi(
-		r.FormValue("progress"),
-	)
-	if err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			"invalid progress",
-		)
-		return
-	}
-
-	status := strings.TrimSpace(
-		r.FormValue("status"),
-	)
-
-	notes := strings.TrimSpace(
-		r.FormValue("notes"),
-	)
-
-	checkpoint := &models.LearningCheckpoint{
-		ID:        checkpointID,
-		JourneyID: journeyID,
-		Status:    status,
-		Progress:  progress,
-		Notes:     notes,
-	}
-
-	if err := h.service.UpdateLearningCheckpoint(
-		userID,
-		checkpoint,
-	); err != nil {
-		h.writeJSONError(
-			w,
-			http.StatusBadRequest,
-			err.Error(),
-		)
-		return
-	}
-
-	h.writeJSON(
-		w,
-		http.StatusOK,
-		map[string]interface{}{
-			"success":    true,
-			"checkpoint": checkpoint,
-		},
-	)
-}
-
-// ============================================================
-// DATA STRUCTURES FOR TEMPLATES
-// ============================================================
 
 type LearningHomeData struct {
 	FarmingTypes     []models.FarmingType
 	UserFarmingTypes []models.UserFarmingType
+	Journeys         []models.LearningJourney
 	ActiveJourney    *models.LearningJourney
+	AIAvailable      bool
 }
-
 type LearningJourneyData struct {
 	Journey     *models.LearningJourney
 	Checkpoints []models.LearningCheckpoint
 	Messages    []models.LearningMessage
+	AIAvailable bool
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
-
-// getLearningUserID gets the logged-in user ID.
-func getLearningUserID(r *http.Request) (int, bool) {
-	user, ok := middleware.UserFromContext(r)
-	if !ok || user == nil || user.ID <= 0 {
-		return 0, false
-	}
-
-	return user.ID, true
-}
-
-// getJourneyForUser makes sure the requested journey belongs
-// to the logged-in user.
-func (h *LearningHandler) getJourneyForUser(
-	userID int,
-	journeyID int,
-) (*models.LearningJourney, error) {
-	// We currently obtain the user's active journey first.
-	journey, err := h.service.GetActiveLearningJourney(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	if journey == nil {
-		return nil, fmt.Errorf("learning journey not found")
-	}
-
-	if journey.ID != journeyID {
-		return nil, fmt.Errorf("learning journey not found")
-	}
-
-	return journey, nil
-}
-
-// renderTemplate renders an HTML template.
-func (h *LearningHandler) renderTemplate(
-	w http.ResponseWriter,
-	name string,
-	data interface{},
-) {
-	if err := render.RenderTemplates(w, name, data); err != nil {
-		http.Error(
-			w,
-			"failed to render learning page",
-			http.StatusInternalServerError,
-		)
-	}
-}
-
-// writeJSON writes a JSON response.
-func (h *LearningHandler) writeJSON(
-	w http.ResponseWriter,
-	status int,
-	data interface{},
-) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	if err := json.NewEncoder(w).Encode(data); err != nil {
+func (h *LearningHandler) LearningHome(w http.ResponseWriter, r *http.Request) {
+	id, ok := getLearningUserID(r)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
+	types, err := h.service.GetFarmingTypes()
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	journeys, err := h.service.ListJourneys(id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	h.render(w, "learn.html", LearningHomeData{FarmingTypes: types, Journeys: journeys, AIAvailable: h.service.AIAvailable()})
 }
 
-// writeJSONError writes a JSON error response.
-func (h *LearningHandler) writeJSONError(
-	w http.ResponseWriter,
-	status int,
-	message string,
-) {
-	h.writeJSON(
-		w,
-		status,
-		map[string]interface{}{
-			"success": false,
-			"error":   message,
-		},
-	)
+func (h *LearningHandler) StartLearning(w http.ResponseWriter, r *http.Request) {
+	id, ok := learningPost(w, r)
+	if !ok {
+		return
+	}
+	farmingID, err := strconv.Atoi(r.FormValue("farming_type_id"))
+	if err != nil {
+		h.fail(w, r, errors.New("choose a farming activity"))
+		return
+	}
+	journey, err := h.service.StartLearningJourney(id, farmingID, r.FormValue("experience_level"), r.FormValue("goal"))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	h.saved(w, r, journey.ID, journey)
 }
 
-// wantsJSON determines whether the request expects JSON.
+func (h *LearningHandler) LearningJourney(w http.ResponseWriter, r *http.Request) {
+	id, ok := getLearningUserID(r)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	journeyID, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	journey, err := h.service.GetJourneyForUser(id, journeyID)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	checkpoints, err := h.service.GetLearningCheckpoints(id, journeyID)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	messages, err := h.service.GetLearningMessages(id, journeyID)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	h.render(w, "learning_journey.html", LearningJourneyData{Journey: journey, Checkpoints: checkpoints, Messages: messages, AIAvailable: h.service.AIAvailable()})
+}
+
+func (h *LearningHandler) UpdateJourneyProgress(w http.ResponseWriter, r *http.Request) {
+	id, ok := learningPost(w, r)
+	if !ok {
+		return
+	}
+	journeyID, err := strconv.Atoi(r.FormValue("journey_id"))
+	if err != nil {
+		h.fail(w, r, repository.ErrLearningNotFound)
+		return
+	}
+	// Percentages come from the saved checklist, never a submitted score.
+	if r.FormValue("readiness_score") != "" || r.FormValue("stage") != "" {
+		h.fail(w, r, errors.New("progress is calculated from your checklist"))
+		return
+	}
+	if err := h.service.ChangeJourneyStatus(id, journeyID, r.FormValue("status")); err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	h.saved(w, r, journeyID, nil)
+}
+
+func (h *LearningHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
+	id, ok := learningPost(w, r)
+	if !ok {
+		return
+	}
+	journeyID, err := strconv.Atoi(r.FormValue("journey_id"))
+	if err != nil {
+		h.fail(w, r, repository.ErrLearningNotFound)
+		return
+	}
+	messages, err := h.service.Ask(r.Context(), id, journeyID, r.FormValue("content"))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	h.saved(w, r, journeyID, messages)
+}
+
+func (h *LearningHandler) CreateCheckpoint(w http.ResponseWriter, r *http.Request) {
+	id, ok := learningPost(w, r)
+	if !ok {
+		return
+	}
+	journeyID, err := strconv.Atoi(r.FormValue("journey_id"))
+	if err != nil {
+		h.fail(w, r, repository.ErrLearningNotFound)
+		return
+	}
+	checkpoint, err := h.service.CreateLearningCheckpoint(id, journeyID, "", r.FormValue("title"), r.FormValue("description"))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	h.saved(w, r, journeyID, checkpoint)
+}
+
+func (h *LearningHandler) UpdateCheckpoint(w http.ResponseWriter, r *http.Request) {
+	id, ok := learningPost(w, r)
+	if !ok {
+		return
+	}
+	checkpointID, err := strconv.Atoi(r.FormValue("checkpoint_id"))
+	if err != nil {
+		h.fail(w, r, repository.ErrLearningNotFound)
+		return
+	}
+	journeyID, err := strconv.Atoi(r.FormValue("journey_id"))
+	if err != nil {
+		h.fail(w, r, repository.ErrLearningNotFound)
+		return
+	}
+	progress, err := strconv.Atoi(r.FormValue("progress"))
+	if err != nil {
+		h.fail(w, r, errors.New("enter progress from 0 to 100"))
+		return
+	}
+	checkpoint := &models.LearningCheckpoint{ID: checkpointID, JourneyID: journeyID, Progress: progress, Status: r.FormValue("status"), Notes: r.FormValue("notes")}
+	if err := h.service.UpdateLearningCheckpoint(id, checkpoint); err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	h.saved(w, r, journeyID, checkpoint)
+}
+
+func getLearningUserID(r *http.Request) (int, bool) {
+	user, ok := middleware.UserFromContext(r)
+	if !ok {
+		return 0, false
+	}
+	return user.ID, true
+}
+func learningPost(w http.ResponseWriter, r *http.Request) (int, bool) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return 0, false
+	}
+	id, ok := getLearningUserID(r)
+	if !ok {
+		http.Error(w, "Please sign in", http.StatusUnauthorized)
+		return 0, false
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "We could not read that form", http.StatusBadRequest)
+		return 0, false
+	}
+	return id, true
+}
 func wantsJSON(r *http.Request) bool {
-	if strings.Contains(
-		r.Header.Get("Accept"),
-		"application/json",
-	) {
-		return true
+	return strings.Contains(r.Header.Get("Accept"), "application/json") || r.Header.Get("X-Requested-With") == "XMLHttpRequest"
+}
+func (h *LearningHandler) saved(w http.ResponseWriter, r *http.Request, journeyID int, data any) {
+	if wantsJSON(r) {
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "data": data})
+		return
 	}
-
-	if r.Header.Get("X-Requested-With") == "XMLHttpRequest" {
-		return true
+	http.Redirect(w, r, fmt.Sprintf("/learn/journey?id=%d", journeyID), http.StatusSeeOther)
+}
+func (h *LearningHandler) fail(w http.ResponseWriter, r *http.Request, err error) {
+	log.Printf("learning request: %v", err)
+	status, message := http.StatusBadRequest, "We could not save that change. Check your details and try again."
+	switch {
+	case errors.Is(err, repository.ErrLearningNotFound):
+		status, message = http.StatusNotFound, "That learning journey was not found."
+	case errors.Is(err, repository.ErrLearningConflict):
+		status, message = http.StatusConflict, "This page changed. Please refresh it and try again."
+	case errors.Is(err, services.ErrLearningUnavailable):
+		status, message = http.StatusServiceUnavailable, services.ErrLearningUnavailable.Error()
+	default:
+		switch err.Error() {
+		case "finish your checklist before completing this journey", "resume this learning journey before changing it", "resume this journey before asking a question", "progress is calculated from your checklist", "choose a farming activity", "choose your experience level", "another journey for this farming type is already active":
+			message = err.Error()
+		}
 	}
-
-	return false
+	if wantsJSON(r) {
+		writeError(w, status, message)
+		return
+	}
+	http.Error(w, message, status)
+}
+func (h *LearningHandler) render(w http.ResponseWriter, name string, data any) {
+	if err := render.RenderTemplates(w, name, data); err != nil {
+		log.Printf("render learning: %v", err)
+		http.Error(w, "We could not open this page", http.StatusInternalServerError)
+	}
 }

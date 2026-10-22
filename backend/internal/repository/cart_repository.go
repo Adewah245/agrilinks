@@ -3,6 +3,7 @@ package repository
 import (
 	"backend/internal/models"
 	"database/sql"
+	"fmt"
 )
 
 // CartRepository handles all database operations related to the buyer's cart.
@@ -13,6 +14,38 @@ type CartRepository struct {
 // NewCartRepository creates and returns a new CartRepository.
 func NewCartRepository(db *sql.DB) *CartRepository {
 	return &CartRepository{db: db}
+}
+
+func (r *CartRepository) AddProduct(buyerID, productID int, quantity float64) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var id int
+	if err = tx.QueryRow(`SELECT id FROM users WHERE id=$1 FOR UPDATE`, buyerID).Scan(&id); err != nil {
+		return err
+	}
+	// Adding the same ordinary product replaces its requested amount. Accepted
+	// negotiations remain separate and retain their agreed prices.
+	if _, err = tx.Exec(`DELETE FROM cart_items WHERE buyer_id=$1 AND product_id=$2 AND negotiation_id IS NULL`, buyerID, productID); err != nil {
+		return err
+	}
+	result, err := tx.Exec(`INSERT INTO cart_items(buyer_id,product_id,quantity,price_per_unit,total_price)
+		SELECT $1,id,$3,price,round(price*$3::numeric,2) FROM products
+		WHERE id=$2 AND status='active' AND quantity >= $3 AND price>0
+		AND NOT (owner_type='user' AND owner_id=$1)`, buyerID, productID, quantity)
+	if err != nil {
+		return err
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count != 1 {
+		return fmt.Errorf("this product or amount is not available to buy")
+	}
+	return tx.Commit()
 }
 
 // Create adds an accepted negotiation to the buyer's cart.

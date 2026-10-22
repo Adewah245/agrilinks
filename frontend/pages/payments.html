@@ -53,9 +53,9 @@
                     <tr>
                         <td>#{{.ID}}</td>
                         <td>{{.ProductName}}</td>
-                        <td>{{.Quantity}} {{.ProductUnit}}</td>
+                        <td>{{range .Items}}{{.Quantity}} {{.ProductName}}<br>{{else}}{{.Quantity}} {{.ProductUnit}}{{end}}</td>
                         <td>{{.SellerName}}</td>
-                        <td>{{$.Currency}} {{money .TotalPrice}}</td>
+                        <td>{{.Currency}} {{money .TotalAmount}}</td>
                         <td>
                             <form method="POST" action="/payments">
                                 <input type="hidden" name="order_id" value="{{.ID}}">
@@ -91,7 +91,7 @@
                         <td>#{{.OrderID}}</td>
                         <td>{{.ProductName}}</td>
                         <td>{{.Currency}} {{.Amount}}</td>
-                        <td>{{humanPaymentStatus .Status}}</td>
+                        <td>{{humanPaymentStatus .Status}}{{if .ReviewRequired}} — needs a payment check{{end}}</td>
                         <td>{{.Reference}}</td>
                     </tr>
                     {{end}}

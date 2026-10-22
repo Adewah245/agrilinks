@@ -256,7 +256,7 @@ func (r *NegotiationRepository) UpdateStatus(
 
 			updated_at = CURRENT_TIMESTAMP
 
-		WHERE id = $2
+		WHERE id = $2 AND status = 'open'
 	`
 
 	result, err := r.db.Exec(

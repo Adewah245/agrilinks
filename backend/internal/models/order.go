@@ -15,6 +15,8 @@ type Order struct {
 	// Order-level information.
 	Status      string
 	TotalAmount float64
+	Currency    string
+	CheckoutKey string
 
 	// Order items.
 	Items []OrderItem

@@ -1,52 +1,32 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Learn | Agro-Shield</title>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your learning space | Agro-Shield</title>
+  <link rel="stylesheet" href="/static/css/style.css"><link rel="stylesheet" href="/static/css/learning.css">
 </head>
-<body>
-  <main class="dashboard">
-    <p><a href="/dashboard">← Dashboard</a></p>
-    <h1>Learning</h1>
-    <p>Choose an agricultural activity and begin a guided learning journey.</p>
-
-    {{with .ActiveJourney}}
-      <section class="panel">
-        <h2>Your active journey</h2>
-        <p>{{with .FarmingType}}{{.Name}}{{else}}Farming journey{{end}} · {{.CurrentStage}} · {{.ReadinessScore}}% ready</p>
-        <a href="/learn/journey?id={{.ID}}">Continue learning</a>
+<body class="learning-page">
+  <nav class="learning-nav" aria-label="Main navigation"><a href="/">Agro-Shield</a><a href="/marketplace">Buy</a><a href="/storage">Sell</a><a href="/learn" aria-current="page">Learn</a><a href="/chat">Messages</a><a href="/profile">My profile</a></nav>
+  <main class="learning-main">
+    <header><p class="eyebrow">GROW YOUR KNOWLEDGE</p><h1>Your learning space</h1><p>Choose what you want to learn. Ask questions, plan your next steps, and keep track of what you have done.</p></header>
+    <div class="learning-columns">
+      <section class="learning-card"><h2>Start something new</h2>
+        {{if .FarmingTypes}}
+        <form method="post" action="/learn/start">
+          <label for="farming_type_id">What would you like to learn?</label>
+          <select id="farming_type_id" name="farming_type_id" required><option value="">Choose a farming activity</option>{{range .FarmingTypes}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select>
+          <label for="experience_level">How much do you know already?</label>
+          <select id="experience_level" name="experience_level"><option value="beginner">I am just starting</option><option value="some_experience">I know a little</option><option value="experienced">I have farming experience</option></select>
+          <label for="goal">What would you like to achieve?</label><textarea id="goal" name="goal" maxlength="1000" rows="3"></textarea>
+          <button type="submit">Start learning</button>
+        </form>
+        {{else}}<p>We could not find any farming activities. Please try again later.</p>{{end}}
       </section>
-    {{end}}
-
-    <section class="panel">
-      <h2>Start a learning journey</h2>
-      {{if .FarmingTypes}}
-      <form method="post" action="/learn/start">
-        <label for="farming_type_id">Farming type</label>
-        <select id="farming_type_id" name="farming_type_id" required>
-          <option value="">Choose a farming type</option>
-          {{range .FarmingTypes}}
-            <option value="{{.ID}}">{{.Name}}</option>
-          {{end}}
-        </select>
-
-        <label for="experience_level">Your experience</label>
-        <select id="experience_level" name="experience_level">
-          <option value="beginner">Beginner</option>
-          <option value="intermediate">Intermediate</option>
-          <option value="experienced">Experienced</option>
-        </select>
-
-        <label for="goal">What do you want to achieve?</label>
-        <textarea id="goal" name="goal" rows="3"></textarea>
-        <button type="submit">Start learning</button>
-      </form>
-      {{else}}
-        <p>Learning types are not available yet. Please try again later.</p>
-      {{end}}
-    </section>
+      <section class="learning-card"><h2>Your learning journeys</h2>
+        {{range .Journeys}}<article class="journey-summary"><h3>{{with .FarmingType}}{{.Name}}{{end}}</h3><p>{{humanStatus .Status}} · Your checklist is {{.ReadinessScore}}% complete</p><progress value="{{.ReadinessScore}}" max="100" aria-label="Checklist progress">{{.ReadinessScore}}%</progress>{{if .Goal}}<p>{{.Goal}}</p>{{end}}<a href="/learn/journey?id={{.ID}}">Open this journey →</a></article>{{else}}<p>Your learning journeys will appear here after you choose an activity.</p>{{end}}
+      </section>
+    </div>
+    <section class="learning-card"><h2>Learn with other people</h2><p>Ask questions and share what you are learning with other farmers and learners.</p><a href="/learn/rooms">Find a learning room →</a></section>
   </main>
 </body>
 </html>

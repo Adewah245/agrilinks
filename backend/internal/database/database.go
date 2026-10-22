@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 const (
@@ -32,10 +33,14 @@ func ConnectDB(databaseURL string) (*sql.DB, error) {
 		return nil, fmt.Errorf("database URL must not be empty")
 	}
 
-	db, err := sql.Open("pgx", databaseURL)
+	connectionConfig, err := pgx.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("open PostgreSQL: %w", err)
 	}
+	// Older tables contain TIMESTAMP values without a timezone. Keep reads,
+	// writes and CURRENT_TIMESTAMP comparisons consistent across deployments.
+	connectionConfig.RuntimeParams["timezone"] = "UTC"
+	db := stdlib.OpenDB(*connectionConfig)
 
 	// Bound the pool so one process cannot exhaust a shared PostgreSQL or Neon
 	// connection limit. These are configurable for deployment sizing.

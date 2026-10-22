@@ -257,7 +257,7 @@
             <p class="price">
 
                 ₦{{money .Price}}
-                for each {{.Unit}}
+                per {{.Unit}}
 
             </p>
 
@@ -362,6 +362,7 @@
                 action="/marketplace"
                 class="buy-form"
             >
+                <input type="hidden" name="checkout_key" value="{{requestKey}}">
 
                 <input
                     type="hidden"
@@ -383,7 +384,7 @@
                     min="0.01"
                     max="{{.Quantity}}"
                     step="0.01"
-                    placeholder="How much ({{.Unit}})"
+                    placeholder="Amount in {{.Unit}}"
                     required
                     inputmode="decimal"
                     aria-label="How much {{.Name}} do you want to buy?"
@@ -392,8 +393,9 @@
                 <button
                     type="submit"
                 >
-                    Buy
+                    Buy now
                 </button>
+                <button type="submit" formaction="/cart" name="action" value="add">Add to cart</button>
 
             </form>
 
@@ -431,7 +433,7 @@
                     min="0.01"
                     max="{{.Quantity}}"
                     step="0.01"
-                    placeholder="How much ({{.Unit}})"
+                    placeholder="Amount in {{.Unit}}"
                     required
                     inputmode="decimal"
                 >

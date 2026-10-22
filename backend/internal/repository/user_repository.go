@@ -455,7 +455,12 @@ func (r *UserRepository) UpdatePhoto(id int, photoURL string) error {
 
 // UpdatePassword sets a new password hash.
 func (r *UserRepository) UpdatePassword(id int, passwordHash string) error {
-	result, err := r.db.Exec(`
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	result, err := tx.Exec(`
 		UPDATE users
 		SET password_hash = $1,
 			updated_at = CURRENT_TIMESTAMP
@@ -473,7 +478,10 @@ func (r *UserRepository) UpdatePassword(id int, passwordHash string) error {
 	if affected == 0 {
 		return ErrAccountNotFound
 	}
-	return nil
+	if _, err := tx.Exec(`DELETE FROM user_sessions WHERE user_id=$1`, id); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // ============================================================

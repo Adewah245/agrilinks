@@ -159,6 +159,7 @@ func (h *Marketplace) MarketplaceHandler(
 			user.ID,
 			productID,
 			quantity,
+			r.FormValue("checkout_key"),
 		); err != nil {
 			h.render(
 				w,
@@ -173,7 +174,7 @@ func (h *Marketplace) MarketplaceHandler(
 		// Record the completed checkout using the new product-based
 		// marketplace architecture.
 		h.record(
-			"checkout_completed",
+			"checkout_started",
 			&productID,
 			user.ID,
 			r,
@@ -183,13 +184,7 @@ func (h *Marketplace) MarketplaceHandler(
 			),
 		)
 
-		h.render(
-			w,
-			user.IsBuyer(),
-			user.ID,
-			"Order placed successfully!",
-			"",
-		)
+		http.Redirect(w, r, "/payments", http.StatusSeeOther)
 		return
 
 	default:

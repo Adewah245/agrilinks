@@ -2,6 +2,8 @@ package render
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/hex"
 	"html/template"
 	"math"
 	"net/http"
@@ -157,7 +159,14 @@ func humanBadge(badge string) string {
 
 func loadTemplates() *template.Template {
 	funcs := template.FuncMap{
-		"money":                  money,
+		"money": money,
+		"requestKey": func() (string, error) {
+			b := make([]byte, 16)
+			if _, err := rand.Read(b); err != nil {
+				return "", err
+			}
+			return hex.EncodeToString(b), nil
+		},
 		"money0":                 money0,
 		"comma":                  func(v int) string { return commaNumber(float64(v), 0) },
 		"hasCoordinates":         hasCoordinates,
@@ -186,6 +195,7 @@ func RenderTemplates(w http.ResponseWriter, name string, data any) error {
 	// and produces a "superfluous response.WriteHeader" server warning.
 	var output bytes.Buffer
 	if err := TMPL.ExecuteTemplate(&output, name, data); err != nil {
+		http.Error(w, "This page could not be loaded. Please try again.", http.StatusInternalServerError)
 		return err
 	}
 

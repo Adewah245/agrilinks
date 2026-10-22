@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"backend/internal/models"
 	"backend/internal/repository"
@@ -28,6 +29,14 @@ func NewCartService(
 		productRepo: productRepo,
 		eventRepo:   eventRepo,
 	}
+}
+
+// AddProduct uses the current saved price, never a price sent by the browser.
+func (s *CartService) AddProduct(buyerID, productID int, quantity float64) error {
+	if buyerID <= 0 || productID <= 0 || quantity <= 0 || math.IsNaN(quantity) || math.IsInf(quantity, 0) {
+		return errors.New("choose a product and enter a valid amount")
+	}
+	return s.cartRepo.AddProduct(buyerID, productID, quantity)
 }
 
 // AddFromNegotiation adds an accepted negotiation to the buyer's cart.

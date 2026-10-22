@@ -2,6 +2,16 @@ package models
 
 import "time"
 
+type LearningRoom struct {
+	ConversationID int
+	FarmingTypeID  int
+	FarmingType    string
+	Title          string
+	Description    string
+	MemberCount    int
+	Joined         bool
+}
+
 // FarmingType represents an agricultural activity
 // supported by Agro-Shield.
 //

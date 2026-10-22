@@ -15,9 +15,10 @@ import (
 
 // ProductHandler handles requests related to viewing one product.
 type ProductHandler struct {
-	product *services.ProductService
-	review  *services.ReviewService
-	events  *repository.MarketEventRepository
+	product       *services.ProductService
+	review        *services.ReviewService
+	events        *repository.MarketEventRepository
+	notifications *services.NotificationService
 }
 
 // NewProductHandler creates a new ProductHandler.
@@ -25,11 +26,13 @@ func NewProductHandler(
 	product *services.ProductService,
 	review *services.ReviewService,
 	events *repository.MarketEventRepository,
+	notifications *services.NotificationService,
 ) *ProductHandler {
 	return &ProductHandler{
-		product: product,
-		review:  review,
-		events:  events,
+		product:       product,
+		review:        review,
+		events:        events,
+		notifications: notifications,
 	}
 }
 
@@ -172,6 +175,13 @@ func (h *ProductHandler) ProductDetailsHandler(
 		SellerTrust:  sellerTrust,
 	}
 
+	if user, ok := middleware.UserFromContext(r); ok && h.notifications != nil {
+		data.UnreadCount, err = h.notifications.GetUnreadCount(user.ID)
+		if err != nil {
+			http.Error(w, "Could not load notifications", http.StatusInternalServerError)
+			return
+		}
+	}
 	// ========================================================
 	// 7. RENDER PRODUCT PAGE
 	// ========================================================
@@ -188,6 +198,7 @@ func (h *ProductHandler) ProductDetailsHandler(
 
 // ProductPageData contains the data passed to the product page template.
 type ProductPageData struct {
+	UnreadCount  int
 	Product      *models.Product
 	Images       []models.ProductImage
 	Reviews      []models.ProductReview

@@ -25,6 +25,10 @@ import (
 // ============================================================
 
 type Container struct {
+	Config   config.Config
+	Sessions *services.SessionService
+	OTP      *services.OTPService
+	Weather  *services.WeatherService
 	// --------------------------------------------------------
 	// APPLICATION SERVICES
 	// --------------------------------------------------------
@@ -198,6 +202,7 @@ func NewContainer(
 			orderRepo,
 			productRepo,
 			cartRepo,
+			paymentCurrency,
 		),
 
 		// ----------------------------------------------------

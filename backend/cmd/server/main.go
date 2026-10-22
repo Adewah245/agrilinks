@@ -1,407 +1,76 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"backend/internal/app"
 	"backend/internal/config"
 	"backend/internal/database"
 	"backend/internal/repository"
-	"backend/internal/repository/memory"
 	"backend/internal/routes"
-	"backend/internal/services"
 )
 
 func main() {
-
-	// ============================================================
-	// 1. CONNECT TO DATABASE
-	//
-	// Connects Agro-Shield to PostgreSQL.
-	//
-	// Flow:
-	//
-	// Agro-Shield
-	//      ↓
-	// ConnectDB()
-	//      ↓
-	// PostgreSQL
-	// ============================================================
-
-	databaseURL, err := config.LoadDatabaseURL()
-	if err != nil {
-		log.Fatal(err)
+	if err := run(); err != nil {
+		log.Print(err)
+		os.Exit(1)
 	}
+}
 
-	negotiationPolicy, err := config.LoadNegotiationPolicy()
+func run() error {
+	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	paymentConfig, err := config.LoadFlutterwaveConfig()
+	db, err := database.ConnectDB(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	db, err := database.ConnectDB(databaseURL)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	defer db.Close()
-
-	// ============================================================
-	// 2. RUN DATABASE MIGRATIONS
-	//
-	// Creates the database structure required by Agro-Shield.
-	//
-	// Migration files are responsible for defining:
-	//
-	// - Users
-	// - User verification
-	// - Locations
-	// - Farming
-	// - Products
-	// - Marketplace
-	// - Orders
-	// - Negotiations
-	// - Cart
-	// - Chat
-	// - Organisations
-	// - Events and news
-	// - Logistics and delivery
-	// - Training
-	// - Learning
-	// - Notifications
-	// - Payments
-	// - Reviews
-	//
-	// Flow:
-	//
-	// main.go
-	//     ↓
-	// RunMigration()
-	//     ↓
-	// Migration files
-	//     ↓
-	// PostgreSQL
-	// ============================================================
-
 	if err := database.RunMigration(db); err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	// ============================================================
-	// 3. CREATE REPOSITORIES
-	//
-	// Repositories communicate directly with PostgreSQL.
-	//
-	// Service
-	//    ↓
-	// Repository
-	//    ↓
-	// PostgreSQL
-	// ============================================================
-
-	// ------------------------------------------------------------
-	// USER REPOSITORY
-	//
-	// Handles user account database operations.
-	//
-	// Users may have different roles such as:
-	//
-	// - Farmer
-	// - Buyer
-	// - Ministry
-	// - Organisation
-	// ------------------------------------------------------------
-
-	userRepo := repository.NewUserRepository(db)
-
-	// ------------------------------------------------------------
-	// LOCATION REPOSITORY
-	//
-	// Handles:
-	//
-	// - States
-	// - LGAs
-	// - Communities
-	// ------------------------------------------------------------
-
-	locationRepo := repository.NewLocationRepository(db)
-
-	// ------------------------------------------------------------
-	// PRODUCT REPOSITORY
-	//
-	// Handles agricultural product listings.
-	//
-	// Product ownership is represented by:
-	//
-	// owner_type
-	// owner_id
-	//
-	// Products can therefore belong to:
-	//
-	// - User
-	// - Organisation
-	// ------------------------------------------------------------
-
-	productRepo := repository.NewProductRepository(db)
-
-	// ------------------------------------------------------------
-	// ORDER REPOSITORY
-	//
-	// Handles marketplace orders.
-	// ------------------------------------------------------------
-
-	orderRepo := repository.NewOrderRepository(db)
-
-	// ------------------------------------------------------------
-	// DIAGNOSIS REPOSITORY
-	//
-	// Handles AI diagnosis history.
-	// ------------------------------------------------------------
-
-	diagnosisRepo := repository.NewDiagnosisRepository(db)
-
-	// ------------------------------------------------------------
-	// NEGOTIATION REPOSITORY
-	//
-	// Handles negotiations between buyers and sellers.
-	// ------------------------------------------------------------
-
-	negotiationRepo := repository.NewNegotiationRepository(db)
-
-	// ------------------------------------------------------------
-	// NEGOTIATION MESSAGE REPOSITORY
-	//
-	// Handles messages and offers inside negotiations.
-	// ------------------------------------------------------------
-
-	negotiationMsgRepo :=
-		repository.NewNegotiationMessageRepository(db)
-
-	// ------------------------------------------------------------
-	// CART REPOSITORY
-	//
-	// Handles products added to the buyer's cart.
-	//
-	// Example:
-	//
-	// Negotiation accepted
-	//        ↓
-	// Product added to cart
-	//        ↓
-	// Buyer sees product in cart
-	// ------------------------------------------------------------
-
-	cartRepo := repository.NewCartRepository(db)
-
-	// ------------------------------------------------------------
-	// NOTIFICATION REPOSITORY
-	//
-	// Handles notifications stored in PostgreSQL.
-	//
-	// Examples:
-	//
-	// - New negotiation offer
-	// - Offer accepted
-	// - Offer rejected
-	// - Order created
-	// ------------------------------------------------------------
-
-	notificationRepo :=
-		repository.NewNotificationRepository(db)
-
-	// ------------------------------------------------------------
-	// MARKET EVENT REPOSITORY
-	//
-	// Handles market-related events and intelligence.
-	// ------------------------------------------------------------
-
-	marketEventRepo :=
-		repository.NewMarketEventRepository(db)
-
-	// ============================================================
-	// LEARNING REPOSITORY
-	//
-	// Handles the Agro-Shield Learning system.
-	//
-	// Learning includes:
-	//
-	// - Farming types
-	// - User learning interests
-	// - Learning journeys
-	// - Learning messages
-	// - Learning checkpoints
-	//
-	// Flow:
-	//
-	// LearningService
-	//       ↓
-	// LearningRepository
-	//       ↓
-	// PostgreSQL
-	// ============================================================
-
-	learningRepo :=
-		repository.NewLearningRepository(db)
-
-	paymentRepo := repository.NewPaymentRepository(db)
-	deliveryRepo := repository.NewDeliveryRepository(db)
-	deliveryPartnerRepo := repository.NewDeliveryPartnerRepository(db)
-	reviewRepo := repository.NewReviewRepository(db)
-
-	// ============================================================
-	// CHAT REPOSITORIES
-	//
-	// Agro-Shield chat has three database areas:
-	//
-	// 1. Conversations
-	// 2. Conversation members
-	// 3. Chat messages
-	//
-	// Flow:
-	//
-	// ChatService
-	//      ↓
-	// Chat Repositories
-	//      ↓
-	// PostgreSQL
-	// ============================================================
-
-	// ------------------------------------------------------------
-	// CONVERSATION REPOSITORY
-	//
-	// Handles chat conversations.
-	// ------------------------------------------------------------
-
-	conversationRepo :=
-		repository.NewConversationRepository(db)
-
-	// ------------------------------------------------------------
-	// CONVERSATION MEMBER REPOSITORY
-	//
-	// Handles users who belong to conversations.
-	// ------------------------------------------------------------
-
-	conversationMemberRepo :=
-		repository.NewConversationMemberRepository(db)
-
-	// ------------------------------------------------------------
-	// CHAT MESSAGE REPOSITORY
-	//
-	// Handles normal chat messages.
-	// ------------------------------------------------------------
-
-	chatMessageRepo :=
-		repository.NewChatMessageRepository(db)
-
-	priceRepo := memory.NewPriceRepo()
-	submitterRepo := memory.NewSubmitterRepo()
-	priceService := services.NewPriceService(priceRepo, submitterRepo)
-	paymentGateway := services.NewFlutterwaveClient(
-		paymentConfig.SecretKey,
-		paymentConfig.RedirectURL,
-		paymentConfig.PaymentOptions,
-	)
-
-	// ============================================================
-	// 4. CREATE AI PROVIDER
-	//
-	// GeminiProvider handles communication between Agro-Shield
-	// and the Gemini AI service.
-	//
-	// API key:
-	//
-	// GEMINI_API_KEY
-	// ============================================================
-
-	aiProvider, err := services.NewGeminiProvider(
-		os.Getenv("GEMINI_API_KEY"),
-	)
-
+	container, err := app.New(db, cfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
-	// ============================================================
-	// 5. CREATE APPLICATION CONTAINER
-	//
-	// Dependency flow:
-	//
-	// PostgreSQL
-	//     ↓
-	// Repositories
-	//     ↓
-	// Services
-	//     ↓
-	// Container
-	//     ↓
-	// Routes / Handlers
-	// ============================================================
-
-	container := app.NewContainer(
-		userRepo,
-		locationRepo,
-		productRepo,
-		orderRepo,
-		cartRepo,
-		diagnosisRepo,
-		negotiationRepo,
-		negotiationMsgRepo,
-		notificationRepo,
-		marketEventRepo,
-		learningRepo,
-		paymentRepo,
-		deliveryRepo,
-		deliveryPartnerRepo,
-		reviewRepo,
-
-		// --------------------------------------------------------
-		// CHAT REPOSITORIES
-		// --------------------------------------------------------
-
-		conversationRepo,
-		conversationMemberRepo,
-		chatMessageRepo,
-
-		// --------------------------------------------------------
-		// AI PROVIDER
-		// --------------------------------------------------------
-
-		aiProvider,
-		priceService,
-		negotiationPolicy,
-		paymentGateway,
-		paymentConfig.SecretHash,
-		paymentConfig.Currency,
-	)
-
-	// ============================================================
-	// 6. REGISTER ROUTES
-	//
-	// Connects URLs to their handlers.
-	// ============================================================
-
-	routes.RegisterRoutes(container)
-
-	// ============================================================
-	// 7. START HTTP SERVER
-	//
-	// Starts Agro-Shield on port 8080 by default.
-	// ============================================================
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	server := &http.Server{
+		Addr: ":" + cfg.Port, Handler: routes.NewHandler(container),
+		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: cfg.RequestTimeout,
+		WriteTimeout: 2 * cfg.RequestTimeout, IdleTimeout: 2 * cfg.RequestTimeout,
 	}
-
-	log.Println("Server starting on port:", port)
-
-	if err := http.ListenAndServe(":"+port, nil); err != nil {
-		log.Println(err)
+	failures := make(chan error, 1)
+	go func() { failures <- server.ListenAndServe() }()
+	log.Printf("Agro-Shield listening on port %s", cfg.Port)
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	sessions := repository.NewSessionRepository(db)
+	for {
+		select {
+		case err := <-failures:
+			if !errors.Is(err, http.ErrServerClosed) {
+				return err
+			}
+			return nil
+		case <-ticker.C:
+			cleanup, cancel := context.WithTimeout(ctx, 10*time.Second)
+			if err := sessions.DeleteExpired(cleanup); err != nil {
+				log.Printf("remove expired sessions: %v", err)
+			}
+			cancel()
+		case <-ctx.Done():
+			shutdown, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+			defer cancel()
+			return server.Shutdown(shutdown)
+		}
 	}
 }

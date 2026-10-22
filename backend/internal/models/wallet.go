@@ -8,6 +8,7 @@ import (
 type Wallet struct {
 	ID       int64
 	FarmerID int
+	OwnerType string
 	Balance  string
 	Currency string
 
@@ -67,6 +68,7 @@ type WalletDeposit struct {
 	Amount         string
 	Currency       string
 	Reference      string
+	CheckoutURL    string
 	Status         string
 	VerifiedAmount string
 	CreatedAt      time.Time

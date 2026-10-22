@@ -44,6 +44,8 @@ func (f *fakePaymentStore) CreatePendingForOrder(
 	}, nil
 }
 
+func (f *fakePaymentStore) SaveCheckoutURL(reference, checkoutURL string) error { return nil }
+
 func (f *fakePaymentStore) UpdateStatus(reference, status, providerTransactionID string) error {
 	f.updatedStatus = status
 	return nil

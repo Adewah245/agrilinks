@@ -16,13 +16,15 @@ type LoginPageData struct {
 
 // Login handles user authentication and login-page rendering.
 type Login struct {
-	service *services.AuthService
+	service  *services.AuthService
+	sessions *services.SessionService
 }
 
 // NewLoginHandler creates a new Login handler.
-func NewLoginHandler(service *services.AuthService) *Login {
+func NewLoginHandler(service *services.AuthService, sessions *services.SessionService) *Login {
 	return &Login{
-		service: service,
+		service:  service,
+		sessions: sessions,
 	}
 }
 
@@ -65,8 +67,16 @@ func (h *Login) LoginHandler(
 			return
 		}
 
-		sessionID := middleware.CreateSession(user.ID)
-		middleware.SetSessionCookie(w, sessionID)
+		sessionID, err := h.sessions.Create(r.Context(), user.ID)
+		if err != nil {
+			log.Printf("create login session: %v", err)
+			http.Error(w, "Login is temporarily unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if previous, ok := middleware.SessionIDFromRequest(r); ok {
+			_ = h.sessions.Delete(r.Context(), previous)
+		}
+		middleware.SetSessionCookie(w, r, sessionID, h.sessions.TTL())
 
 		http.Redirect(
 			w,

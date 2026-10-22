@@ -27,12 +27,15 @@ type GeminiProvider struct {
 //
 // The provider uses Google's Gemini API backend and returns an error
 // when the API key is missing or the Gemini client cannot be created.
-func NewGeminiProvider(apiKey string) (*GeminiProvider, error) {
+func NewGeminiProvider(apiKey string, modelName ...string) (*GeminiProvider, error) {
 	apiKey = strings.TrimSpace(apiKey)
 
 	// Check that the Gemini API key was provided.
 	if apiKey == "" {
 		return nil, errors.New("gemini API key is missing")
+	}
+	if len(modelName) != 1 || strings.TrimSpace(modelName[0]) == "" {
+		return nil, errors.New("Gemini model is required")
 	}
 
 	// Create the Gemini client.
@@ -52,7 +55,7 @@ func NewGeminiProvider(apiKey string) (*GeminiProvider, error) {
 		client: client,
 
 		// The Gemini model Agro-Shield is currently configured to use.
-		model: "gemini-3.5-flash",
+		model: strings.TrimSpace(modelName[0]),
 	}, nil
 }
 

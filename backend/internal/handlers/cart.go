@@ -151,6 +151,14 @@ func (h *Cart) Handler(
 		action := r.FormValue("action")
 
 		switch action {
+		case "add":
+			productID, _ := strconv.Atoi(r.FormValue("product_id"))
+			quantity, _ := strconv.ParseFloat(r.FormValue("quantity"), 64)
+			if err := h.service.AddProduct(user.ID, productID, quantity); err != nil {
+				h.render(w, user.ID, err.Error())
+				return
+			}
+			http.Redirect(w, r, "/cart", http.StatusSeeOther)
 
 		// ====================================================
 		// REMOVE ITEM

@@ -88,11 +88,11 @@ func (h *OrderHandler) PlaceHandler(
 		return
 	}
 
-	if _, err := h.service.Checkout(user.ID); err != nil {
+	if _, err := h.service.Checkout(user.ID, r.FormValue("checkout_key")); err != nil {
 		log.Println("checkout failed:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	http.Redirect(w, r, "/orders", http.StatusSeeOther)
+	http.Redirect(w, r, "/payments", http.StatusSeeOther)
 }

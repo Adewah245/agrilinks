@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const OTPPurposePasswordReset = "password_reset"
+
 // OTPCode is one issued one-time passcode. The code itself is only ever held
 // as a hash; nothing stores or logs the plaintext after it is sent.
 type OTPCode struct {

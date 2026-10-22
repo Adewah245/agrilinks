@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -14,6 +15,47 @@ import (
 // profile updates, and password management.
 type AuthService struct {
 	repo *repository.UserRepository
+	otp  *OTPService
+}
+
+func (s *AuthService) SetOTP(otp *OTPService) { s.otp = otp }
+
+var ErrRecoveryUnavailable = errors.New("password recovery is unavailable; please contact support")
+
+// FindByPhone accepts the phone formats used by the old application while
+// new accounts store one canonical Nigerian number.
+func (s *AuthService) FindByPhone(phone string) (*models.User, error) {
+	phone = strings.TrimSpace(phone)
+	canonical := NormalizeNigerianPhone(phone)
+	if canonical == "" {
+		return nil, nil
+	}
+	seen := make(map[string]bool)
+	for _, value := range []string{phone, canonical, "+" + canonical, "0" + canonical[3:]} {
+		if seen[value] {
+			continue
+		}
+		seen[value] = true
+		user, err := s.repo.GetByPhone(value)
+		if err != nil || user != nil {
+			return user, err
+		}
+	}
+	return nil, nil
+}
+
+func (s *AuthService) RequestPasswordReset(ctx context.Context, phone string) error {
+	if s.otp == nil || !s.otp.Available() {
+		return ErrRecoveryUnavailable
+	}
+	user, err := s.FindByPhone(phone)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return nil
+	}
+	return s.otp.Issue(ctx, user.ID, user.Phone, user.Email, models.OTPPurposePasswordReset)
 }
 
 // NewAuthService creates a new AuthService using the provided
@@ -65,9 +107,8 @@ func (s *AuthService) Register(
 
 	firstName = strings.TrimSpace(firstName)
 	lastName = strings.TrimSpace(lastName)
-	phone = strings.TrimSpace(phone)
+	phone = NormalizeNigerianPhone(phone)
 	email = strings.TrimSpace(email)
-	password = strings.TrimSpace(password)
 	location = strings.TrimSpace(location)
 	lga = strings.TrimSpace(lga)
 	state = strings.TrimSpace(state)
@@ -94,8 +135,8 @@ func (s *AuthService) Register(
 		return errors.New("password is required")
 	}
 
-	if len(password) < 8 {
-		return errors.New("password must be at least 8 characters")
+	if len(password) < 8 || len(password) > 72 {
+		return errors.New("password must be between 8 and 72 bytes")
 	}
 
 	// --------------------------------------------------------
@@ -214,7 +255,7 @@ func (s *AuthService) Register(
 	// Check phone uniqueness
 	// --------------------------------------------------------
 
-	existing, err := s.repo.GetByPhone(phone)
+	existing, err := s.FindByPhone(phone)
 	if err != nil {
 		return err
 	}
@@ -311,7 +352,7 @@ func (s *AuthService) Login(
 		)
 	}
 
-	user, err := s.repo.GetByPhone(phone)
+	user, err := s.FindByPhone(phone)
 	if err != nil {
 		return nil, err
 	}
@@ -426,9 +467,13 @@ func (s *AuthService) UpdatePhoto(
 // ResetPassword changes the password associated with a user's
 // phone number.
 func (s *AuthService) ResetPassword(
+	ctx context.Context,
 	phone,
-	newPassword string,
+	newPassword, code string,
 ) error {
+	if s.otp == nil || !s.otp.Available() {
+		return ErrRecoveryUnavailable
+	}
 
 	phone = strings.TrimSpace(phone)
 
@@ -440,19 +485,19 @@ func (s *AuthService) ResetPassword(
 		return errors.New("new password is required")
 	}
 
-	if len(newPassword) < 8 {
+	if len(newPassword) < 8 || len(newPassword) > 72 {
 		return errors.New(
-			"new password must be at least 8 characters",
+			"new password must be between 8 and 72 bytes",
 		)
 	}
 
-	user, err := s.repo.GetByPhone(phone)
+	user, err := s.FindByPhone(phone)
 	if err != nil {
 		return err
 	}
 
 	if user == nil {
-		return errors.New("account not found")
+		return errors.New("that code is incorrect or has expired")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword(
@@ -461,6 +506,12 @@ func (s *AuthService) ResetPassword(
 	)
 	if err != nil {
 		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := s.otp.Verify(user.ID, models.OTPPurposePasswordReset, code); err != nil {
+		return errors.New("that code is incorrect, expired, or already used")
 	}
 
 	return s.repo.UpdatePassword(

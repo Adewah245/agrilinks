@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Learning rooms | Agro-Shield</title><link rel="stylesheet" href="/static/css/style.css"><link rel="stylesheet" href="/static/css/learning.css"></head>
+<body class="learning-page">
+<nav class="learning-nav"><a href="/learn">← Your learning space</a><a href="/chat">Messages</a></nav>
+<main class="learning-main"><header><h1>Learn together</h1><p>Join a room for your farming activity, or start one and welcome other learners.</p></header>
+<div class="learning-columns">
+<section class="learning-card"><h2>Find a room</h2><form method="get" action="/learn/rooms"><label for="room-filter">Farming activity</label><select id="room-filter" name="farming_type_id"><option value="0">All farming activities</option>{{range .FarmingTypes}}<option value="{{.ID}}" {{if eq $.SelectedType .ID}}selected{{end}}>{{.Name}}</option>{{end}}</select><button type="submit">Find rooms</button></form>
+{{range .Rooms}}<article class="journey-summary"><h3>{{.Title}}</h3><p>{{.FarmingType}} · {{.MemberCount}} members</p><p>{{.Description}}</p>{{if .Joined}}<a href="/chat/view?id={{.ConversationID}}">Open room →</a>{{else}}<form method="post" action="/learn/rooms/join"><input type="hidden" name="room_id" value="{{.ConversationID}}"><button type="submit">Join room</button></form>{{end}}</article>{{else}}<p>No rooms were found. You can start one below.</p>{{end}}
+</section>
+<section class="learning-card"><h2>Start a room</h2><p>Other people using Agro-Shield will be able to find and join this room.</p><form method="post" action="/learn/rooms/create"><label for="room-type">Farming activity</label><select id="room-type" name="farming_type_id" required><option value="">Choose an activity</option>{{range .FarmingTypes}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select><label for="room-title">Room name</label><input id="room-title" name="title" maxlength="100" required><label for="room-description">What will you learn together?</label><textarea id="room-description" name="description" rows="4" maxlength="2000"></textarea><button type="submit">Create room</button></form></section>
+</div></main></body></html>

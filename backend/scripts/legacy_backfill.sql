@@ -307,8 +307,8 @@ SELECT
     n.crop_id,
     n.buyer_id,
     GREATEST(COALESCE(n.quantity, 1), 0.000001),
-    GREATEST(COALESCE(p.price, 0), 0),
-    GREATEST(COALESCE(p.price, 0), 0),
+    n.initial_offer_price,
+    n.current_offer_price,
     LEAST(GREATEST(COALESCE(n.round_count, 0), 0), COALESCE(NULLIF(n.max_rounds, 0), 5)),
     COALESCE(NULLIF(n.max_rounds, 0), 5),
     CASE
@@ -319,8 +319,8 @@ SELECT
         COALESCE(n.expires_at, n.created_at + INTERVAL '24 hours'),
         n.created_at + INTERVAL '1 second'
     ),
-    CASE WHEN n.status = 'accepted' THEN n.created_at END,
-    CASE WHEN n.status IN ('rejected', 'expired', 'closed') THEN n.created_at END,
+    CASE WHEN n.status = 'accepted' THEN COALESCE(n.accepted_at,n.created_at) END,
+    CASE WHEN n.status IN ('rejected', 'expired', 'closed') THEN COALESCE(n.closed_at,n.created_at) END,
     n.created_at,
     n.created_at
 FROM legacy_agro_shield.negotiations n
@@ -335,6 +335,7 @@ SELECT setval(
 );
 
 INSERT INTO negotiation_messages (
+    id,
     negotiation_id,
     sender_id,
     message_type,
@@ -344,7 +345,7 @@ INSERT INTO negotiation_messages (
     created_at
 )
 SELECT
-    m.negotiation_id,
+    m.id,    m.negotiation_id,
     m.sender_id,
     CASE
         WHEN LOWER(BTRIM(m.message_type)) = 'offer'
@@ -371,19 +372,16 @@ SELECT
 FROM legacy_agro_shield.negotiation_messages m
 JOIN negotiations n ON n.id = m.negotiation_id
 JOIN users u ON u.id = m.sender_id
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM negotiation_messages current_message
-    WHERE current_message.negotiation_id = m.negotiation_id
-      AND current_message.sender_id = m.sender_id
-      AND current_message.created_at = m.created_at
-);
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('negotiation_messages','id'),COALESCE((SELECT MAX(id) FROM negotiation_messages),0)+1,FALSE);
 
 -- ---------------------------------------------------------------------------
 -- Cart
 -- ---------------------------------------------------------------------------
 
 INSERT INTO cart_items (
+    id,
     buyer_id,
     product_id,
     negotiation_id,
@@ -394,7 +392,7 @@ INSERT INTO cart_items (
     updated_at
 )
 SELECT
-    ci.buyer_id,
+    ci.id,    ci.buyer_id,
     ci.crop_id,
     CASE WHEN EXISTS (SELECT 1 FROM negotiations n WHERE n.id = ci.negotiation_id) THEN ci.negotiation_id END,
     GREATEST(COALESCE(ci.quantity, 0.000001), 0.000001),
@@ -405,13 +403,9 @@ SELECT
 FROM legacy_agro_shield.cart_items ci
 JOIN users u ON u.id = ci.buyer_id
 JOIN products p ON p.id = ci.crop_id
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM cart_items current_item
-    WHERE current_item.buyer_id = ci.buyer_id
-      AND current_item.product_id = ci.crop_id
-      AND current_item.created_at = ci.created_at
-);
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('cart_items','id'),COALESCE((SELECT MAX(id) FROM cart_items),0)+1,FALSE);
 
 -- ---------------------------------------------------------------------------
 -- Conversations and messages
@@ -451,7 +445,7 @@ INSERT INTO conversation_members (
 SELECT
     cm.conversation_id,
     cm.user_id,
-    'member',
+    CASE WHEN c.created_by=cm.user_id AND c.conversation_type='group' THEN 'admin' ELSE 'member' END,
     COALESCE(cm.joined_at, cm.last_read_at, CURRENT_TIMESTAMP),
     GREATEST(
         COALESCE(cm.last_read_at, cm.joined_at, CURRENT_TIMESTAMP),
@@ -463,6 +457,7 @@ JOIN users u ON u.id = cm.user_id
 ON CONFLICT (conversation_id, user_id) DO NOTHING;
 
 INSERT INTO chat_messages (
+    id,
     conversation_id,
     sender_id,
     message_type,
@@ -470,7 +465,7 @@ INSERT INTO chat_messages (
     created_at
 )
 SELECT
-    cm.conversation_id,
+    cm.id,    cm.conversation_id,
     cm.sender_id,
     'text',
     COALESCE(NULLIF(BTRIM(cm.message), ''), 'Message from previous chat'),
@@ -478,19 +473,16 @@ SELECT
 FROM legacy_agro_shield.chat_messages cm
 JOIN conversations c ON c.id = cm.conversation_id
 JOIN users u ON u.id = cm.sender_id
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM chat_messages current_message
-    WHERE current_message.conversation_id = cm.conversation_id
-      AND current_message.sender_id = cm.sender_id
-      AND current_message.created_at = cm.created_at
-);
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('chat_messages','id'),COALESCE((SELECT MAX(id) FROM chat_messages),0)+1,FALSE);
 
 -- ---------------------------------------------------------------------------
 -- Notifications
 -- ---------------------------------------------------------------------------
 
 INSERT INTO notifications (
+    id,
     user_id,
     notification_type,
     title,
@@ -499,7 +491,7 @@ INSERT INTO notifications (
     created_at
 )
 SELECT
-    n.user_id,
+    n.id,    n.user_id,
     CASE
         WHEN n.type = 'chat_message' THEN 'message'
         WHEN n.type = 'wallet_deposit_expired' THEN 'payment'
@@ -512,13 +504,9 @@ SELECT
     n.created_at
 FROM legacy_agro_shield.notifications n
 JOIN users u ON u.id = n.user_id
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM notifications current_notification
-    WHERE current_notification.user_id = n.user_id
-      AND current_notification.title = n.title
-      AND current_notification.created_at = n.created_at
-);
+ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('notifications','id'),COALESCE((SELECT MAX(id) FROM notifications),0)+1,FALSE);
 
 -- ---------------------------------------------------------------------------
 -- Diagnoses
@@ -539,14 +527,10 @@ SELECT
     d.id,
     d.farmer_id,
     ft.id,
-    d.category,
+    NULLIF(BTRIM(d.category), ''),
+    NULLIF(BTRIM(d.description), ''),
+    NULLIF(BTRIM(d.result), ''),
     NULL,
-    d.result,
-    CASE
-        WHEN d.confidence ~ '^[0-9]+([.][0-9]+)?$' AND d.confidence::DOUBLE PRECISION BETWEEN 0 AND 1
-        THEN d.confidence::DOUBLE PRECISION
-        ELSE NULL
-    END,
     d.created_at,
     d.created_at
 FROM legacy_agro_shield.diagnoses d
@@ -705,7 +689,11 @@ SELECT
     COALESCE(created_at, CURRENT_TIMESTAMP),
     COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
 FROM legacy_wallets
-ON CONFLICT (owner_type, owner_id, currency) DO NOTHING;
+ON CONFLICT (owner_type, owner_id, currency) DO UPDATE SET
+    balance = EXCLUDED.balance,
+    wallet_number = EXCLUDED.wallet_number,
+    created_at = EXCLUDED.created_at,
+    updated_at = EXCLUDED.updated_at;
 
 INSERT INTO wallets (owner_type, owner_id, currency)
 SELECT 'user', u.id, 'NGN'
@@ -755,6 +743,55 @@ FROM legacy_agro_shield.wallet_deposits ld
 JOIN legacy_agro_shield.wallets lw ON lw.id = ld.wallet_id
 JOIN wallets w ON w.owner_type = 'user' AND w.owner_id = lw.farmer_id AND w.currency = lw.currency
 WHERE ld.status IN ('pending', 'processing', 'successful', 'failed', 'expired', 'reversed')
+ON CONFLICT DO NOTHING;
+
+-- Original order payments are historical records. Importing them must not
+-- credit wallets again: the original balance and ledger already include them.
+INSERT INTO transactions(order_id,buyer_id,seller_type,seller_id,amount,currency,
+    payment_method,payment_reference,payment_provider,provider_transaction_id,
+    status,paid_at,created_at,updated_at)
+SELECT lp.order_id,o.buyer_id,p.owner_type,p.owner_id,lp.amount,lp.currency,
+    lp.provider,lp.reference,lp.provider,NULLIF(lp.transaction_id,''),
+    CASE WHEN lp.status IN ('successful','success','paid') THEN 'successful'
+         WHEN lp.status IN ('failed','cancelled','refunded') THEN lp.status ELSE 'pending' END,
+    CASE WHEN lp.status IN ('successful','success','paid') THEN lp.updated_at END,
+    lp.created_at,lp.updated_at
+FROM legacy_agro_shield.payments lp
+JOIN legacy_agro_shield.orders lo ON lo.id=lp.order_id
+JOIN orders o ON o.id=lp.order_id
+JOIN products p ON p.id=lo.crop_id
+ON CONFLICT(payment_reference) DO NOTHING;
+
+INSERT INTO webhook_events(provider,transaction_id,event,payload,processed_at,created_at)
+SELECT 'flutterwave',transaction_id,event,payload,processed_at,created_at
+FROM legacy_agro_shield.webhook_events
+ON CONFLICT(provider,transaction_id,event) DO NOTHING;
+
+-- Legacy courier names do not prove approval as a delivery partner. Keep the
+-- recorded progress and addresses; unfinished deliveries can be assigned now.
+INSERT INTO deliveries(id,order_id,pickup_address,destination_address,
+    status,tracking_code,picked_up_at,delivered_at,created_at,updated_at)
+SELECT d.id,d.order_id,c.location,d.delivery_address,
+    CASE WHEN d.status IN ('picked_up','in_transit','delivered','cancelled') THEN d.status
+         WHEN d.status='failed' THEN 'cancelled' ELSE 'pending' END,
+    NULLIF(BTRIM(d.tracking_number),''),d.picked_up_at,d.delivered_at,d.created_at,d.updated_at
+FROM legacy_agro_shield.deliveries d
+JOIN orders o ON o.id=d.order_id
+JOIN legacy_agro_shield.crops c ON c.id=d.crop_id
+ON CONFLICT(order_id) DO NOTHING;
+SELECT setval(pg_get_serial_sequence('deliveries','id'),COALESCE((SELECT MAX(id) FROM deliveries),0)+1,FALSE);
+
+-- Feedback is a purchase review only when exactly one delivered purchase
+-- supports it. Other original feedback remains in the archive for review.
+INSERT INTO product_reviews(product_id,reviewer_id,order_id,rating,comment,created_at)
+SELECT f.product_id,f.user_id,matched.order_id,f.rating,NULLIF(BTRIM(f.comment),''),f.created_at
+FROM legacy_agro_shield.feedback f
+JOIN LATERAL (
+    SELECT min(o.id) AS order_id FROM orders o JOIN order_items oi ON oi.order_id=o.id
+    WHERE o.buyer_id=f.user_id AND oi.product_id=f.product_id AND o.status='delivered'
+      AND o.created_at<=f.created_at HAVING count(DISTINCT o.id)=1
+) matched ON TRUE
+WHERE matched.order_id IS NOT NULL
 ON CONFLICT DO NOTHING;
 
 INSERT INTO wallet_withdrawals (

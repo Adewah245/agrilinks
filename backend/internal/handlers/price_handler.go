@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
+
+	"backend/internal/middleware"
 
 	"backend/internal/models"
 	"backend/internal/services"
@@ -38,6 +41,11 @@ func (h *PriceHandler) HandleSubmitPrice(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
+	user, ok := middleware.UserFromContext(r)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "sign in to report a price")
+		return
+	}
 
 	var req submitPriceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -48,7 +56,7 @@ func (h *PriceHandler) HandleSubmitPrice(w http.ResponseWriter, r *http.Request)
 	result, err := h.svc.SubmitPrice(r.Context(), services.SubmitPriceInput{
 		CommodityID: req.CommodityID,
 		MarketID:    req.MarketID,
-		SubmitterID: req.SubmitterID,
+		SubmitterID: strconv.Itoa(user.ID),
 		Price:       req.Price,
 		Currency:    req.Currency,
 		Unit:        req.Unit,
@@ -74,6 +82,8 @@ func (h *PriceHandler) HandleSubmitPrice(w http.ResponseWriter, r *http.Request)
 }
 
 type currentPriceResponse struct {
+	Currency    string  `json:"currency"`
+	Unit        string  `json:"unit"`
 	CommodityID string  `json:"commodity_id"`
 	MarketID    string  `json:"market_id"`
 	AvgPrice    float64 `json:"avg_price"`
@@ -107,6 +117,8 @@ func (h *PriceHandler) HandleGetCurrentPrice(w http.ResponseWriter, r *http.Requ
 	}
 
 	writeJSON(w, http.StatusOK, currentPriceResponse{
+		Currency:    agg.Currency,
+		Unit:        agg.Unit,
 		CommodityID: agg.CommodityID,
 		MarketID:    agg.MarketID,
 		AvgPrice:    agg.AvgPrice,

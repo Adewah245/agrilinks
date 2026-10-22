@@ -28,8 +28,16 @@ type Config struct {
 	BrevoFromName  string
 
 	// Application
-	Port   string
-	AppEnv string
+	Port                  string
+	AppEnv                string
+	FrontendDir           string
+	SessionTTL            time.Duration
+	RequestTimeout        time.Duration
+	ShutdownTimeout       time.Duration
+	MaxRequestBytes       int64
+	AuthRequestsPerMinute int
+	AIRequestsPerMinute   int
+	Negotiation           NegotiationPolicy
 
 	// TrustProxyHeaders must only be enabled when a trusted reverse proxy
 	// overwrites X-Forwarded-For. TrustedProxyCIDRs are the networks from which
@@ -43,14 +51,22 @@ type Config struct {
 
 	// Diagnosis AI — Gemini only
 	GeminiAPIKey string
+	GeminiModel  string
 
 	// Learning AI — Groq primary, OpenRouter backup
-	GroqAPIKey       string
-	OpenRouterAPIKey string
+	GroqAPIKey        string
+	OpenRouterAPIKey  string
+	GroqModel         string
+	OpenRouterModel   string
+	GroqBaseURL       string
+	OpenRouterBaseURL string
+	AIRequestTimeout  time.Duration
+	AIMaxTokens       int
 
 	// Payments — Flutterwave
 	FlutterwaveSecretKey  string
 	FlutterwaveSecretHash string
+	FlutterwaveBaseURL    string
 	PaymentRedirectURL    string
 	PaymentCurrency       string
 
@@ -74,13 +90,16 @@ type Config struct {
 
 	// OTP delivery — SMS
 	//
-	// SMSProvider selects the transport: "log" writes one-time codes to the
-	// server log (the default, so local development needs no vendor account),
-	// and "termii" sends them over the Termii SMS API.
-	SMSProvider    string
-	TermiiAPIKey   string
-	TermiiSenderID string
-	TermiiBaseURL  string
+	// SMSProvider selects real OTP delivery: "termii" or "brevo".
+	// "disabled" leaves password recovery unavailable until configured.
+	SMSProvider       string
+	TermiiAPIKey      string
+	TermiiSenderID    string
+	TermiiBaseURL     string
+	OTPTTL            time.Duration
+	OTPMaxAttempts    int
+	OTPResendInterval time.Duration
+	USSDToken         string
 }
 
 // NegotiationPolicy controls how long a negotiation remains active and
@@ -205,20 +224,27 @@ func Load() (Config, error) {
 		BrevoFromName:  strings.TrimSpace(os.Getenv("BREVO_FROM_NAME")),
 
 		// Application
-		Port:   strings.TrimSpace(os.Getenv("PORT")),
-		AppEnv: strings.TrimSpace(os.Getenv("APP_ENV")),
+		Port:        strings.TrimSpace(os.Getenv("PORT")),
+		AppEnv:      strings.TrimSpace(os.Getenv("APP_ENV")),
+		FrontendDir: strings.TrimSpace(os.Getenv("FRONTEND_DIR")),
 
 		// Database
 		DatabaseURL: strings.TrimSpace(os.Getenv("DATABASE_URL")),
 
 		// AI providers
-		GeminiAPIKey:     strings.TrimSpace(os.Getenv("GEMINI_API_KEY")),
-		GroqAPIKey:       strings.TrimSpace(os.Getenv("GROQ_API_KEY")),
-		OpenRouterAPIKey: strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY")),
+		GeminiAPIKey:      strings.TrimSpace(os.Getenv("GEMINI_API_KEY")),
+		GeminiModel:       strings.TrimSpace(os.Getenv("GEMINI_MODEL")),
+		GroqAPIKey:        strings.TrimSpace(os.Getenv("GROQ_API_KEY")),
+		OpenRouterAPIKey:  strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY")),
+		GroqModel:         strings.TrimSpace(os.Getenv("GROQ_MODEL")),
+		OpenRouterModel:   strings.TrimSpace(os.Getenv("OPENROUTER_MODEL")),
+		GroqBaseURL:       envString("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+		OpenRouterBaseURL: envString("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
 
 		// Payments
 		FlutterwaveSecretKey:  strings.TrimSpace(os.Getenv("FLUTTERWAVE_SECRET_KEY")),
 		FlutterwaveSecretHash: strings.TrimSpace(os.Getenv("FLUTTERWAVE_SECRET_HASH")),
+		FlutterwaveBaseURL:    envString("FLUTTERWAVE_BASE_URL", "https://api.flutterwave.com/v3"),
 		PaymentRedirectURL:    strings.TrimSpace(os.Getenv("PAYMENT_REDIRECT_URL")),
 		PaymentCurrency:       strings.ToUpper(strings.TrimSpace(os.Getenv("PAYMENT_CURRENCY"))),
 
@@ -234,6 +260,49 @@ func Load() (Config, error) {
 		TermiiAPIKey:   strings.TrimSpace(os.Getenv("TERMII_API_KEY")),
 		TermiiSenderID: strings.TrimSpace(os.Getenv("TERMII_SENDER_ID")),
 		TermiiBaseURL:  strings.TrimSpace(os.Getenv("TERMII_BASE_URL")),
+		USSDToken:      strings.TrimSpace(os.Getenv("USSD_TOKEN")),
+	}
+	var err error
+	for _, field := range []struct {
+		name     string
+		target   *time.Duration
+		fallback time.Duration
+	}{
+		{"SESSION_TTL", &cfg.SessionTTL, 24 * time.Hour},
+		{"HTTP_REQUEST_TIMEOUT", &cfg.RequestTimeout, 60 * time.Second},
+		{"HTTP_SHUTDOWN_TIMEOUT", &cfg.ShutdownTimeout, 15 * time.Second},
+		{"AI_REQUEST_TIMEOUT", &cfg.AIRequestTimeout, 30 * time.Second},
+		{"OTP_TTL", &cfg.OTPTTL, 10 * time.Minute},
+		{"OTP_RESEND_INTERVAL", &cfg.OTPResendInterval, time.Minute},
+	} {
+		*field.target, err = positiveDuration(field.name, field.fallback)
+		if err != nil {
+			return Config{}, err
+		}
+	}
+	for _, field := range []struct {
+		name     string
+		target   *int
+		fallback int
+	}{
+		{"AUTH_REQUESTS_PER_MINUTE", &cfg.AuthRequestsPerMinute, 20},
+		{"AI_REQUESTS_PER_MINUTE", &cfg.AIRequestsPerMinute, 10},
+		{"AI_MAX_TOKENS", &cfg.AIMaxTokens, 1200},
+		{"OTP_MAX_ATTEMPTS", &cfg.OTPMaxAttempts, 5},
+	} {
+		*field.target, err = positiveInt(field.name, field.fallback)
+		if err != nil {
+			return Config{}, err
+		}
+	}
+	maxBytes, err := positiveInt("HTTP_MAX_REQUEST_BYTES", 64<<20)
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.MaxRequestBytes = int64(maxBytes)
+	cfg.Negotiation, err = LoadNegotiationPolicy()
+	if err != nil {
+		return Config{}, err
 	}
 
 	rawTrustProxy := strings.TrimSpace(os.Getenv("TRUST_PROXY_HEADERS"))
@@ -287,9 +356,8 @@ func Load() (Config, error) {
 		cfg.AppEnv = "development"
 	}
 
-	// One-time codes go to the server log unless a real SMS provider is selected.
 	if cfg.SMSProvider == "" {
-		cfg.SMSProvider = "log"
+		cfg.SMSProvider = "disabled"
 	}
 
 	if cfg.TermiiBaseURL == "" {
@@ -306,46 +374,45 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("DATABASE_URL must not be empty")
 	}
 
-	// Gemini is required for the diagnosis feature.
-	if cfg.GeminiAPIKey == "" {
-		return Config{}, fmt.Errorf("GEMINI_API_KEY must not be empty")
+	port, err := strconv.Atoi(cfg.Port)
+	if err != nil || port < 1 || port > 65535 {
+		return Config{}, fmt.Errorf("PORT must be between 1 and 65535")
 	}
-
-	// At least one learning AI provider must be configured.
-	if cfg.GroqAPIKey == "" && cfg.OpenRouterAPIKey == "" {
-		return Config{}, fmt.Errorf(
-			"at least one learning AI key is required: GROQ_API_KEY or OPENROUTER_API_KEY",
-		)
+	for _, provider := range []struct{ key, model, setting string }{
+		{cfg.GeminiAPIKey, cfg.GeminiModel, "GEMINI_MODEL"},
+		{cfg.GroqAPIKey, cfg.GroqModel, "GROQ_MODEL"},
+		{cfg.OpenRouterAPIKey, cfg.OpenRouterModel, "OPENROUTER_MODEL"},
+	} {
+		if provider.key != "" && provider.model == "" {
+			return Config{}, fmt.Errorf("%s is required when its provider key is configured", provider.setting)
+		}
 	}
-
-	// Validate the payment redirect URL.
-	if cfg.PaymentRedirectURL == "" {
-		return Config{}, fmt.Errorf("PAYMENT_REDIRECT_URL must not be empty")
+	for name, value := range map[string]string{"GROQ_BASE_URL": cfg.GroqBaseURL, "OPENROUTER_BASE_URL": cfg.OpenRouterBaseURL, "FLUTTERWAVE_BASE_URL": cfg.FlutterwaveBaseURL, "TERMII_BASE_URL": cfg.TermiiBaseURL} {
+		if err := validateHTTPURL(name, value); err != nil {
+			return Config{}, err
+		}
 	}
-
-	redirect, err := url.Parse(cfg.PaymentRedirectURL)
-	if err != nil {
-		return Config{}, fmt.Errorf("PAYMENT_REDIRECT_URL is not a valid URL: %w", err)
+	if cfg.PaymentCurrency == "" {
+		cfg.PaymentCurrency = defaultPaymentCurrency
 	}
-
-	if redirect.Scheme != "http" && redirect.Scheme != "https" {
-		return Config{}, fmt.Errorf(
-			"PAYMENT_REDIRECT_URL must be an absolute http(s) URL, got %q",
-			cfg.PaymentRedirectURL,
-		)
+	if !validCurrency(cfg.PaymentCurrency) {
+		return Config{}, fmt.Errorf("PAYMENT_CURRENCY must be a three-letter currency code")
 	}
-
-	if redirect.Host == "" {
-		return Config{}, fmt.Errorf(
-			"PAYMENT_REDIRECT_URL must include a host, got %q",
-			cfg.PaymentRedirectURL,
-		)
+	if cfg.FlutterwaveSecretKey != "" || cfg.FlutterwaveSecretHash != "" {
+		payment, err := LoadFlutterwaveConfig()
+		if err != nil {
+			return Config{}, err
+		}
+		cfg.PaymentCurrency = payment.Currency
+	} else if cfg.PaymentRedirectURL != "" {
+		if err := validateHTTPURL("PAYMENT_REDIRECT_URL", cfg.PaymentRedirectURL); err != nil {
+			return Config{}, err
+		}
 	}
 
 	// Validate SMS provider configuration.
 	switch cfg.SMSProvider {
-	case "log":
-		// Always available — no credentials required.
+	case "disabled":
 	case "termii":
 		if cfg.TermiiAPIKey == "" {
 			return Config{}, fmt.Errorf("TERMII_API_KEY must not be empty when SMS_PROVIDER=termii")
@@ -354,12 +421,56 @@ func Load() (Config, error) {
 		if cfg.TermiiSenderID == "" {
 			return Config{}, fmt.Errorf("TERMII_SENDER_ID must not be empty when SMS_PROVIDER=termii")
 		}
+	case "brevo":
+		if cfg.BrevoSMTPHost == "" || cfg.BrevoSMTPLogin == "" || cfg.BrevoSMTPKey == "" || cfg.BrevoFromEmail == "" {
+			return Config{}, fmt.Errorf("Brevo SMTP host, login, key, and sender email are required when SMS_PROVIDER=brevo")
+		}
 	default:
-		return Config{}, fmt.Errorf(
-			"SMS_PROVIDER must be \"log\" or \"termii\", got %q",
-			cfg.SMSProvider,
-		)
+		return Config{}, fmt.Errorf("SMS_PROVIDER must be disabled, termii, or brevo")
 	}
 
 	return cfg, nil
+}
+
+func envString(name, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(name)); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func positiveDuration(name string, fallback time.Duration) (time.Duration, error) {
+	value, err := time.ParseDuration(envString(name, fallback.String()))
+	if err != nil || value <= 0 {
+		return 0, fmt.Errorf("%s must be a positive duration", name)
+	}
+	return value, nil
+}
+
+func positiveInt(name string, fallback int) (int, error) {
+	value, err := strconv.Atoi(envString(name, strconv.Itoa(fallback)))
+	if err != nil || value <= 0 {
+		return 0, fmt.Errorf("%s must be a positive integer", name)
+	}
+	return value, nil
+}
+
+func validateHTTPURL(name, value string) error {
+	u, err := url.Parse(value)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("%s must be an absolute HTTP(S) URL without credentials, query, or fragment", name)
+	}
+	return nil
+}
+
+func validCurrency(value string) bool {
+	if len(value) != 3 {
+		return false
+	}
+	for _, c := range value {
+		if c < 'A' || c > 'Z' {
+			return false
+		}
+	}
+	return true
 }

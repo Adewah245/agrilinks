@@ -483,6 +483,7 @@
             method="POST"
             action="/orders/place"
         >
+            <input type="hidden" name="checkout_key" value="{{requestKey}}">
             <button type="submit">
                 Place Order
             </button>

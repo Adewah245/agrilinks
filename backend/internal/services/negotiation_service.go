@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -107,13 +108,13 @@ func (s *NegotiationService) StartNegotiation(
 		return nil, errors.New("invalid product")
 	}
 
-	if quantity <= 0 {
+	if quantity <= 0 || math.IsNaN(quantity) || math.IsInf(quantity, 0) {
 		return nil, errors.New(
 			"Enter how much you want.",
 		)
 	}
 
-	if offerPrice <= 0 {
+	if offerPrice <= 0 || math.IsNaN(offerPrice) || math.IsInf(offerPrice, 0) {
 		return nil, errors.New(
 			"Enter an offer greater than zero.",
 		)
@@ -189,10 +190,6 @@ func (s *NegotiationService) StartNegotiation(
 		ExpiresAt: time.Now().Add(s.window),
 	}
 
-	if err := s.repo.Create(negotiation); err != nil {
-		return nil, err
-	}
-
 	// Create the buyer's first offer.
 	firstOffer := &models.NegotiationMessage{
 		NegotiationID: negotiation.ID,
@@ -203,14 +200,7 @@ func (s *NegotiationService) StartNegotiation(
 		OfferStatus:   "pending",
 	}
 
-	if err := s.msgRepo.Create(firstOffer); err != nil {
-		return nil, err
-	}
-
-	// The first offer consumes one negotiation round.
-	if err := s.repo.IncrementRound(
-		negotiation.ID,
-	); err != nil {
+	if err := s.repo.StartWithOffer(negotiation, firstOffer); err != nil {
 		return nil, err
 	}
 
@@ -335,7 +325,7 @@ func (s *NegotiationService) SendOffer(
 		return errors.New("invalid sender ID")
 	}
 
-	if offerPrice <= 0 {
+	if offerPrice <= 0 || math.IsNaN(offerPrice) || math.IsInf(offerPrice, 0) {
 		return errors.New(
 			"Enter an offer greater than zero.",
 		)
@@ -395,15 +385,7 @@ func (s *NegotiationService) SendOffer(
 		OfferStatus:   "pending",
 	}
 
-	if err := s.msgRepo.Create(
-		newOffer,
-	); err != nil {
-		return err
-	}
-
-	if err := s.repo.IncrementRound(
-		negotiationID,
-	); err != nil {
+	if err := s.repo.AddOffer(newOffer); err != nil {
 		return err
 	}
 
@@ -552,31 +534,7 @@ func (s *NegotiationService) Accept(
 		)
 	}
 
-	// Add the agreed deal to the buyer's cart before finalizing
-	// the negotiation. This prevents an accepted negotiation from
-	// being finalized when the cart operation cannot succeed.
-	if offer.OfferPrice == nil {
-		return errors.New("This offer has no price.")
-	}
-
-	if err := s.cartService.addFromNegotiation(
-		negotiation,
-		*offer.OfferPrice,
-	); err != nil {
-		return err
-	}
-
-	if err := s.msgRepo.UpdateOfferStatus(
-		offerID,
-		"accepted",
-	); err != nil {
-		return err
-	}
-
-	if err := s.repo.UpdateStatus(
-		negotiationID,
-		"accepted",
-	); err != nil {
+	if err := s.repo.AcceptOffer(negotiationID, offerID, accepterID); err != nil {
 		return err
 	}
 

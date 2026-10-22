@@ -9,9 +9,11 @@ func setValidTestEnvironment(t *testing.T) {
 	t.Helper()
 	t.Setenv("DATABASE_URL", "postgres://test:test@localhost:5432/test")
 	t.Setenv("GEMINI_API_KEY", "test-key")
+	t.Setenv("GEMINI_MODEL", "test-diagnosis-model")
 	t.Setenv("GROQ_API_KEY", "test-key")
+	t.Setenv("GROQ_MODEL", "test-learning-model")
 	t.Setenv("PAYMENT_REDIRECT_URL", "https://example.test/payment/callback")
-	t.Setenv("SMS_PROVIDER", "log")
+	t.Setenv("SMS_PROVIDER", "disabled")
 	t.Setenv("TRUST_PROXY_HEADERS", "")
 	t.Setenv("TRUSTED_PROXY_CIDRS", "")
 }

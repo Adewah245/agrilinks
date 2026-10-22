@@ -1,40 +1,30 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Learning Journey | Agro-Shield</title>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your learning journey | Agro-Shield</title>
+  <link rel="stylesheet" href="/static/css/style.css"><link rel="stylesheet" href="/static/css/learning.css">
+  <script src="/static/js/learning.js" defer></script>
 </head>
-<body>
-  <main class="dashboard">
-    <p><a href="/learn">← All learning journeys</a></p>
-    <h1>{{with .Journey.FarmingType}}{{.Name}}{{else}}Learning journey{{end}}</h1>
-    <p>Stage: {{.Journey.CurrentStage}} · Readiness: {{.Journey.ReadinessScore}}% · Progress: {{humanStatus .Journey.Status}}</p>
-
-    <section class="panel">
-      <h2>Preparation checklist</h2>
-      {{if .Checkpoints}}
-        <ul>
-        {{range .Checkpoints}}
-          <li><strong>{{.Title}}</strong> — {{humanStatus .Status}} ({{.Progress}}%){{if .Description}}: {{.Description}}{{end}}</li>
-        {{end}}
-        </ul>
-      {{else}}
-        <p>No checkpoints have been added yet.</p>
-      {{end}}
-    </section>
-
-    <section class="panel">
-      <h2>Learning guidance</h2>
-      {{if .Messages}}
-        {{range .Messages}}
-          <article><strong>{{.SenderType}}</strong><p>{{.Content}}</p></article>
-        {{end}}
-      {{else}}
-        <p>Your guidance will appear here as you progress.</p>
-      {{end}}
-    </section>
+<body class="learning-page">
+  <nav class="learning-nav" aria-label="Learning navigation"><a href="/learn">← Your learning space</a><a href="/learn/rooms">Learning rooms</a><a href="/chat">Messages</a><a href="/profile">My profile</a></nav>
+  <main class="learning-main">
+    <header><p class="eyebrow">ONE STEP AT A TIME</p><h1>{{with .Journey.FarmingType}}{{.Name}}{{else}}Your learning journey{{end}}</h1>{{if .Journey.Goal}}<p>{{.Journey.Goal}}</p>{{end}}<p>{{humanStatus .Journey.Status}} · Your checklist is {{.Journey.ReadinessScore}}% complete</p><progress value="{{.Journey.ReadinessScore}}" max="100" aria-label="Checklist progress">{{.Journey.ReadinessScore}}%</progress></header>
+    <p id="learning-error" class="learning-error" role="alert" hidden></p>
+    <div class="learning-columns learning-workspace">
+      <section class="learning-card"><h2>Your farming guide</h2><p>Ask about getting started, caring for your farm, or your next step.</p>
+        <div class="learning-messages" aria-live="polite">{{range .Messages}}<article class="learning-message {{.SenderType}}"><strong>{{if eq .SenderType "ai"}}Agro-Shield guide{{else if eq .SenderType "user"}}You{{else}}Learning note{{end}}</strong><p>{{.Content}}</p></article>{{else}}<p>Start with a question about what you want to learn.</p>{{end}}</div>
+        {{if eq .Journey.Status "active"}}{{if .AIAvailable}}<form method="post" action="/learn/message" data-learning-form><input type="hidden" name="journey_id" value="{{.Journey.ID}}"><label for="learning-question">Your question</label><textarea id="learning-question" name="content" rows="3" maxlength="10000" required></textarea><button type="submit">Ask your guide</button><p class="form-status" role="status"></p></form>{{else}}<p>The guide is unavailable at the moment. You can still work on your checklist.</p>{{end}}{{else}}<p>Resume this journey to ask your guide another question.</p>{{end}}
+      </section>
+      <section class="learning-card"><h2>Your next steps</h2><p>Add steps from what you learn. Update each one as you make progress.</p>
+        {{range .Checkpoints}}<article class="learning-checkpoint"><h3>{{.Title}}</h3>{{if .Description}}<p>{{.Description}}</p>{{end}}<p>{{humanStatus .Status}} · {{.Progress}}%</p>
+          {{if eq $.Journey.Status "active"}}<form method="post" action="/learn/checkpoint/update" data-learning-form><input type="hidden" name="journey_id" value="{{$.Journey.ID}}"><input type="hidden" name="checkpoint_id" value="{{.ID}}">
+          <label for="step-status-{{.ID}}">How is it going?</label><select id="step-status-{{.ID}}" name="status"><option value="pending" {{if eq .Status "pending"}}selected{{end}}>Not started</option><option value="in_progress" {{if eq .Status "in_progress"}}selected{{end}}>Working on it</option><option value="completed" {{if eq .Status "completed"}}selected{{end}}>Done</option><option value="not_applicable" {{if eq .Status "not_applicable"}}selected{{end}}>Not needed for my plan</option></select>
+          <label for="step-progress-{{.ID}}">How much have you done? (%)</label><input id="step-progress-{{.ID}}" type="number" name="progress" min="0" max="100" value="{{.Progress}}" required><label for="step-notes-{{.ID}}">Your notes</label><textarea id="step-notes-{{.ID}}" name="notes" maxlength="2000" rows="2">{{.Notes}}</textarea><button type="submit">Save this step</button></form>{{end}}</article>{{else}}<p>You have not added any steps yet.</p>{{end}}
+        {{if eq .Journey.Status "active"}}<details class="add-step"><summary>Add a step</summary><form method="post" action="/learn/checkpoint/create" data-learning-form><input type="hidden" name="journey_id" value="{{.Journey.ID}}"><label for="step-title">What will you do?</label><input id="step-title" name="title" maxlength="255" required><label for="step-description">Any details to remember?</label><textarea id="step-description" name="description" maxlength="2000" rows="2"></textarea><button type="submit">Add to my checklist</button></form></details>{{end}}
+      </section>
+    </div>
+    <section class="learning-card"><h2>Manage this journey</h2><p>This checklist records your own progress. It does not certify your farm or replace advice from a qualified local expert.</p><form class="journey-actions" method="post" action="/learn/journey/update"><input type="hidden" name="journey_id" value="{{.Journey.ID}}">{{if eq .Journey.Status "active"}}<button name="status" value="paused">Pause learning</button><button name="status" value="completed">I have finished my checklist</button>{{else}}<button name="status" value="active">Resume learning</button>{{end}}</form></section>
   </main>
 </body>
 </html>

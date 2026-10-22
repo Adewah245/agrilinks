@@ -41,6 +41,12 @@ func (s *AIService) Diagnose(
 	userID int,
 	request models.AIRequest,
 ) (*models.Diagnosis, error) {
+	if userID <= 0 {
+		return nil, errors.New("sign in to ask for farming advice")
+	}
+	if s.provider == nil {
+		return nil, errors.New("the farming assistant is unavailable right now; please try again later")
+	}
 
 	if strings.TrimSpace(request.Category) == "" &&
 		strings.TrimSpace(request.Description) == "" &&

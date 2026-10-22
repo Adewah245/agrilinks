@@ -4,6 +4,9 @@ import (
 	"backend/internal/models"
 	"database/sql"
 	"fmt"
+	"math"
+	"sort"
+	"strconv"
 )
 
 // OrderRepository handles database operations for product orders.
@@ -17,264 +20,155 @@ func NewOrderRepository(db *sql.DB) *OrderRepository {
 	return &OrderRepository{db: db}
 }
 
-// Create creates a new order for a product.
+// Create reserves stock and saves an unpaid order in one transaction.
+// The caller provides product IDs and quantities; prices come from the database.
 func (r *OrderRepository) Create(order *models.Order) error {
-	if order == nil || len(order.Items) == 0 {
-		return sql.ErrNoRows
-	}
+	return r.checkout(order, nil)
+}
 
+// CreateFromCart re-reads and locks the buyer's cart inside the checkout.
+// Prices in accepted negotiations are kept even if the listing price changes.
+func (r *OrderRepository) CreateFromCart(order *models.Order, cartItemIDs []int) error {
+	return r.checkout(order, cartItemIDs)
+}
+
+func (r *OrderRepository) checkout(order *models.Order, cartItemIDs []int) error {
+	if order == nil || order.BuyerID <= 0 || (cartItemIDs == nil && len(order.Items) == 0) {
+		return fmt.Errorf("choose at least one product")
+	}
+	if len(order.Currency) != 3 {
+		return fmt.Errorf("order currency is required")
+	}
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	err = tx.QueryRow(`
-		INSERT INTO orders (
-			buyer_id,
-			total_amount,
-			status
-		)
-		VALUES ($1, $2, $3)
-		RETURNING id, created_at, updated_at
-	`,
-		order.BuyerID,
-		order.TotalAmount,
-		order.Status,
-	).Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
-	if err != nil {
+	// Serializing a buyer's checkout also protects repeated request keys.
+	var buyer int
+	if err := tx.QueryRow(`SELECT id FROM users WHERE id=$1 FOR UPDATE`, order.BuyerID).Scan(&buyer); err != nil {
 		return err
 	}
-
-	for i := range order.Items {
-		item := &order.Items[i]
-		err = tx.QueryRow(`
-			INSERT INTO order_items (order_id, product_id, quantity, unit_price, total_price)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING id, created_at
-		`, order.ID, item.ProductID, item.Quantity, item.UnitPrice, item.TotalPrice).
-			Scan(&item.ID, &item.CreatedAt)
-		if err != nil {
+	if order.CheckoutKey != "" {
+		err = tx.QueryRow(`SELECT id,status,total_amount,currency,created_at,updated_at FROM orders WHERE buyer_id=$1 AND checkout_key=$2`, order.BuyerID, order.CheckoutKey).
+			Scan(&order.ID, &order.Status, &order.TotalAmount, &order.Currency, &order.CreatedAt, &order.UpdatedAt)
+		if err == nil {
+			return tx.Commit()
+		}
+		if err != sql.ErrNoRows {
 			return err
 		}
 	}
-
-	return tx.Commit()
-}
-
-// CreateFromCart creates an order from cart items in one transaction.
-//
-// The transaction locks each product, rechecks availability, creates the
-// order and items, records inventory and listing changes, and removes the
-// purchased cart items. A failure at any step rolls back the whole checkout.
-func (r *OrderRepository) CreateFromCart(
-	order *models.Order,
-	cartItemIDs []int,
-) error {
-	if order == nil || len(order.Items) == 0 {
-		return fmt.Errorf("order must contain at least one item")
+	fromCart := cartItemIDs != nil
+	if fromCart {
+		// IDs and quantities supplied before this transaction are not trusted.
+		rows, err := tx.Query(`SELECT id,product_id,quantity,price_per_unit FROM cart_items WHERE buyer_id=$1 ORDER BY product_id,id FOR UPDATE`, order.BuyerID)
+		if err != nil {
+			return err
+		}
+		order.Items = nil
+		cartItemIDs = nil
+		for rows.Next() {
+			var id int
+			var item models.OrderItem
+			if err := rows.Scan(&id, &item.ProductID, &item.Quantity, &item.UnitPrice); err != nil {
+				rows.Close()
+				return err
+			}
+			cartItemIDs = append(cartItemIDs, id)
+			order.Items = append(order.Items, item)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return err
+		}
+		if len(order.Items) == 0 {
+			return fmt.Errorf("your cart is empty")
+		}
 	}
-
-	if len(cartItemIDs) != len(order.Items) {
-		return fmt.Errorf("cart items do not match order items")
+	sort.SliceStable(order.Items, func(i, j int) bool { return order.Items[i].ProductID < order.Items[j].ProductID })
+	order.Status = "pending"
+	err = tx.QueryRow(`INSERT INTO orders(buyer_id,total_amount,status,checkout_key,currency) VALUES($1,0,'pending',NULLIF($2,''),$3) RETURNING id,created_at,updated_at`, order.BuyerID, order.CheckoutKey, order.Currency).
+		Scan(&order.ID, &order.CreatedAt, &order.UpdatedAt)
+	if err != nil {
+		return err
 	}
-
-	if order.BuyerID <= 0 {
-		return fmt.Errorf("invalid buyer")
-	}
-
-	order.TotalAmount = 0
-
+	var sellerType string
+	var sellerID int
 	for i := range order.Items {
 		item := &order.Items[i]
-		if cartItemIDs[i] <= 0 {
-			return fmt.Errorf("invalid cart item")
+		if item.ProductID <= 0 || math.IsNaN(item.Quantity) || math.IsInf(item.Quantity, 0) || item.Quantity <= 0 || math.Round(item.Quantity*1e6)/1e6 != item.Quantity {
+			return fmt.Errorf("enter a valid amount with at most six decimal places")
 		}
-		if item.ProductID <= 0 || item.Quantity <= 0 {
-			return fmt.Errorf("invalid order item")
-		}
-		if item.UnitPrice < 0 {
-			return fmt.Errorf("order item price cannot be negative")
-		}
-
-		item.TotalPrice = item.Quantity * item.UnitPrice
-		order.TotalAmount += item.TotalPrice
-	}
-
-	tx, err := r.db.Begin()
-	if err != nil {
-		return fmt.Errorf("begin checkout: %w", err)
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
-
-	err = tx.QueryRow(`
-		INSERT INTO orders (buyer_id, total_amount, status)
-		VALUES ($1, $2, $3)
-		RETURNING id, created_at, updated_at
-	`, order.BuyerID, order.TotalAmount, order.Status).Scan(
-		&order.ID,
-		&order.CreatedAt,
-		&order.UpdatedAt,
-	)
-	if err != nil {
-		return fmt.Errorf("create order: %w", err)
-	}
-
-	for i := range order.Items {
-		item := &order.Items[i]
-
-		var (
-			quantityBefore float64
-			status         string
-			ownerType      string
-			ownerID        int
-		)
-
-		err = tx.QueryRow(`
-			SELECT quantity, status, owner_type, owner_id
-			FROM products
-			WHERE id = $1
-			FOR UPDATE
-		`, item.ProductID).Scan(
-			&quantityBefore,
-			&status,
-			&ownerType,
-			&ownerID,
-		)
+		var before float64
+		var status, ownerType, price string
+		var ownerID int
+		err = tx.QueryRow(`SELECT quantity,status,owner_type,owner_id,price::text FROM products WHERE id=$1 FOR UPDATE`, item.ProductID).
+			Scan(&before, &status, &ownerType, &ownerID, &price)
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("product %d no longer exists", item.ProductID)
+			return fmt.Errorf("product no longer exists")
 		}
 		if err != nil {
-			return fmt.Errorf("lock product %d: %w", item.ProductID, err)
+			return err
 		}
-
-		if status != "active" {
-			return fmt.Errorf("product %d is no longer available", item.ProductID)
+		if status != "active" || item.Quantity > before {
+			return fmt.Errorf("the amount you asked for is no longer available")
 		}
-
 		if ownerType == "user" && ownerID == order.BuyerID {
 			return fmt.Errorf("you cannot buy your own product")
 		}
-
-		if item.Quantity > quantityBefore {
-			return fmt.Errorf(
-				"only %.6g of product %d is available",
-				quantityBefore,
-				item.ProductID,
-			)
+		if i == 0 {
+			sellerType, sellerID = ownerType, ownerID
+		} else if ownerType != sellerType || ownerID != sellerID {
+			return fmt.Errorf("check out products from one seller at a time")
 		}
-
-		quantityAfter := quantityBefore - item.Quantity
-		newStatus := status
-		if quantityAfter <= 0 {
-			newStatus = "sold_out"
+		if fromCart {
+			price = strconv.FormatFloat(item.UnitPrice, 'f', 2, 64)
 		}
-
-		err = tx.QueryRow(`
-			INSERT INTO order_items (
-				order_id,
-				product_id,
-				quantity,
-				unit_price,
-				total_price
-			)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING id, created_at
-		`,
-			order.ID,
-			item.ProductID,
-			item.Quantity,
-			item.UnitPrice,
-			item.TotalPrice,
-		).Scan(&item.ID, &item.CreatedAt)
+		// PostgreSQL NUMERIC does the money calculation, including line rounding.
+		err = tx.QueryRow(`INSERT INTO order_items(order_id,product_id,quantity,unit_price,total_price) VALUES($1,$2,$3::numeric,$4::numeric,round($3::numeric*$4::numeric,2)) RETURNING id,unit_price,total_price,created_at`, order.ID, item.ProductID, strconv.FormatFloat(item.Quantity, 'f', 6, 64), price).
+			Scan(&item.ID, &item.UnitPrice, &item.TotalPrice, &item.CreatedAt)
 		if err != nil {
-			return fmt.Errorf("create order item: %w", err)
+			return err
 		}
-
-		_, err = tx.Exec(`
-			UPDATE products
-			SET
-				quantity = $1,
-				status = $2,
-				sold_out_at = CASE
-					WHEN $2 = 'sold_out'
-						THEN COALESCE(sold_out_at, CURRENT_TIMESTAMP)
-					ELSE sold_out_at
-				END,
-				updated_at = CURRENT_TIMESTAMP
-			WHERE id = $3
-		`, quantityAfter, newStatus, item.ProductID)
+		if item.TotalPrice <= 0 {
+			return fmt.Errorf("the order amount must be greater than zero")
+		}
+		item.OrderID = order.ID
+		var after float64
+		var newStatus string
+		err = tx.QueryRow(`UPDATE products SET quantity=quantity-$2::numeric,
+            status=CASE WHEN quantity-$2::numeric=0 THEN 'sold_out' ELSE status END,
+            sold_out_at=CASE WHEN quantity-$2::numeric=0 THEN CURRENT_TIMESTAMP ELSE sold_out_at END,
+            updated_at=CURRENT_TIMESTAMP WHERE id=$1 RETURNING quantity,status`, item.ProductID, strconv.FormatFloat(item.Quantity, 'f', 6, 64)).Scan(&after, &newStatus)
 		if err != nil {
-			return fmt.Errorf("reduce product inventory: %w", err)
+			return err
 		}
-
-		_, err = tx.Exec(`
-			INSERT INTO inventory_history (
-				product_id,
-				quantity_before,
-				quantity_change,
-				quantity_after,
-				reason
-			)
-			VALUES ($1, $2, $3, $4, $5)
-		`,
-			item.ProductID,
-			quantityBefore,
-			-item.Quantity,
-			quantityAfter,
-			"order_placed",
-		)
+		_, err = tx.Exec(`INSERT INTO inventory_history(product_id,quantity_before,quantity_change,quantity_after,reason) VALUES($1,$2,$3,$4,'order_placed')`, item.ProductID, before, -item.Quantity, after)
 		if err != nil {
-			return fmt.Errorf("record inventory change: %w", err)
+			return err
 		}
-
-		if newStatus != status {
-			_, err = tx.Exec(`
-				INSERT INTO product_status_history (
-					product_id,
-					old_status,
-					new_status,
-					reason,
-					changed_by_type,
-					changed_by_id
-				)
-				VALUES ($1, $2, $3, $4, 'user', $5)
-			`,
-				item.ProductID,
-				status,
-				newStatus,
-				"order_placed",
-				order.BuyerID,
-			)
+		if status != newStatus {
+			_, err = tx.Exec(`INSERT INTO product_status_history(product_id,old_status,new_status,reason,changed_by_type,changed_by_id) VALUES($1,$2,$3,'order_placed','user',$4)`, item.ProductID, status, newStatus, order.BuyerID)
 			if err != nil {
-				return fmt.Errorf("record product status change: %w", err)
+				return err
 			}
 		}
-
-		result, err := tx.Exec(`
-			DELETE FROM cart_items
-			WHERE id = $1 AND buyer_id = $2
-		`, cartItemIDs[i], order.BuyerID)
-		if err != nil {
-			return fmt.Errorf("remove purchased cart item: %w", err)
-		}
-
-		affected, err := result.RowsAffected()
-		if err != nil {
-			return fmt.Errorf("check cart item removal: %w", err)
-		}
-		if affected != 1 {
-			return fmt.Errorf("cart item %d was not found", cartItemIDs[i])
+	}
+	err = tx.QueryRow(`UPDATE orders SET total_amount=(SELECT SUM(total_price) FROM order_items WHERE order_id=$1) WHERE id=$1 RETURNING total_amount`, order.ID).Scan(&order.TotalAmount)
+	if err != nil {
+		return err
+	}
+	if fromCart {
+		for _, id := range cartItemIDs {
+			if _, err = tx.Exec(`DELETE FROM cart_items WHERE id=$1 AND buyer_id=$2`, id, order.BuyerID); err != nil {
+				return err
+			}
 		}
 	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit checkout: %w", err)
-	}
-
-	return nil
+	return tx.Commit()
 }
 
 // GetForBuyer returns an order only when it belongs to the buyer.
@@ -288,7 +182,7 @@ func (r *OrderRepository) GetForBuyer(
 
 	order := &models.Order{}
 	err := r.db.QueryRow(`
-		SELECT id, buyer_id, status, total_amount, created_at, updated_at
+		SELECT id, buyer_id, status, total_amount, currency, created_at, updated_at
 		FROM orders
 		WHERE id = $1 AND buyer_id = $2
 	`, orderID, buyerID).Scan(
@@ -296,6 +190,7 @@ func (r *OrderRepository) GetForBuyer(
 		&order.BuyerID,
 		&order.Status,
 		&order.TotalAmount,
+		&order.Currency,
 		&order.CreatedAt,
 		&order.UpdatedAt,
 	)
@@ -356,6 +251,8 @@ func (r *OrderRepository) ListByBuyer(
 		SELECT
 			orders.id,
 			orders.buyer_id,
+            orders.total_amount,
+            orders.currency,
 			order_items.product_id,
 			order_items.quantity,
 			order_items.total_price,
@@ -412,6 +309,8 @@ func (r *OrderRepository) ListByBuyer(
 		if err := rows.Scan(
 			&o.ID,
 			&o.BuyerID,
+			&o.TotalAmount,
+			&o.Currency,
 			&o.ProductID,
 			&o.Quantity,
 			&o.TotalPrice,
@@ -450,6 +349,8 @@ func (r *OrderRepository) ListSalesBySeller(
 		SELECT
 			orders.id,
 			orders.buyer_id,
+            orders.total_amount,
+            orders.currency,
 			order_items.product_id,
 			order_items.quantity,
 			order_items.total_price,
@@ -511,6 +412,8 @@ func (r *OrderRepository) ListSalesBySeller(
 		if err := rows.Scan(
 			&o.ID,
 			&o.BuyerID,
+			&o.TotalAmount,
+			&o.Currency,
 			&o.ProductID,
 			&o.Quantity,
 			&o.TotalPrice,

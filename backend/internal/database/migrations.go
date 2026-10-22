@@ -1,537 +1,159 @@
 package database
 
 import (
+	"backend/migrations"
+	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"time"
 )
 
-// ============================================================
-// MIGRATION DIRECTORY
-// ============================================================
-//
-// All Agro-Shield database migrations live here.
-//
-// Example:
-//
-// backend/migrations/
-//     001_users.sql
-//     002_farmer_type.sql
-//     003_users_verification.sql
-//     ...
-//
-// ============================================================
+func RunMigration(db *sql.DB) error { return ApplyMigrations(db, migrations.Files) }
 
-const migrationsDir = "migrations"
-
-// ============================================================
-// 1. RUN DATABASE MIGRATIONS
-// ============================================================
-//
-// Flow:
-//
-//     RunMigration()
-//           ↓
-//     Optional development reset
-//           ↓
-//     Create schema_migrations
-//           ↓
-//     Find .sql files
-//           ↓
-//     Sort migrations
-//           ↓
-//     Check already-applied migrations
-//           ↓
-//     Apply new migrations
-//           ↓
-//     Record successful migration
-//
-// ============================================================
-
-func RunMigration(db *sql.DB) error {
-
-	log.Println("🔄 Starting database migrations...")
-
-	// ----------------------------------------------------------
-	// Step 1:
-	// Optional database reset
-	// ----------------------------------------------------------
-	//
-	// This is ONLY for rebuilding the development database.
-	//
-	// It runs only when:
-	//
-	//     RESET_DATABASE=true
-	//
-	// is explicitly set.
-	//
-	// This prevents accidental database destruction during
-	// normal application startup.
-	// ----------------------------------------------------------
-
-	if os.Getenv("RESET_DATABASE") == "true" {
-
-		log.Println("⚠️ RESET_DATABASE=true")
-		log.Println("🧹 Resetting PostgreSQL public schema...")
-
-		if err := resetDatabase(db); err != nil {
-			return err
-		}
-
-		log.Println("✅ PostgreSQL public schema reset successfully")
+// ApplyMigrations serializes migrations on one database connection and commits
+// each SQL file together with its version and content checksum.
+func ApplyMigrations(db *sql.DB, source fs.FS) error {
+	if db == nil {
+		return fmt.Errorf("database connection is required")
 	}
-
-	// ----------------------------------------------------------
-	// Step 2:
-	// Create migration tracking table
-	// ----------------------------------------------------------
-
-	if err := createMigrationTable(db); err != nil {
-		return err
+	if strings.EqualFold(os.Getenv("RESET_DATABASE"), "true") {
+		return fmt.Errorf("automatic database reset is disabled; use a separate empty development database")
 	}
-
-	// ----------------------------------------------------------
-	// Step 3:
-	// Find migration files
-	// ----------------------------------------------------------
-
-	migrationFiles, err := getMigrationFiles()
+	files, err := migrationFiles(source)
 	if err != nil {
 		return err
 	}
-
-	if len(migrationFiles) == 0 {
-		log.Println("⚠️ No migration files found")
-		return nil
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return err
 	}
-
-	log.Printf(
-		"📦 Found %d migration files",
-		len(migrationFiles),
-	)
-
-	// ----------------------------------------------------------
-	// Step 4:
-	// Process migrations one by one
-	// ----------------------------------------------------------
-
-	for _, filename := range migrationFiles {
-
-		// ------------------------------------------------------
-		// Extract migration version
-		// ------------------------------------------------------
-		//
-		// Example:
-		//
-		// 009_negotiation.sql
-		//
-		// becomes:
-		//
-		// 9
-		// ------------------------------------------------------
-
-		version, err := migrationVersion(filename)
+	defer conn.Close()
+	if _, err := conn.ExecContext(ctx, `SELECT pg_advisory_lock(hashtextextended('agro-shield:migrations:' || current_schema(),0))`); err != nil {
+		return err
+	}
+	defer func() {
+		unlock, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _ = conn.ExecContext(unlock, `SELECT pg_advisory_unlock(hashtextextended('agro-shield:migrations:' || current_schema(),0))`)
+	}()
+	var legacy bool
+	if err := conn.QueryRowContext(ctx, `SELECT to_regclass('public.farmers') IS NOT NULL AND to_regclass('public.users') IS NULL`).Scan(&legacy); err != nil {
+		return err
+	}
+	if legacy {
+		return fmt.Errorf("legacy tables found; run cmd/legacy-cutover after reviewing its preflight checks")
+	}
+	if _, err := conn.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
+        id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,version INTEGER NOT NULL UNIQUE,
+        filename TEXT NOT NULL UNIQUE,applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,checksum TEXT);
+        ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum TEXT`); err != nil {
+		return err
+	}
+	applied := 0
+	for _, file := range files {
+		version, _ := migrationVersion(file)
+		content, err := fs.ReadFile(source, file)
 		if err != nil {
 			return err
 		}
-
-		// ------------------------------------------------------
-		// Check whether migration was already applied
-		// ------------------------------------------------------
-
-		applied, err := migrationApplied(db, version)
-		if err != nil {
-			return err
+		if strings.TrimSpace(string(content)) == "" {
+			return fmt.Errorf("migration %s is empty", file)
 		}
-
-		if applied {
-			log.Printf(
-				"⏭️ Migration already applied: %s",
-				filename,
-			)
-
+		hash := sha256.Sum256(content)
+		checksum := hex.EncodeToString(hash[:])
+		var oldName string
+		var oldChecksum sql.NullString
+		err = conn.QueryRowContext(ctx, `SELECT filename,checksum FROM schema_migrations WHERE version=$1`, version).Scan(&oldName, &oldChecksum)
+		if err == nil {
+			if oldName != file || (oldChecksum.Valid && oldChecksum.String != checksum) {
+				return fmt.Errorf("applied migration %s has changed; restore it and add a new migration", file)
+			}
+			// Existing installations predate checksums. Adopt their unchanged
+			// filenames once, then enforce content checks on later launches.
+			if !oldChecksum.Valid {
+				if _, err := conn.ExecContext(ctx, `UPDATE schema_migrations SET checksum=$1 WHERE version=$2`, checksum, version); err != nil {
+					return err
+				}
+			}
 			continue
 		}
-
-		// ------------------------------------------------------
-		// Apply migration
-		// ------------------------------------------------------
-
-		if err := applyMigration(
-			db,
-			version,
-			filename,
-		); err != nil {
+		if err != sql.ErrNoRows {
 			return err
 		}
+		if err := applyMigrationFile(ctx, conn, version, file, string(content), checksum); err != nil {
+			return err
+		}
+		applied++
 	}
-
-	log.Println("✅ All database migrations completed successfully")
-
+	log.Printf("Database migrations checked: %d files, %d applied", len(files), applied)
 	return nil
 }
 
-// ============================================================
-// 2. RESET DEVELOPMENT DATABASE
-// ============================================================
-//
-// This completely removes the public schema and recreates it.
-//
-// IMPORTANT:
-//
-// This function is NEVER called automatically.
-//
-// It only runs when:
-//
-//     RESET_DATABASE=true
-//
-// is explicitly provided.
-//
-// This is useful while we are rebuilding the Agro-Shield
-// database schema from scratch.
-//
-// ============================================================
-
-func resetDatabase(db *sql.DB) error {
-
-	const query = `
-		DROP SCHEMA IF EXISTS public CASCADE;
-
-		CREATE SCHEMA public;
-	`
-
-	if _, err := db.Exec(query); err != nil {
-		return fmt.Errorf(
-			"failed to reset PostgreSQL public schema: %w",
-			err,
-		)
-	}
-
-	return nil
-}
-
-// ============================================================
-// 3. CREATE MIGRATION TRACKING TABLE
-// ============================================================
-//
-// PostgreSQL uses this table to remember which migrations
-// have already been executed.
-//
-// Example:
-//
-//     version | filename
-//     --------+--------------------------
-//       1     | 001_users.sql
-//       2     | 002_farmer_type.sql
-//       3     | 003_users_verification.sql
-//
-// ============================================================
-
-func createMigrationTable(db *sql.DB) error {
-
-	const query = `
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			id INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-			version INTEGER NOT NULL UNIQUE,
-
-			filename TEXT NOT NULL UNIQUE,
-
-			applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		);
-	`
-
-	if _, err := db.Exec(query); err != nil {
-		return fmt.Errorf(
-			"failed to create schema_migrations table: %w",
-			err,
-		)
-	}
-
-	return nil
-}
-
-// ============================================================
-// 4. FIND MIGRATION FILES
-// ============================================================
-//
-// Reads:
-//
-// backend/migrations/
-//
-// and returns only .sql files.
-//
-// ============================================================
-
-func getMigrationFiles() ([]string, error) {
-
-	entries, err := os.ReadDir(migrationsDir)
-
+func applyMigrationFile(ctx context.Context, conn *sql.Conn, version int, name, content, checksum string) error {
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to read migrations directory %q: %w",
-			migrationsDir,
-			err,
-		)
+		return err
 	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, content); err != nil {
+		return fmt.Errorf("migration %s failed: %w", name, err)
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version,filename,checksum) VALUES($1,$2,$3)`, version, name, checksum); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
 
-	var migrationFiles []string
-
+func migrationFiles(source fs.FS) ([]string, error) {
+	entries, err := fs.ReadDir(source, ".")
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	seen := make(map[int]bool)
 	for _, entry := range entries {
-
-		// Ignore directories.
-		if entry.IsDir() {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
 			continue
 		}
-
-		filename := entry.Name()
-
-		// Only process SQL files.
-		if !strings.HasSuffix(filename, ".sql") {
-			continue
+		version, err := migrationVersion(entry.Name())
+		if err != nil {
+			return nil, err
 		}
-
-		migrationFiles = append(
-			migrationFiles,
-			filename,
-		)
+		if seen[version] {
+			return nil, fmt.Errorf("duplicate migration version %d", version)
+		}
+		seen[version] = true
+		files = append(files, entry.Name())
 	}
-
-	// Sort files.
-	//
-	// Because migrations are numbered:
-	//
-	// 001
-	// 002
-	// 003
-	//
-	// alphabetical sorting gives us the correct order.
-
-	sort.Strings(migrationFiles)
-
-	return migrationFiles, nil
+	sort.Slice(files, func(i, j int) bool {
+		a, _ := migrationVersion(files[i])
+		b, _ := migrationVersion(files[j])
+		return a < b
+	})
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no migrations found")
+	}
+	return files, nil
 }
-
-// ============================================================
-// 5. GET MIGRATION VERSION
-// ============================================================
-//
-// Example:
-//
-//     009_negotiation.sql
-//
-// returns:
-//
-//     9
-//
-// ============================================================
 
 func migrationVersion(filename string) (int, error) {
-
-	parts := strings.SplitN(
-		filename,
-		"_",
-		2,
-	)
-
-	if len(parts) != 2 {
-		return 0, fmt.Errorf(
-			"invalid migration filename %q: expected format 001_name.sql",
-			filename,
-		)
+	parts := strings.SplitN(filename, "_", 2)
+	if len(parts) != 2 || !strings.HasSuffix(parts[1], ".sql") {
+		return 0, fmt.Errorf("invalid migration filename %q", filename)
 	}
-
-	version, err := strconv.Atoi(parts[0])
-
-	if err != nil {
-		return 0, fmt.Errorf(
-			"invalid migration version in %q: %w",
-			filename,
-			err,
-		)
+	value, err := strconv.Atoi(parts[0])
+	if err != nil || value < 1 {
+		return 0, fmt.Errorf("invalid migration version in %q", filename)
 	}
-
-	return version, nil
-}
-
-// ============================================================
-// 6. CHECK WHETHER MIGRATION WAS ALREADY APPLIED
-// ============================================================
-
-func migrationApplied(
-	db *sql.DB,
-	version int,
-) (bool, error) {
-
-	const query = `
-		SELECT EXISTS (
-			SELECT 1
-			FROM schema_migrations
-			WHERE version = $1
-		);
-	`
-
-	var exists bool
-
-	if err := db.QueryRow(
-		query,
-		version,
-	).Scan(&exists); err != nil {
-
-		return false, fmt.Errorf(
-			"failed to check migration version %d: %w",
-			version,
-			err,
-		)
-	}
-
-	return exists, nil
-}
-
-// ============================================================
-// 7. APPLY ONE MIGRATION
-// ============================================================
-//
-// Important:
-//
-// The migration itself and the record saying
-// "this migration was successful" happen in ONE transaction.
-//
-// If anything fails:
-//
-//     migration → ROLLBACK
-//
-// and the migration is NOT recorded as completed.
-//
-// ============================================================
-
-func applyMigration(
-	db *sql.DB,
-	version int,
-	filename string,
-) error {
-
-	// ----------------------------------------------------------
-	// Build migration file path
-	// ----------------------------------------------------------
-
-	path := filepath.Join(
-		migrationsDir,
-		filename,
-	)
-
-	// ----------------------------------------------------------
-	// Read SQL file
-	// ----------------------------------------------------------
-
-	sqlBytes, err := os.ReadFile(path)
-
-	if err != nil {
-		return fmt.Errorf(
-			"failed to read migration %s: %w",
-			filename,
-			err,
-		)
-	}
-
-	migrationSQL := strings.TrimSpace(
-		string(sqlBytes),
-	)
-
-	if migrationSQL == "" {
-		return fmt.Errorf(
-			"migration %s is empty",
-			filename,
-		)
-	}
-
-	log.Printf(
-		"▶️ Applying migration: %s",
-		filename,
-	)
-
-	// ----------------------------------------------------------
-	// Begin transaction
-	// ----------------------------------------------------------
-
-	tx, err := db.Begin()
-
-	if err != nil {
-		return fmt.Errorf(
-			"failed to begin migration %s: %w",
-			filename,
-			err,
-		)
-	}
-
-	// ----------------------------------------------------------
-	// Rollback automatically if Commit() has not succeeded.
-	// ----------------------------------------------------------
-
-	defer tx.Rollback()
-
-	// ----------------------------------------------------------
-	// Execute migration SQL
-	// ----------------------------------------------------------
-
-	if _, err := tx.Exec(migrationSQL); err != nil {
-
-		return fmt.Errorf(
-			"migration %s failed: %w",
-			filename,
-			err,
-		)
-	}
-
-	// ----------------------------------------------------------
-	// Record successful migration
-	// ----------------------------------------------------------
-
-	const recordMigration = `
-		INSERT INTO schema_migrations (
-			version,
-			filename
-		)
-		VALUES ($1, $2);
-	`
-
-	if _, err := tx.Exec(
-		recordMigration,
-		version,
-		filename,
-	); err != nil {
-
-		return fmt.Errorf(
-			"failed to record migration %s: %w",
-			filename,
-			err,
-		)
-	}
-
-	// ----------------------------------------------------------
-	// Commit transaction
-	// ----------------------------------------------------------
-
-	if err := tx.Commit(); err != nil {
-
-		return fmt.Errorf(
-			"failed to commit migration %s: %w",
-			filename,
-			err,
-		)
-	}
-
-	log.Printf(
-		"✅ Migration applied: %s",
-		filename,
-	)
-
-	return nil
+	return value, nil
 }

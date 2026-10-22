@@ -50,12 +50,19 @@ type otpStore interface {
 // Plaintext codes exist only long enough to be sent through the selected
 // delivery channel. Only bcrypt hashes are persisted.
 type OTPService struct {
-	repo        otpStore
-	delivery    OTPDelivery
-	ttl         time.Duration
-	maxAttempts int
-	hashCost    int
-	now         func() time.Time
+	repo           otpStore
+	delivery       OTPDelivery
+	ttl            time.Duration
+	maxAttempts    int
+	hashCost       int
+	now            func() time.Time
+	resendInterval time.Duration
+}
+
+func (s *OTPService) Available() bool { return s != nil && s.delivery != nil }
+
+func (s *OTPService) Configure(ttl time.Duration, maxAttempts int, resendInterval time.Duration) {
+	s.ttl, s.maxAttempts, s.resendInterval = ttl, maxAttempts, resendInterval
 }
 
 func NewOTPService(repo *repository.OTPRepository, delivery OTPDelivery) *OTPService {
@@ -117,8 +124,16 @@ func (s *OTPService) Issue(
 		ExpiresAt: expiresAt,
 	}
 
-	if err := s.repo.Create(otp); err != nil {
-		return err
+	var createErr error
+	if store, ok := s.repo.(interface {
+		CreateWithCooldown(*models.OTPCode, time.Duration) error
+	}); ok {
+		createErr = store.CreateWithCooldown(otp, s.resendInterval)
+	} else {
+		createErr = s.repo.Create(otp)
+	}
+	if createErr != nil {
+		return createErr
 	}
 
 	err = s.delivery.SendOTP(ctx, OTPMessage{
@@ -182,6 +197,9 @@ func (s *OTPService) Verify(
 		return errors.New("invalid OTP code")
 	}
 
+	if store, ok := s.repo.(interface{ ConsumeIfUsable(int64, int) error }); ok {
+		return store.ConsumeIfUsable(otp.ID, s.maxAttempts)
+	}
 	return s.repo.Consume(otp.ID)
 }
 

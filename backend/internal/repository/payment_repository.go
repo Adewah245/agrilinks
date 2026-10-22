@@ -9,65 +9,74 @@ import (
 )
 
 // PaymentRepository owns persistence for payment attempts and wallet reads.
-type PaymentRepository struct{ db *sql.DB }
+type PaymentRepository struct{ db *sql.DB; commissionBPS int64 }
 
-func NewPaymentRepository(db *sql.DB) *PaymentRepository { return &PaymentRepository{db: db} }
+func NewPaymentRepository(db *sql.DB, commissionBPS ...int64) *PaymentRepository { r:=&PaymentRepository{db:db}; if len(commissionBPS)>0 {r.commissionBPS=commissionBPS[0]}; return r }
 
-// CreatePendingForOrder creates a payment attempt only for the order's buyer.
-// Current orders contain one item, so its product owner is the transaction's
-// seller. This avoids accepting seller or amount values from a browser form.
-func (r *PaymentRepository) CreatePendingForOrder(
-	buyerID,
-	orderID int,
-	reference,
-	currency,
-	provider string,
-) (*models.Payment, error) {
-	payment := &models.Payment{}
-	err := r.db.QueryRow(`
-		WITH payable AS (
-			SELECT o.id, o.buyer_id, p.owner_type, p.owner_id, o.total_amount
-			FROM orders o
-			JOIN order_items oi ON oi.order_id = o.id
-			JOIN products p ON p.id = oi.product_id
-			WHERE o.id = $1 AND o.buyer_id = $2 AND o.status = 'pending'
-			ORDER BY oi.id LIMIT 1
-		)
-		INSERT INTO transactions (order_id, buyer_id, seller_type, seller_id, amount, currency, payment_method, payment_reference, payment_provider, status)
-		SELECT id, buyer_id, owner_type, owner_id, total_amount, $4, $5, $3, $5, 'pending'
-		FROM payable
-		RETURNING id, order_id, payment_reference, provider_transaction_id,
-			amount::text, currency, status, payment_provider, created_at, updated_at`,
-		orderID, buyerID, reference, currency, provider,
-	).Scan(
-		&payment.ID,
-		&payment.OrderID,
-		&payment.Reference,
-		&payment.TransactionID,
-		&payment.Amount,
-		&payment.Currency,
-		&payment.Status,
-		&payment.Provider,
-		&payment.CreatedAt,
-		&payment.UpdatedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("pending order not found")
-	}
+// CreatePendingForOrder reuses an unfinished payment attempt under an order lock.
+func (r *PaymentRepository) CreatePendingForOrder(buyerID, orderID int, reference, currency, provider string) (*models.Payment, error) {
+	tx, err := r.db.Begin()
 	if err != nil {
-		return nil, fmt.Errorf("create payment: %w", err)
+		return nil, err
 	}
-	return payment, nil
+	defer tx.Rollback()
+	var status, amount, orderCurrency string
+	err = tx.QueryRow(`SELECT status,total_amount::text,currency FROM orders WHERE id=$1 AND buyer_id=$2 FOR UPDATE`, orderID, buyerID).Scan(&status, &amount, &orderCurrency)
+	if err != nil {
+		return nil, err
+	}
+	if status != "pending" {
+		return nil, fmt.Errorf("order is not waiting for payment")
+	}
+	var existing string
+	err = tx.QueryRow(`SELECT payment_reference FROM transactions WHERE order_id=$1 AND status='pending' ORDER BY id LIMIT 1`, orderID).Scan(&existing)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+	if err == nil {
+		reference = existing
+	} else {
+		var sellerType string
+		var sellerID, sellers int
+		err = tx.QueryRow(`SELECT min(p.owner_type),min(p.owner_id),count(DISTINCT (p.owner_type,p.owner_id)) FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=$1`, orderID).Scan(&sellerType, &sellerID, &sellers)
+		if err != nil {
+			return nil, err
+		}
+		if sellers != 1 {
+			return nil, fmt.Errorf("an order must have one seller")
+		}
+		_, err = tx.Exec(`INSERT INTO transactions(order_id,buyer_id,seller_type,seller_id,amount,currency,payment_method,payment_reference,payment_provider,status) VALUES($1,$2,$3,$4,$5::numeric,$6,$7,$8,$7,'pending')`, orderID, buyerID, sellerType, sellerID, amount, orderCurrency, provider, reference)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	return r.GetByReference(reference)
+}
+
+func (r *PaymentRepository) SaveCheckoutURL(reference, checkoutURL string) error {
+	result, err := r.db.Exec(`UPDATE transactions SET checkout_url=$2,updated_at=CURRENT_TIMESTAMP WHERE payment_reference=$1 AND status='pending'`, reference, checkoutURL)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return fmt.Errorf("payment is no longer waiting")
+	}
+	return nil
 }
 
 func (r *PaymentRepository) ListByBuyer(buyerID int) ([]models.Payment, error) {
 	rows, err := r.db.Query(`
 		SELECT t.id,t.order_id,t.buyer_id,COALESCE(t.payment_reference,''),t.provider_transaction_id,
 			t.amount::text,t.currency,t.status,COALESCE(t.payment_provider,''),t.created_at,t.updated_at,
-			COALESCE(p.name,''),COALESCE(u.full_name,o.name,'')
+			COALESCE((SELECT string_agg(p.name,', ' ORDER BY oi.id) FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=t.order_id),''),COALESCE(u.full_name,o.name,''),t.review_required
 		FROM transactions t
-		LEFT JOIN order_items oi ON oi.order_id=t.order_id
-		LEFT JOIN products p ON p.id=oi.product_id
 		LEFT JOIN users u ON t.seller_type='user' AND u.id=t.seller_id
 		LEFT JOIN organizations o ON t.seller_type='organization' AND o.id=t.seller_id
 		WHERE t.buyer_id=$1 ORDER BY t.created_at DESC`, buyerID)
@@ -92,6 +101,7 @@ func (r *PaymentRepository) ListByBuyer(buyerID int) ([]models.Payment, error) {
 			&payment.UpdatedAt,
 			&payment.ProductName,
 			&payment.SellerName,
+			&payment.ReviewRequired,
 		); err != nil {
 			return nil, err
 		}
@@ -219,7 +229,7 @@ func (r *PaymentRepository) GetByReference(reference string) (*models.Payment, e
 	err := r.db.QueryRow(`
 		SELECT id, order_id, buyer_id, COALESCE(payment_reference, ''),
 		       provider_transaction_id, amount::text, currency, status,
-		       COALESCE(payment_provider, ''), created_at, updated_at
+		       COALESCE(payment_provider, ''), checkout_url, review_required, created_at, updated_at
 		FROM transactions
 		WHERE payment_reference = $1
 	`, reference).Scan(
@@ -232,6 +242,8 @@ func (r *PaymentRepository) GetByReference(reference string) (*models.Payment, e
 		&payment.Currency,
 		&payment.Status,
 		&payment.Provider,
+		&payment.CheckoutURL,
+		&payment.ReviewRequired,
 		&payment.CreatedAt,
 		&payment.UpdatedAt,
 	)
@@ -317,50 +329,47 @@ func (r *PaymentRepository) FinalizePayment(
 		_ = tx.Rollback()
 	}()
 
-	var (
-		orderID       int
-		currentStatus string
-	)
-	err = tx.QueryRow(`
-		SELECT order_id, status
-		FROM transactions
-		WHERE payment_reference = $1
-		FOR UPDATE
-	`, reference).Scan(&orderID, &currentStatus)
-	if err == sql.ErrNoRows {
-		return false, fmt.Errorf("payment not found")
-	}
+	var orderID int
+	var orderStatus string
+	// Every attempt for this order takes the same lock before touching money.
+	err = tx.QueryRow(`SELECT o.id,o.status FROM orders o JOIN transactions t ON t.order_id=o.id WHERE t.payment_reference=$1 FOR UPDATE OF o`, reference).Scan(&orderID, &orderStatus)
 	if err != nil {
-		return false, fmt.Errorf("lock payment: %w", err)
+		return false, err
 	}
-
-	// A late failed-event delivery must never overwrite a successful payment.
+	var currentStatus, sellerType, amount, currency string
+	var sellerID int
+	var oldProviderID sql.NullString
+	err = tx.QueryRow(`SELECT status,seller_type,seller_id,amount::text,currency,provider_transaction_id FROM transactions WHERE payment_reference=$1 FOR UPDATE`, reference).
+		Scan(&currentStatus, &sellerType, &sellerID, &amount, &currency, &oldProviderID)
+	if err != nil {
+		return false, err
+	}
+	if currentStatus == models.PaymentSuccessful && oldProviderID.Valid && oldProviderID.String != providerTransactionID {
+		return false, fmt.Errorf("a different provider transaction already paid this reference")
+	}
 	newlySuccessful := currentStatus != models.PaymentSuccessful && status == models.PaymentSuccessful
 	if currentStatus == models.PaymentSuccessful {
 		status = models.PaymentSuccessful
-		newlySuccessful = false
 	}
-
-	_, err = tx.Exec(`
-		UPDATE transactions
-		SET status = $1,
-		    provider_transaction_id = COALESCE(NULLIF($2, ''), provider_transaction_id),
-		    paid_at = CASE
-		        WHEN $1 = 'successful' THEN COALESCE(paid_at, CURRENT_TIMESTAMP)
-		        ELSE paid_at
-		    END,
-		    updated_at = CURRENT_TIMESTAMP
-		WHERE payment_reference = $3
-	`, status, providerTransactionID, reference)
+	var alreadyPaid bool
+	err = tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM transactions WHERE order_id=$1 AND status='successful' AND payment_reference<>$2)`, orderID, reference).Scan(&alreadyPaid)
 	if err != nil {
-		return false, fmt.Errorf("finalize payment: %w", err)
+		return false, err
 	}
-
-	if status == models.PaymentSuccessful {
-		if err := confirmOrderAfterPayment(tx, orderID); err != nil {
+	reviewRequired := newlySuccessful && (alreadyPaid || orderStatus != "pending")
+	_, err = tx.Exec(`UPDATE transactions SET status=$1,provider_transaction_id=$2,
+        paid_at=CASE WHEN $1='successful' THEN COALESCE(paid_at,CURRENT_TIMESTAMP) ELSE paid_at END,
+        review_required=review_required OR $4,updated_at=CURRENT_TIMESTAMP WHERE payment_reference=$3`, status, providerTransactionID, reference, reviewRequired)
+	if err != nil {
+		return false, err
+	}
+	if newlySuccessful && !reviewRequired {
+		if err = confirmOrderAfterPayment(tx, orderID); err != nil {
 			return false, err
 		}
+        if err=creditOrderSale(tx,orderID,sellerType,sellerID,amount,currency,r.commissionBPS);err!=nil { return false,err }
 	}
+	newlySuccessful = newlySuccessful && !reviewRequired
 
 	if webhook != nil {
 		if err := recordWebhookEvent(tx, webhook); err != nil {

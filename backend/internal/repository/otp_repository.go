@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"backend/internal/models"
 )
@@ -19,6 +20,10 @@ func NewOTPRepository(db *sql.DB) *OTPRepository {
 
 // Create stores a new OTP without its plaintext code.
 func (r *OTPRepository) Create(otp *models.OTPCode) error {
+	return r.CreateWithCooldown(otp, 0)
+}
+
+func (r *OTPRepository) CreateWithCooldown(otp *models.OTPCode, cooldown time.Duration) error {
 	if r == nil || r.db == nil {
 		return sql.ErrConnDone
 	}
@@ -26,7 +31,27 @@ func (r *OTPRepository) Create(otp *models.OTPCode) error {
 		return errors.New("OTP cannot be nil")
 	}
 
-	err := r.db.QueryRow(`
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var userID int
+	if err := tx.QueryRow(`SELECT id FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, otp.UserID).Scan(&userID); err != nil {
+		return err
+	}
+	var recent bool
+	if err := tx.QueryRow(`SELECT EXISTS (SELECT 1 FROM otp_codes WHERE user_id=$1 AND purpose=$2
+		AND created_at > CURRENT_TIMESTAMP - $3 * INTERVAL '1 second')`, otp.UserID, otp.Purpose, cooldown.Seconds()).Scan(&recent); err != nil {
+		return err
+	}
+	if recent {
+		return errors.New("please wait before requesting another code")
+	}
+	if _, err := tx.Exec(`UPDATE otp_codes SET consumed_at=CURRENT_TIMESTAMP WHERE user_id=$1 AND purpose=$2 AND consumed_at IS NULL`, otp.UserID, otp.Purpose); err != nil {
+		return err
+	}
+	err = tx.QueryRow(`
 		INSERT INTO otp_codes (
 			user_id,
 			phone,
@@ -49,7 +74,7 @@ func (r *OTPRepository) Create(otp *models.OTPCode) error {
 		return fmt.Errorf("create OTP: %w", err)
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 // LatestActive returns the newest unconsumed OTP for a user and purpose.
@@ -118,20 +143,32 @@ func (r *OTPRepository) IncrementAttempts(id int64) error {
 
 // Consume marks an OTP as used exactly once.
 func (r *OTPRepository) Consume(id int64) error {
+	return r.ConsumeIfUsable(id, int(^uint(0)>>1))
+}
+
+func (r *OTPRepository) ConsumeIfUsable(id int64, maxAttempts int) error {
 	if r == nil || r.db == nil {
 		return sql.ErrConnDone
 	}
 
-	_, err := r.db.Exec(`
+	result, err := r.db.Exec(`
 		UPDATE otp_codes
 		SET consumed_at = CURRENT_TIMESTAMP
 		WHERE id = $1
 		  AND consumed_at IS NULL
-	`, id)
+		  AND expires_at > CURRENT_TIMESTAMP AND attempts < $2
+	`, id, maxAttempts)
 	if err != nil {
 		return fmt.Errorf("consume OTP: %w", err)
 	}
 
+	count, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count != 1 {
+		return errors.New("OTP code expired or already used")
+	}
 	return nil
 }
 

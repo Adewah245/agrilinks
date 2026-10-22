@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,7 @@ import (
 type paymentStore interface {
 	CreatePendingForOrder(buyerID, orderID int, reference, currency, provider string) (*models.Payment, error)
 	UpdateStatus(reference, status, providerTransactionID string) error
+	SaveCheckoutURL(reference, checkoutURL string) error
 	GetByReference(reference string) (*models.Payment, error)
 	FinalizePayment(reference, status, providerTransactionID string, webhook *models.WebhookEvent) (bool, error)
 	HasWebhookBeenProcessed(transactionID, event string) (bool, error)
@@ -151,19 +153,26 @@ func (s *PaymentService) Initiate(
 		return nil, err
 	}
 
+	if payment.CheckoutURL != "" {
+		return &InitiatePaymentResult{CheckoutURL: payment.CheckoutURL, Reference: payment.Reference}, nil
+	}
 	checkoutURL, err := s.gateway.InitializePayment(ctx, InitializePaymentRequest{
-		Reference:     reference,
-		Amount:        fmt.Sprintf("%.2f", order.TotalAmount),
-		Currency:      s.currency,
+		Reference:     payment.Reference,
+		Amount:        payment.Amount,
+		Currency:      payment.Currency,
 		CustomerEmail: buyer.Email,
 		CustomerName:  buyer.FullName,
 		Description:   fmt.Sprintf("Payment for order %d", orderID),
 	})
 	if err != nil {
-		_ = s.repo.UpdateStatus(reference, models.PaymentFailed, "")
+		// A timeout does not prove the provider rejected the payment. Keep
+		// this reference for retries until a verified result settles it.
 		return nil, fmt.Errorf("%w: %v", ErrPaymentProvider, err)
 	}
 
+	if err := s.repo.SaveCheckoutURL(payment.Reference, checkoutURL); err != nil {
+		return nil, err
+	}
 	return &InitiatePaymentResult{
 		CheckoutURL: checkoutURL,
 		Reference:   payment.Reference,
@@ -192,7 +201,7 @@ func (s *PaymentService) ConfirmCallback(
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrPaymentProvider, err)
 	}
-	if verified == nil || verified.Reference != reference {
+	if verified == nil || verified.Reference != reference || verified.TransactionID != transactionID {
 		return "", ErrReferenceMismatch
 	}
 
@@ -249,7 +258,7 @@ func (s *PaymentService) ProcessWebhook(
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrPaymentProvider, err)
 	}
-	if verified == nil || verified.Reference != payload.Data.TxRef {
+	if verified == nil || verified.Reference != payload.Data.TxRef || verified.TransactionID != transactionID {
 		return ErrReferenceMismatch
 	}
 
@@ -321,7 +330,7 @@ func verifiedPaymentStatus(providerStatus string) string {
 
 func sameMoney(expected string, actual float64) bool {
 	expectedAmount, err := strconv.ParseFloat(strings.TrimSpace(expected), 64)
-	if err != nil {
+	if err != nil || math.IsNaN(actual) || math.IsInf(actual, 0) || math.IsNaN(expectedAmount) || math.IsInf(expectedAmount, 0) {
 		return false
 	}
 	return strconv.FormatFloat(expectedAmount, 'f', 2, 64) ==
@@ -339,8 +348,18 @@ func (s *PaymentService) PayableOrders(buyerID int) ([]models.Order, error) {
 	}
 
 	payable := make([]models.Order, 0, len(orders))
+	positions := map[int]int{}
 	for _, order := range orders {
-		if order.Status == "pending" {
+		if order.Status != "pending" {
+			continue
+		}
+		item := models.OrderItem{ProductID: order.ProductID, ProductName: order.ProductName, Quantity: order.Quantity, TotalPrice: order.TotalPrice}
+		if index, ok := positions[order.ID]; ok {
+			payable[index].Items = append(payable[index].Items, item)
+			payable[index].ProductName += ", " + order.ProductName
+		} else {
+			positions[order.ID] = len(payable)
+			order.Items = []models.OrderItem{item}
 			payable = append(payable, order)
 		}
 	}

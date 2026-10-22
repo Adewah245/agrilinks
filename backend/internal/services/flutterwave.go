@@ -27,6 +27,7 @@ type PaymentGateway interface {
 
 // FlutterwaveClient implements PaymentGateway for Flutterwave hosted checkout.
 type FlutterwaveClient struct {
+	baseURL        string
 	secretKey      string
 	redirectURL    string
 	paymentOptions string
@@ -39,12 +40,15 @@ func NewFlutterwaveClient(
 	paymentOptions string,
 ) *FlutterwaveClient {
 	return &FlutterwaveClient{
+		baseURL:        flutterwaveBaseURL,
 		secretKey:      strings.TrimSpace(secretKey),
 		redirectURL:    strings.TrimSpace(redirectURL),
 		paymentOptions: strings.TrimSpace(paymentOptions),
 		httpClient:     &http.Client{Timeout: flutterwaveRequestTimeout},
 	}
 }
+
+func (c *FlutterwaveClient) SetBaseURL(value string) { c.baseURL = strings.TrimRight(value, "/") }
 
 type InitializePaymentRequest struct {
 	Reference     string
@@ -114,7 +118,7 @@ func (c *FlutterwaveClient) InitializePayment(
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		flutterwaveBaseURL+"/payments",
+		c.baseURL+"/payments",
 		bytes.NewReader(body),
 	)
 	if err != nil {
@@ -199,7 +203,7 @@ func (c *FlutterwaveClient) VerifyTransaction(
 	httpReq, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		flutterwaveBaseURL+"/transactions/"+transactionID+"/verify",
+		c.baseURL+"/transactions/"+transactionID+"/verify",
 		nil,
 	)
 	if err != nil {

@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"math"
+	"strings"
 	"time"
 
 	"backend/internal/models"
@@ -73,6 +75,10 @@ type SubmitResult struct {
 }
 
 func (s *PriceService) SubmitPrice(ctx context.Context, in SubmitPriceInput) (*SubmitResult, error) {
+	in.CommodityID = strings.TrimSpace(in.CommodityID)
+	in.MarketID = strings.TrimSpace(in.MarketID)
+	in.Currency = strings.ToUpper(strings.TrimSpace(in.Currency))
+	in.Unit = strings.ToLower(strings.TrimSpace(in.Unit))
 	if err := validate(in); err != nil {
 		return nil, err
 	}
@@ -196,6 +202,8 @@ func (s *PriceService) recomputeAggregate(ctx context.Context, commodityID, mark
 	}
 
 	agg := &models.PriceAggregate{
+		Currency:    recent[0].Currency,
+		Unit:        recent[0].Unit,
 		CommodityID: commodityID,
 		MarketID:    marketID,
 		Date:        s.now(),
@@ -273,7 +281,7 @@ func validate(in SubmitPriceInput) error {
 	if in.CommodityID == "" || in.MarketID == "" || in.SubmitterID == "" || in.Currency == "" || in.Unit == "" {
 		return models.ErrInvalidInput
 	}
-	if in.Price <= 0 {
+	if in.Price <= 0 || math.IsNaN(in.Price) || math.IsInf(in.Price, 0) {
 		return models.ErrInvalidPrice
 	}
 	return nil

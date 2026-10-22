@@ -67,6 +67,8 @@ type PriceReport struct {
 // PriceAggregate is a precomputed daily summary for a commodity/market pair,
 // built only from Accepted reports.
 type PriceAggregate struct {
+	Currency    string
+	Unit        string
 	CommodityID string
 	MarketID    string
 	Date        time.Time
