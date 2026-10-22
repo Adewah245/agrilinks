@@ -36,7 +36,7 @@ func (h *OrderHandler) ListHandler(
 		return
 	}
 
-	if !user.IsBuyer() {
+	if !user.CanBuy() {
 		http.Redirect(w, r, "/sales", http.StatusSeeOther)
 		return
 	}
@@ -83,7 +83,7 @@ func (h *OrderHandler) PlaceHandler(
 		return
 	}
 
-	if !user.IsBuyer() {
+	if !user.CanBuy() {
 		http.Error(w, "Only buyers can place orders", http.StatusForbidden)
 		return
 	}

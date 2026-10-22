@@ -306,98 +306,9 @@
 
 
                 <div class="farm-options">
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="crop"
-                        >
-
-                        <span>
-                            🌱 Crop Farming
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="livestock"
-                        >
-
-                        <span>
-                            🐄 Livestock Farming
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="poultry"
-                        >
-
-                        <span>
-                            🐓 Poultry Farming
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="fishery"
-                        >
-
-                        <span>
-                            🐟 Fish Farming / Aquaculture
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="beekeeping"
-                        >
-
-                        <span>
-                            🐝 Beekeeping
-                        </span>
-
-                    </label>
-
-
-                    <label class="farm-option">
-
-                        <input
-                            type="checkbox"
-                            name="farm_type"
-                            value="other"
-                        >
-
-                        <span>
-                            🌍 Other Agricultural Activity
-                        </span>
-
-                    </label>
-
-
+                    {{range .FarmingTypes}}
+                    <label class="farm-option"><input type="checkbox" name="farm_type" value="{{.Slug}}"><span>{{.Name}}</span></label>
+                    {{end}}
                 </div>
 
             </section>
@@ -515,41 +426,6 @@
                 </div>
 
 
-
-                <!-- =================================================
-                     NIN
-                ================================================== -->
-
-                <div class="form-group">
-
-                    <label for="nin">
-
-                        National Identification Number (NIN)
-
-                        <span class="optional-label">
-                            (Optional)
-                        </span>
-
-                    </label>
-
-
-                    <input
-                        name="nin"
-                        id="nin"
-                        type="text"
-                        inputmode="numeric"
-                        autocomplete="off"
-                        placeholder="Enter your NIN"
-                        maxlength="11"
-                    >
-
-
-                    <p class="field-help">
-                        NIN is optional for now and may be used
-                        for future identity verification.
-                    </p>
-
-                </div>
 
 
             </section>

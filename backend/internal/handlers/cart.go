@@ -98,7 +98,7 @@ func (h *Cart) Handler(
 	// should access the buyer cart.
 	// ========================================================
 
-	if !user.IsBuyer() {
+	if !user.CanBuy() {
 		http.Redirect(
 			w,
 			r,

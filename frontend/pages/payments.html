@@ -17,6 +17,7 @@
             <a href="/cart">Cart</a>
             <a href="/orders">Orders</a>
             <a href="/payments">Payments</a>
+            <a href="/wallet">Wallet</a>
             <a href="/logout">Logout</a>
         </nav>
     </header>
@@ -60,6 +61,7 @@
                             <form method="POST" action="/payments">
                                 <input type="hidden" name="order_id" value="{{.ID}}">
                                 <button type="submit">Pay with Flutterwave</button>
+                                <button type="submit" formaction="/wallet" name="action" value="pay_order">Pay from wallet</button>
                             </form>
                         </td>
                     </tr>

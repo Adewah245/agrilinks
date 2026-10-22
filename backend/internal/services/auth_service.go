@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"net/mail"
 	"strings"
 
 	"backend/internal/models"
@@ -96,7 +97,6 @@ func (s *AuthService) Register(
 	role,
 	photoURL,
 	accountType,
-	nin,
 	organisationName string,
 	farmingTypes []string,
 ) error {
@@ -116,7 +116,9 @@ func (s *AuthService) Register(
 	role = strings.ToLower(strings.TrimSpace(role))
 	photoURL = strings.TrimSpace(photoURL)
 	accountType = strings.ToLower(strings.TrimSpace(accountType))
-	nin = strings.TrimSpace(nin)
+	if accountType == "organization" {
+		accountType = "organisation"
+	}
 	organisationName = strings.TrimSpace(organisationName)
 
 	// --------------------------------------------------------
@@ -128,7 +130,12 @@ func (s *AuthService) Register(
 	}
 
 	if phone == "" {
-		return errors.New("phone is required")
+		return errors.New("enter a valid Nigerian phone number")
+	}
+	if email != "" {
+		if parsed, err := mail.ParseAddress(email); err != nil || parsed.Address != email {
+			return errors.New("enter a valid email address")
+		}
 	}
 
 	if password == "" {
@@ -224,34 +231,6 @@ func (s *AuthService) Register(
 	}
 
 	// --------------------------------------------------------
-	// NIN
-	//
-	// NIN is intentionally OPTIONAL for now.
-	//
-	// We keep receiving it here so that the registration
-	// interface is ready for the future NIN API.
-	//
-	// For now we DO NOT:
-	//
-	// - require NIN
-	// - verify NIN
-	// - store raw NIN in users
-	//
-	// When the NIN API is available, this section can become:
-	//
-	// NIN
-	//   ↓
-	// API verification
-	//   ↓
-	// successful verification
-	//   ↓
-	// identity verification record
-	//
-	// --------------------------------------------------------
-
-	_ = nin
-
-	// --------------------------------------------------------
 	// Check phone uniqueness
 	// --------------------------------------------------------
 
@@ -307,25 +286,9 @@ func (s *AuthService) Register(
 	// Create user
 	// --------------------------------------------------------
 
-	userID, err := s.repo.Create(user)
+	_, err = s.repo.Create(user)
 	if err != nil {
 		return err
-	}
-
-	// --------------------------------------------------------
-	// Save existing farming activities
-	//
-	// These are NOT learning journeys.
-	// --------------------------------------------------------
-
-	if len(user.FarmingTypes) > 0 {
-
-		if err := s.repo.SaveFarmingTypes(
-			userID,
-			user.FarmingTypes,
-		); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -396,42 +359,38 @@ func (s *AuthService) GetUserByID(
 // ============================================================
 
 // UpdateProfile updates a user's editable personal information.
-func (s *AuthService) UpdateProfile(
-	id int,
-	fullName,
-	phone,
-	email,
-	location string,
-) error {
-
-	if id <= 0 {
-		return errors.New("invalid user ID")
-	}
-
+func (s *AuthService) UpdateProfile(id int, fullName, phone, email, location, state, lga, currentPassword, photoURL string) error {
 	fullName = strings.TrimSpace(fullName)
-	phone = strings.TrimSpace(phone)
+	phone = NormalizeNigerianPhone(phone)
 	email = strings.TrimSpace(email)
 	location = strings.TrimSpace(location)
-
-	if fullName == "" {
-		return errors.New("full name is required")
+	if id <= 0 || fullName == "" || phone == "" || location == "" {
+		return errors.New("enter your name, phone number, and community")
 	}
-
-	if phone == "" {
-		return errors.New("phone is required")
+	if email != "" {
+		if address, err := mail.ParseAddress(email); err != nil || address.Address != email {
+			return errors.New("enter a valid email address")
+		}
 	}
-
-	if location == "" {
-		return errors.New("location is required")
+	current, err := s.repo.GetByID(id)
+	if err != nil {
+		return err
 	}
-
-	return s.repo.UpdateProfile(
-		id,
-		fullName,
-		phone,
-		email,
-		location,
-	)
+	if current == nil {
+		return errors.New("account was not found")
+	}
+	if NormalizeNigerianPhone(current.Phone) != phone || current.Email != email {
+		if err = bcrypt.CompareHashAndPassword([]byte(current.PasswordHash), []byte(currentPassword)); err != nil {
+			return errors.New("enter your current password to change your phone number or email")
+		}
+	}
+	if state == "" {
+		state = current.State
+	}
+	if lga == "" {
+		lga = current.LGA
+	}
+	return s.repo.UpdateProfile(id, fullName, phone, email, location, state, lga, photoURL)
 }
 
 // ============================================================

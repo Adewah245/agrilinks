@@ -76,7 +76,7 @@ func (h *Marketplace) MarketplaceHandler(
 
 		h.render(
 			w,
-			user.IsBuyer(),
+			user.CanBuy(),
 			user.ID,
 			"",
 			"",
@@ -103,7 +103,7 @@ func (h *Marketplace) MarketplaceHandler(
 
 			h.renderWithSearch(
 				w,
-				user.IsBuyer(),
+				user.CanBuy(),
 				user.ID,
 				"",
 				"",
@@ -113,10 +113,10 @@ func (h *Marketplace) MarketplaceHandler(
 		}
 
 		// Only buyers can purchase products.
-		if !user.IsBuyer() {
+		if !user.CanBuy() {
 			h.render(
 				w,
-				user.IsBuyer(),
+				user.CanBuy(),
 				user.ID,
 				"",
 				"Only buyer accounts can place orders",
@@ -131,7 +131,7 @@ func (h *Marketplace) MarketplaceHandler(
 		if err != nil || productID <= 0 {
 			h.render(
 				w,
-				user.IsBuyer(),
+				user.CanBuy(),
 				user.ID,
 				"",
 				"Choose a valid product.",
@@ -147,7 +147,7 @@ func (h *Marketplace) MarketplaceHandler(
 		if err != nil || quantity <= 0 {
 			h.render(
 				w,
-				user.IsBuyer(),
+				user.CanBuy(),
 				user.ID,
 				"",
 				"Enter a valid amount.",
@@ -163,7 +163,7 @@ func (h *Marketplace) MarketplaceHandler(
 		); err != nil {
 			h.render(
 				w,
-				user.IsBuyer(),
+				user.CanBuy(),
 				user.ID,
 				"",
 				err.Error(),

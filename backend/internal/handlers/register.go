@@ -22,7 +22,6 @@ type UserReg struct {
 	Confirm_Password string
 
 	AccountType string
-	NIN         string
 
 	OrganisationName string
 
@@ -49,6 +48,11 @@ func (h *Register) RegisterHandler(
 	switch r.Method {
 
 	case http.MethodGet:
+		types, err := h.learning.GetFarmingTypes()
+		if err != nil {
+			http.Error(w, "Could not load farming activities", 500)
+			return
+		}
 		// ====================================================
 		// DISPLAY REGISTRATION PAGE
 		// ====================================================
@@ -58,7 +62,7 @@ func (h *Register) RegisterHandler(
 		if err := render.RenderTemplates(
 			w,
 			"register.html",
-			nil,
+			map[string]any{"FarmingTypes": types},
 		); err != nil {
 			log.Println("render error:", err)
 			return
@@ -80,6 +84,8 @@ func (h *Register) RegisterHandler(
 			)
 			return
 		}
+
+		defer r.MultipartForm.RemoveAll()
 
 		// ====================================================
 		// SAVE PROFILE PICTURE
@@ -129,10 +135,6 @@ func (h *Register) RegisterHandler(
 
 			AccountType: strings.TrimSpace(
 				r.FormValue("account_type"),
-			),
-
-			NIN: strings.TrimSpace(
-				r.FormValue("nin"),
 			),
 
 			OrganisationName: strings.TrimSpace(
@@ -256,7 +258,7 @@ func (h *Register) RegisterHandler(
 
 		if strings.EqualFold(
 			user.AccountType,
-			"organization",
+			"organisation",
 		) {
 			role = "organisation"
 
@@ -329,7 +331,6 @@ func (h *Register) RegisterHandler(
 			photoURL,
 
 			user.AccountType,
-			user.NIN,
 			user.OrganisationName,
 			user.FarmingTypes,
 		)

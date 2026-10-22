@@ -36,12 +36,21 @@ var (
 // the wallet lookup value and refuses to close an account while those payment
 // records would strand money.
 type UserRepository struct {
-	db *sql.DB
+	db                       *sql.DB
+	configuredAdministrators map[int]bool
 }
 
 // NewUserRepository creates a UserRepository using the provided database.
 func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db: db}
+}
+
+// SetConfiguredAdministrators is called during application setup only.
+func (r *UserRepository) SetConfiguredAdministrators(ids []int) {
+	r.configuredAdministrators = make(map[int]bool, len(ids))
+	for _, id := range ids {
+		r.configuredAdministrators[id] = true
+	}
 }
 
 // uniqueViolationConstraint returns the PostgreSQL constraint involved in a
@@ -118,54 +127,37 @@ func (r *UserRepository) Create(user *models.User) (int, error) {
 		emailValue = user.Email
 	}
 
-	query := `
-		INSERT INTO users (
-			full_name,
-			phone,
-			email,
-			password_hash,
-			location,
-			lga,
-			state,
-			country,
-			role,
-			account_type,
-			organisation_name,
-			photo_url
-		)
-		VALUES (
-			$1, $2, $3, $4,
-			$5, $6, $7, $8,
-			$9, $10, $11, $12
-		)
-		RETURNING id
-	`
-
-	var id int
-	err := r.db.QueryRow(
-		query,
-		user.FullName,
-		user.Phone,
-		emailValue,
-		user.PasswordHash,
-		user.Location,
-		user.LGA,
-		user.State,
-		user.Country,
-		user.Role,
-		user.AccountType,
-		user.OrganisationName,
-		user.PhotoURL,
-	).Scan(&id)
+	tx, err := r.db.Begin()
 	if err != nil {
-		if mapped := mapUserUniqueViolation(err); mapped != err {
-			return 0, mapped
-		}
-		return 0, fmt.Errorf("create user: %w", err)
+		return 0, err
 	}
-
-	user.ID = id
-	return id, nil
+	defer tx.Rollback()
+	if err = resolveUserLocation(tx, user); err != nil {
+		return 0, err
+	}
+	err = tx.QueryRow(`INSERT INTO users(full_name,phone,email,password_hash,location,lga,state,country,role,account_type,organisation_name,photo_url,state_id,lga_id,community_id)
+        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULLIF($11,''),$12,$13,$14,$15) RETURNING id`,
+		user.FullName, user.Phone, emailValue, user.PasswordHash, user.Location, user.LGA, user.State, user.Country, user.Role, user.AccountType, user.OrganisationName, user.PhotoURL, user.StateID, user.LGAID, user.CommunityID).Scan(&user.ID)
+	if err != nil {
+		return 0, mapUserUniqueViolation(err)
+	}
+	if err = saveUserFarmingTypes(tx, user.ID, user.FarmingTypes); err != nil {
+		return 0, err
+	}
+	if user.AccountType == "organisation" {
+		var organizationID int
+		err = tx.QueryRow(`INSERT INTO organizations(name,organization_type,state_id,lga_id,logo_url) VALUES($1,'agricultural_group',$2,$3,$4) RETURNING id`, user.OrganisationName, user.StateID, user.LGAID, user.PhotoURL).Scan(&organizationID)
+		if err != nil {
+			return 0, err
+		}
+		if _, err = tx.Exec(`INSERT INTO organization_members(organization_id,user_id,member_role) VALUES($1,$2,'owner')`, organizationID, user.ID); err != nil {
+			return 0, err
+		}
+	}
+	if err = tx.Commit(); err != nil {
+		return 0, err
+	}
+	return user.ID, nil
 }
 
 // ============================================================
@@ -198,7 +190,8 @@ const userSelectColumns = `
 		ARRAY[]::TEXT[]
 	) AS farming_types,
 	created_at,
-	updated_at
+	updated_at,
+ state_id,lga_id,community_id
 `
 
 func scanUser(scanner interface {
@@ -224,6 +217,7 @@ func scanUser(scanner interface {
 		pq.Array(&user.FarmingTypes),
 		&user.CreatedAt,
 		&user.UpdatedAt,
+		&user.StateID, &user.LGAID, &user.CommunityID,
 	)
 	if err != nil {
 		return nil, err
@@ -266,6 +260,9 @@ func (r *UserRepository) GetByID(id int) (*models.User, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	if r.configuredAdministrators[id] {
+		user.IsAdmin = true
 	}
 	return user, nil
 }
@@ -382,55 +379,30 @@ func (r *UserRepository) ListForChat(excludeID int, search string) ([]models.Use
 // ============================================================
 
 // UpdateProfile updates the editable personal details.
-func (r *UserRepository) UpdateProfile(
-	id int,
-	fullName string,
-	phone string,
-	email string,
-	location string,
-) error {
-	fullName = strings.TrimSpace(fullName)
-	phone = strings.TrimSpace(phone)
-	email = strings.TrimSpace(email)
-	location = strings.TrimSpace(location)
-
-	if fullName == "" || phone == "" {
-		return fmt.Errorf("full name and phone are required")
-	}
-
-	var emailValue any
-	if email != "" {
-		emailValue = email
-	}
-
-	result, err := r.db.Exec(`
-		UPDATE users
-		SET full_name = $1,
-			phone = $2,
-			email = $3,
-			location = $4,
-			updated_at = CURRENT_TIMESTAMP
-		WHERE id = $5
-		AND deleted_at IS NULL
-	`, fullName, phone, emailValue, location, id)
-	if err != nil {
-		if mapped := mapUserUniqueViolation(err); mapped != err {
-			return mapped
-		}
-		return err
-	}
-
-	affected, err := result.RowsAffected()
+func (r *UserRepository) UpdateProfile(id int, fullName, phone, email, location, state, lga, photoURL string) error {
+	tx, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
-	if affected == 0 {
+	defer tx.Rollback()
+	u := &models.User{ID: id, FullName: fullName, Phone: phone, Email: email, Location: location, State: state, LGA: lga, Country: "Nigeria"}
+	if err = resolveUserLocation(tx, u); err != nil {
+		return err
+	}
+	result, err := tx.Exec(`UPDATE users SET full_name=$2,phone=$3,email=NULLIF($4,''),location=$5,state=$6,lga=$7,state_id=$8,lga_id=$9,community_id=$10,photo_url=COALESCE(NULLIF($11,''),photo_url),updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND deleted_at IS NULL`, id, fullName, phone, email, u.Location, u.State, u.LGA, u.StateID, u.LGAID, u.CommunityID, photoURL)
+	if err != nil {
+		return mapUserUniqueViolation(err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
 		return ErrAccountNotFound
 	}
-	return nil
+	return tx.Commit()
 }
 
-// UpdatePhoto sets the user's profile photograph URL.
 func (r *UserRepository) UpdatePhoto(id int, photoURL string) error {
 	result, err := r.db.Exec(`
 		UPDATE users
@@ -489,30 +461,16 @@ func (r *UserRepository) UpdatePassword(id int, passwordHash string) error {
 // ============================================================
 
 // SaveFarmingTypes records farming activities the user already practises.
-func (r *UserRepository) SaveFarmingTypes(userID int, farmingTypes []string) error {
-	if userID <= 0 {
-		return ErrAccountNotFound
+func (r *UserRepository) SaveFarmingTypes(userID int, types []string) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
 	}
-
-	for _, farmingType := range farmingTypes {
-		farmingType = strings.TrimSpace(strings.ToLower(farmingType))
-		if farmingType == "" {
-			continue
-		}
-
-		_, err := r.db.Exec(`
-			INSERT INTO user_farming_types (user_id, farming_type_id)
-			SELECT $1, id
-			FROM farming_types
-			WHERE slug = $2
-			ON CONFLICT (user_id, farming_type_id) DO NOTHING
-		`, userID, farmingType)
-		if err != nil {
-			return err
-		}
+	defer tx.Rollback()
+	if err = saveUserFarmingTypes(tx, userID, types); err != nil {
+		return err
 	}
-
-	return nil
+	return tx.Commit()
 }
 
 // ============================================================

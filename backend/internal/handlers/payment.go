@@ -43,7 +43,7 @@ func (h *PaymentHandler) Handler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		h.render(w, user, "", "")
 	case http.MethodPost:
-		if !user.IsBuyer() {
+		if !user.CanBuy() {
 			h.render(w, user, "Only buyers can start purchase payments.", "")
 			return
 		}

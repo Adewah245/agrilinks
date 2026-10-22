@@ -6,11 +6,11 @@ import (
 )
 
 type Wallet struct {
-	ID       int64
-	FarmerID int
+	ID        int64
+	UserID    int
 	OwnerType string
-	Balance  string
-	Currency string
+	Balance   string
+	Currency  string
 
 	// WalletNumber is the permanent Agro-Shield identifier used by the
 	// wallet-to-wallet transfer flow.
@@ -96,7 +96,7 @@ const (
 // and ConsentAt/ConsentVersion record that the farmer agreed to the share.
 type WalletVirtualAccount struct {
 	ID       int64
-	FarmerID int
+	UserID   int
 	Provider string
 	TxRef    string
 	OrderRef string
@@ -138,7 +138,7 @@ func (a WalletVirtualAccount) MaskedAccountNumber() string {
 // own transaction id, because a static account's permanent tx_ref identifies
 // the account rather than one payment.
 type PendingVirtualAccountTransfer struct {
-	FarmerID              int
+	UserID                int
 	Reference             string
 	ProviderTransactionID string
 	Amount                string
@@ -150,7 +150,7 @@ type PendingVirtualAccountTransfer struct {
 // exception list; the reconciliation pass re-checks the same rows with the
 // provider rather than letting them accumulate silently.
 type PendingDeposit struct {
-	FarmerID  int
+	UserID    int
 	FullName  string
 	Amount    string
 	Currency  string
@@ -162,7 +162,7 @@ type PendingDeposit struct {
 // lives on the farmer account so it can be granted and revoked from the page
 // itself, without a database client or a restart.
 type AdminAccount struct {
-	FarmerID int
+	UserID   int
 	FullName string
 	Phone    string
 
@@ -174,7 +174,7 @@ type AdminAccount struct {
 
 type Withdrawal struct {
 	ID            int64
-	FarmerID      int
+	UserID        int
 	FullName      string
 	Amount        string
 	Currency      string

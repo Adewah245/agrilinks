@@ -132,7 +132,8 @@
             Logout
         </a>
 
-    </nav>
+    <a href="/wallet">Wallet</a>
+</nav>
 
 </header>
 
@@ -770,187 +771,16 @@
              LOCATION
              ===================================================== -->
 
-        <label for="profile-location">
-            Location (LGA)
-        </label>
+        <label for="profile-state">State</label>
+        <select id="profile-state" name="state" data-selected="{{.State}}" required><option value="{{.State}}">{{.State}}</option></select>
+        <label for="profile-lga">LGA</label>
+        <select id="profile-lga" name="lga" data-selected="{{.LGA}}" required><option value="{{.LGA}}">{{.LGA}}</option></select>
+        <label for="profile-location">Community or town</label>
+        <input id="profile-location" name="location" value="{{.Location}}" maxlength="200" required>
+        <label for="profile-password">Current password (needed when changing your phone or email)</label>
+        <input id="profile-password" name="current_password" type="password" autocomplete="current-password">
+        <p id="profile-location-error" role="alert"></p>
 
-        <select
-            id="profile-location"
-            name="location"
-            required
-        >
-
-            <option
-                value=""
-                disabled
-                {{if not .Location}}selected{{end}}
-            >
-                Select your LGA
-            </option>
-
-
-            <option
-                value="Ado"
-                {{if eq .Location "Ado"}}selected{{end}}
-            >
-                Ado
-            </option>
-
-            <option
-                value="Agatu"
-                {{if eq .Location "Agatu"}}selected{{end}}
-            >
-                Agatu
-            </option>
-
-            <option
-                value="Apa"
-                {{if eq .Location "Apa"}}selected{{end}}
-            >
-                Apa
-            </option>
-
-            <option
-                value="Buruku"
-                {{if eq .Location "Buruku"}}selected{{end}}
-            >
-                Buruku
-            </option>
-
-            <option
-                value="Gboko"
-                {{if eq .Location "Gboko"}}selected{{end}}
-            >
-                Gboko
-            </option>
-
-            <option
-                value="Guma"
-                {{if eq .Location "Guma"}}selected{{end}}
-            >
-                Guma
-            </option>
-
-            <option
-                value="Gwer East"
-                {{if eq .Location "Gwer East"}}selected{{end}}
-            >
-                Gwer East
-            </option>
-
-            <option
-                value="Gwer West"
-                {{if eq .Location "Gwer West"}}selected{{end}}
-            >
-                Gwer West
-            </option>
-
-            <option
-                value="Katsina-Ala"
-                {{if eq .Location "Katsina-Ala"}}selected{{end}}
-            >
-                Katsina-Ala
-            </option>
-
-            <option
-                value="Konshisha"
-                {{if eq .Location "Konshisha"}}selected{{end}}
-            >
-                Konshisha
-            </option>
-
-            <option
-                value="Kwande"
-                {{if eq .Location "Kwande"}}selected{{end}}
-            >
-                Kwande
-            </option>
-
-            <option
-                value="Logo"
-                {{if eq .Location "Logo"}}selected{{end}}
-            >
-                Logo
-            </option>
-
-            <option
-                value="Makurdi"
-                {{if eq .Location "Makurdi"}}selected{{end}}
-            >
-                Makurdi
-            </option>
-
-            <option
-                value="Obi"
-                {{if eq .Location "Obi"}}selected{{end}}
-            >
-                Obi
-            </option>
-
-            <option
-                value="Ogbadibo"
-                {{if eq .Location "Ogbadibo"}}selected{{end}}
-            >
-                Ogbadibo
-            </option>
-
-            <option
-                value="Ohimini"
-                {{if eq .Location "Ohimini"}}selected{{end}}
-            >
-                Ohimini
-            </option>
-
-            <option
-                value="Oju"
-                {{if eq .Location "Oju"}}selected{{end}}
-            >
-                Oju
-            </option>
-
-            <option
-                value="Okpokwu"
-                {{if eq .Location "Okpokwu"}}selected{{end}}
-            >
-                Okpokwu
-            </option>
-
-            <option
-                value="Otukpo"
-                {{if eq .Location "Otukpo"}}selected{{end}}
-            >
-                Otukpo
-            </option>
-
-            <option
-                value="Tarka"
-                {{if eq .Location "Tarka"}}selected{{end}}
-            >
-                Tarka
-            </option>
-
-            <option
-                value="Ukum"
-                {{if eq .Location "Ukum"}}selected{{end}}
-            >
-                Ukum
-            </option>
-
-            <option
-                value="Ushongo"
-                {{if eq .Location "Ushongo"}}selected{{end}}
-            >
-                Ushongo
-            </option>
-
-            <option
-                value="Vandeikya"
-                {{if eq .Location "Vandeikya"}}selected{{end}}
-            >
-                Vandeikya
-            </option>
-
-        </select>
 
 
         <!-- =====================================================
@@ -1015,6 +845,7 @@
     src="/static/js/navigation.js?v=20260904"
 ></script>
 
+<script defer src="/static/js/profile-locations.js"></script>
 </body>
 
 </html>

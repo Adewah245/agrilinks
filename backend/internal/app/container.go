@@ -25,6 +25,7 @@ import (
 // ============================================================
 
 type Container struct {
+	Wallet   *services.WalletService
 	Config   config.Config
 	Sessions *services.SessionService
 	OTP      *services.OTPService

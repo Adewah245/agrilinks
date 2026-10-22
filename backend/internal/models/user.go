@@ -14,10 +14,11 @@ type User struct {
 	PasswordHash string
 
 	// Location
-	Location string
-	LGA      string
-	State    string
-	Country  string
+	Location                    string
+	LGA                         string
+	State                       string
+	Country                     string
+	StateID, LGAID, CommunityID *int
 
 	// Account
 	Role        string
@@ -64,6 +65,11 @@ type UserBankAccount struct {
 // IsBuyer reports whether the user has a buyer role.
 func (u *User) IsBuyer() bool {
 	return u.Role == "buyer"
+}
+
+// The role selects the main dashboard. A seller or learner can also buy.
+func (u *User) CanBuy() bool {
+	return u != nil && u.ID > 0
 }
 
 // IsLearner reports whether the user has a learner role.

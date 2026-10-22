@@ -54,6 +54,7 @@ type PaymentService struct {
 	notifier   paymentNotifier
 	secretHash string
 	currency   string
+	wallet     *WalletService
 }
 
 func NewPaymentService(
@@ -75,6 +76,8 @@ func NewPaymentService(
 		currency:   strings.ToUpper(strings.TrimSpace(currency)),
 	}
 }
+
+func (s *PaymentService) SetWallet(wallet *WalletService) { s.wallet = wallet }
 
 var (
 	ErrUnauthorizedWebhook     = errors.New("unauthorized webhook")
@@ -231,15 +234,19 @@ func (s *PaymentService) ProcessWebhook(
 	var payload struct {
 		Event string `json:"event"`
 		Data  struct {
-			ID    int64  `json:"id"`
-			TxRef string `json:"tx_ref"`
+			ID        int64  `json:"id"`
+			TxRef     string `json:"tx_ref"`
+			Reference string `json:"reference"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return fmt.Errorf("%w: decode: %v", ErrInvalidWebhook, err)
 	}
-	if payload.Event == "" || payload.Data.ID <= 0 || strings.TrimSpace(payload.Data.TxRef) == "" {
+	if payload.Event == "" || payload.Data.ID <= 0 {
 		return fmt.Errorf("%w: event data is incomplete", ErrInvalidWebhook)
+	}
+	if payload.Event == "transfer.completed" && s.wallet != nil {
+		return s.wallet.TransferWebhook(ctx, strconv.FormatInt(payload.Data.ID, 10), payload.Data.Reference)
 	}
 	if payload.Event != "charge.completed" {
 		return nil
@@ -284,6 +291,9 @@ func (s *PaymentService) applyVerifiedPayment(
 		return "", err
 	}
 	if payment == nil {
+		if s.wallet != nil {
+			return s.wallet.ApplyVerifiedDeposit(context.Background(), verified, webhook)
+		}
 		return "", errors.New("payment not found")
 	}
 

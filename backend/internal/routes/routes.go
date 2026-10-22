@@ -110,6 +110,7 @@ func NewHandler(container *app.Container) http.Handler {
 
 	registerHandler := handlers.NewRegisterHandler(
 		container.Auth,
+		container.Learning,
 	)
 
 	mux.HandleFunc(
@@ -972,5 +973,9 @@ func NewHandler(container *app.Container) http.Handler {
 			),
 		),
 	)
+	walletHandler := handlers.NewWalletHandler(container.Wallet)
+	mux.HandleFunc("/wallet", middleware.OnlyPath("/wallet", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Handler)))
+	mux.HandleFunc("GET /wallet/banks", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Banks))
+	mux.HandleFunc("/wallet/admin", middleware.OnlyPath("/wallet/admin", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Admin)))
 	return middleware.RequestGuard(mux, container.Config)
 }

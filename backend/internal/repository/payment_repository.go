@@ -9,9 +9,18 @@ import (
 )
 
 // PaymentRepository owns persistence for payment attempts and wallet reads.
-type PaymentRepository struct{ db *sql.DB; commissionBPS int64 }
+type PaymentRepository struct {
+	db            *sql.DB
+	commissionBPS int64
+}
 
-func NewPaymentRepository(db *sql.DB, commissionBPS ...int64) *PaymentRepository { r:=&PaymentRepository{db:db}; if len(commissionBPS)>0 {r.commissionBPS=commissionBPS[0]}; return r }
+func NewPaymentRepository(db *sql.DB, commissionBPS ...int64) *PaymentRepository {
+	r := &PaymentRepository{db: db}
+	if len(commissionBPS) > 0 {
+		r.commissionBPS = commissionBPS[0]
+	}
+	return r
+}
 
 // CreatePendingForOrder reuses an unfinished payment attempt under an order lock.
 func (r *PaymentRepository) CreatePendingForOrder(buyerID, orderID int, reference, currency, provider string) (*models.Payment, error) {
@@ -126,7 +135,7 @@ func (r *PaymentRepository) GetWallet(ownerType string, ownerID int, currency st
 		currency,
 	).Scan(
 		&w.ID,
-		&w.FarmerID,
+		&w.UserID,
 		&w.Balance,
 		&w.Currency,
 		&w.WalletNumber,
@@ -367,7 +376,9 @@ func (r *PaymentRepository) FinalizePayment(
 		if err = confirmOrderAfterPayment(tx, orderID); err != nil {
 			return false, err
 		}
-        if err=creditOrderSale(tx,orderID,sellerType,sellerID,amount,currency,r.commissionBPS);err!=nil { return false,err }
+		if err = creditOrderSale(tx, orderID, sellerType, sellerID, amount, currency, r.commissionBPS); err != nil {
+			return false, err
+		}
 	}
 	newlySuccessful = newlySuccessful && !reviewRequired
 
