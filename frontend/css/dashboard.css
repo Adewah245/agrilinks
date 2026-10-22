@@ -450,6 +450,230 @@ a {
     text-decoration: underline;
 }
 
+.marketplace-slider,
+.dashboard-weather,
+.dashboard-market-prices,
+.storage-overview {
+    margin-bottom: 22px;
+}
+
+.slider-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.slider-controls button {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: #ffffff;
+    color: var(--color-brand);
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.slider-controls button:hover:not(:disabled) {
+    background: var(--color-brand-soft);
+}
+
+.slider-controls button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.marketplace-product-track {
+    display: grid;
+    grid-auto-columns: minmax(220px, 260px);
+    grid-auto-flow: column;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 2px 2px 12px;
+    scroll-snap-type: x mandatory;
+    scrollbar-color: var(--color-brand-soft) transparent;
+    scrollbar-width: thin;
+}
+
+.marketplace-product-card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 13px;
+    background: #ffffff;
+    scroll-snap-align: start;
+}
+
+.marketplace-product-image {
+    display: grid;
+    height: 150px;
+    place-items: center;
+    overflow: hidden;
+    background: var(--color-brand-soft);
+    color: var(--color-brand);
+    font-size: 42px;
+    text-decoration: none;
+}
+
+.marketplace-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.marketplace-product-details {
+    padding: 14px;
+}
+
+.marketplace-product-category,
+.marketplace-product-seller,
+.marketplace-product-quantity {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 12px;
+}
+
+.marketplace-product-details h3 {
+    overflow: hidden;
+    margin: 5px 0;
+    font-size: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.marketplace-product-details h3 a {
+    color: var(--color-ink);
+    text-decoration: none;
+}
+
+.marketplace-product-details > strong {
+    display: block;
+    margin: 12px 0 4px;
+    color: var(--color-brand);
+    font-size: 18px;
+}
+
+.marketplace-product-details > strong span {
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.marketplace-product-link {
+    display: inline-flex;
+    margin-top: 12px;
+    color: var(--color-brand);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.marketplace-empty {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+.dashboard-weather-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.dashboard-weather-summary > div:first-child {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    gap: 4px 12px;
+}
+
+.dashboard-weather-summary .weather-icon {
+    grid-row: span 2;
+}
+
+.dashboard-weather-summary > div:first-child > strong {
+    color: var(--color-ink);
+    font-size: 30px;
+}
+
+.dashboard-weather-summary > div:first-child > span:last-child {
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.dashboard-weather-details {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.dashboard-weather-details > span {
+    display: grid;
+    gap: 4px;
+    min-width: 110px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #f7faf7;
+    color: var(--color-muted);
+    font-size: 12px;
+}
+
+.dashboard-weather-details strong {
+    color: var(--color-ink);
+    font-size: 14px;
+}
+
+.dashboard-price-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.dashboard-price-card {
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.dashboard-price-card h3 {
+    margin: 0 0 12px;
+    color: var(--color-ink);
+    font-size: 16px;
+}
+
+.dashboard-price-card dl {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+}
+
+.dashboard-price-card dl > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+}
+
+.dashboard-price-card dt {
+    color: var(--color-muted);
+}
+
+.dashboard-price-card dd {
+    margin: 0;
+    color: var(--color-ink);
+    font-weight: 700;
+    text-align: right;
+}
+
+.dashboard-price-card > p {
+    margin: 12px 0 0;
+    color: var(--color-brand);
+    font-size: 12px;
+    font-weight: 700;
+}
+
 /* ============================================================
    FARM HEALTH & WEATHER
 ============================================================ */
@@ -826,6 +1050,10 @@ a {
 
 .storage-overview {
     margin-bottom: 28px;
+}
+
+.dashboard-grid-single {
+    grid-template-columns: 1fr;
 }
 
 .produce-list {
@@ -1330,6 +1558,24 @@ a {
 
     .weather-details {
         grid-template-columns: 1fr;
+    }
+
+    .dashboard-weather-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .dashboard-weather-details {
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .dashboard-weather-details > span {
+        flex: 1 1 100px;
+    }
+
+    .marketplace-product-track {
+        grid-auto-columns: minmax(200px, 78vw);
     }
 
     .produce-row {

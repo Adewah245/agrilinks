@@ -266,6 +266,171 @@
 </section>
 
 
+<!-- =====================================================
+     MARKETPLACE PRODUCT SLIDER
+====================================================== -->
+
+<section
+    class="panel marketplace-slider"
+    aria-labelledby="marketplace-slider-title"
+>
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Available now</p>
+            <h2 id="marketplace-slider-title">Products in the marketplace</h2>
+        </div>
+        <div class="slider-controls" aria-label="Product slider controls">
+            <button type="button" data-product-slide="previous" aria-label="Show previous products">‹</button>
+            <button type="button" data-product-slide="next" aria-label="Show more products">›</button>
+        </div>
+    </div>
+
+    <div class="marketplace-product-track" id="marketplace-product-track">
+        {{range .MarketplaceProducts}}
+        <article class="marketplace-product-card">
+            <a class="marketplace-product-image" href="/product?id={{.ID}}" aria-label="View {{.Name}}">
+                {{if .PrimaryImageURL}}
+                <img src="{{.PrimaryImageURL}}" alt="{{.Name}}" loading="lazy">
+                {{else}}
+                <span aria-hidden="true">🌾</span>
+                {{end}}
+            </a>
+            <div class="marketplace-product-details">
+                <p class="marketplace-product-category">{{.Category}}</p>
+                <h3><a href="/product?id={{.ID}}">{{.Name}}</a></h3>
+                <p class="marketplace-product-seller">{{.SellerName}}</p>
+                <strong>₦{{money .Price}} <span>/ {{.Unit}}</span></strong>
+                <p class="marketplace-product-quantity">{{printf "%.0f" .Quantity}} {{.Unit}} available</p>
+                <a class="marketplace-product-link" href="/product?id={{.ID}}">View product</a>
+            </div>
+        </article>
+        {{else}}
+        <div class="empty-state marketplace-empty">
+            <p>No products are available in the marketplace right now.</p>
+            <a href="/marketplace">Visit the marketplace</a>
+        </div>
+        {{end}}
+    </div>
+</section>
+
+
+<!-- =====================================================
+     STORAGE OVERVIEW
+====================================================== -->
+
+{{if not .IsBuyer}}
+<section class="panel storage-overview" aria-labelledby="storage-overview-title">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Your stock</p>
+            <h2 id="storage-overview-title">Products in storage</h2>
+        </div>
+        <a href="/storage">Manage products</a>
+    </div>
+
+    <div class="produce-list">
+        {{range .StorageCrops}}
+        <div class="produce-row">
+            <div class="produce-info">
+                <span class="produce-icon" aria-hidden="true">{{if eq .Status "active"}}🌾{{else}}📦{{end}}</span>
+                <div>
+                    <h3>{{.Name}}</h3>
+                    <span>{{if eq .Status "active"}}Listed for sale{{else}}Not listed{{end}}</span>
+                </div>
+            </div>
+            <div class="produce-quantity">
+                <strong>{{printf "%.0f" .Quantity}}</strong>
+                <span>{{.Unit}}</span>
+            </div>
+            <span class="stock-status healthy">{{if eq .Quantity 0.0}}Empty{{else if eq .Status "active"}}Listed{{else}}Stored{{end}}</span>
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <p>No products in storage yet.</p>
+            <a href="/storage">Add your first product</a>
+        </div>
+        {{end}}
+    </div>
+</section>
+{{end}}
+
+
+<!-- =====================================================
+     WEATHER
+====================================================== -->
+
+<section class="panel dashboard-weather" aria-labelledby="dashboard-weather-title">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Conditions</p>
+            <h2 id="dashboard-weather-title">Today's weather</h2>
+            {{if .Weather.Available}}
+            <span class="weather-source">{{.Weather.Location}} · Source: {{.Weather.Source}}</span>
+            <span class="weather-updated">{{if .Weather.Cached}}Cached conditions{{else}}Live conditions{{end}} · Updated {{.Weather.LastUpdated.Format "3:04 PM"}}</span>
+            {{else}}
+            <span class="weather-source">Live weather unavailable</span>
+            {{end}}
+        </div>
+    </div>
+
+    <div class="dashboard-weather-summary">
+        <div>
+            <span class="weather-icon" aria-hidden="true">{{if .Weather.Available}}☀{{else}}—{{end}}</span>
+            <strong>{{if .Weather.Available}}{{.Weather.Temperature}}{{else}}Unavailable{{end}}</strong>
+            <span>{{if .Weather.Available}}{{.Weather.Summary}}{{else}}Weather unavailable{{end}}</span>
+        </div>
+        <div class="dashboard-weather-details">
+            <span>Humidity <strong>{{if .Weather.Available}}{{.Weather.Humidity}}{{else}}—{{end}}</strong></span>
+            <span>Rain chance <strong>{{if .Weather.Available}}{{.Weather.RainChance}}{{else}}—{{end}}</strong></span>
+            <span>Conditions <strong>{{if .Weather.Available}}{{.Weather.Conditions}}{{else}}Unavailable{{end}}</strong></span>
+        </div>
+    </div>
+
+    <div class="weather-recommendation">
+        <strong>Farm recommendation</strong>
+        <p>{{if .Weather.Available}}{{.Weather.Recommendation}}{{else}}Add your location to your profile to receive live weather conditions. <a href="/profile#edit-modal">Update location</a>{{end}}</p>
+    </div>
+</section>
+
+
+<!-- =====================================================
+     MARKET PRICE AND PRICE DIFFERENCE
+====================================================== -->
+
+{{if not .IsBuyer}}
+<section class="panel dashboard-market-prices" aria-labelledby="dashboard-market-prices-title">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Local market</p>
+            <h2 id="dashboard-market-prices-title">Market price and margin</h2>
+            <p class="section-description">Compare your average listing price with the local median. This is a price difference, not profit after costs.</p>
+        </div>
+        <a href="/market-insights">More insights</a>
+    </div>
+
+    <div class="dashboard-price-grid">
+        {{range .ProduceDemandPreview}}
+            {{if .PriceAvailable}}
+            <article class="dashboard-price-card">
+                <h3>{{.ProduceType}}</h3>
+                <dl>
+                    <div><dt>Local median</dt><dd>₦{{money0 .LocalPriceMedian}}</dd></div>
+                    <div><dt>Your average price</dt><dd>₦{{money0 .FarmerPrice}}</dd></div>
+                    <div><dt>Difference</dt><dd>{{printf "%+.0f%%" .PriceDifferencePercent}}</dd></div>
+                </dl>
+                <p>{{.PricePosition}}</p>
+            </article>
+            {{end}}
+        {{else}}
+        <div class="empty-state">
+            <p>Local price comparisons are not available yet.</p>
+            <a href="/market-insights">Open market insights</a>
+        </div>
+        {{end}}
+    </div>
+</section>
+{{end}}
+
 
 <!-- =====================================================
      FARMING TYPE OVERVIEW
@@ -754,7 +919,7 @@
 
 {{if not .IsBuyer}}
 
-    <section class="dashboard-grid">
+    <section class="dashboard-grid dashboard-grid-single">
 
 
         <!-- =================================================
@@ -939,6 +1104,7 @@
         <section
             class="panel weather-card"
             aria-labelledby="weather-title"
+            hidden
         >
 
 
@@ -2363,6 +2529,7 @@
     <section
         class="panel storage-overview"
         aria-labelledby="storage-overview-title"
+        hidden
     >
 
 

@@ -202,7 +202,7 @@
         >
 
 
-            <h2>
+            <h2 id="register-heading">
                 Create Your Account
             </h2>
 
@@ -694,57 +694,74 @@
 
 
             <!-- =================================================
-                 6. PROFILE PICTURE
-            ================================================== -->
-
-            <section
-                class="form-section profile-section"
-                aria-labelledby="profile-heading"
-            >
-
-                <h3 id="profile-heading">
-                    Your Profile
-                </h3>
-
-
-                <div class="form-group profile-upload">
-
-                    <label for="profile-picture">
-                        Profile Picture
-                    </label>
-
-
-                    <input
-                        type="file"
-                        name="profile_picture"
-                        id="profile-picture"
-                        accept="image/jpeg,image/png,image/webp"
-                        required
-                    >
-
-
-                    <p class="field-help">
-                        Upload a clear profile picture in
-                        JPG, PNG, or WebP format.
-                    </p>
-
-                </div>
-
-            </section>
-
-
-
-            <!-- =================================================
-                 7. CREATE ACCOUNT
+                 CONTINUE TO SELFIE
             ================================================== -->
 
             <button
                 type="submit"
                 id="register-submit"
             >
-                Create Account
+                Continue to selfie
             </button>
 
+
+            <!-- =================================================
+                 6. SELFIE
+            ================================================== -->
+
+            <section
+                class="form-section profile-section"
+                aria-labelledby="profile-heading"
+                hidden
+            >
+
+                <h3 id="profile-heading">
+                    Complete your registration by taking a selfie
+                </h3>
+
+                <p class="field-help">
+                    Take a clear photo of yourself. On a phone or tablet,
+                    choose the camera when prompted. You can choose a photo
+                    from your device if a camera is not available.
+                </p>
+
+                <div class="form-group profile-upload">
+
+                    <label for="profile-picture">
+                        Take a selfie
+                    </label>
+
+                    <input
+                        type="file"
+                        name="profile_picture"
+                        id="profile-picture"
+                        accept="image/jpeg,image/png,image/webp"
+                        capture="user"
+                    >
+
+                    <p class="field-help">
+                        Use a clear JPG, PNG, or WebP image.
+                    </p>
+
+                </div>
+
+                <button
+                    type="button"
+                    id="back-to-details"
+                    class="registration-back-button"
+                >
+                    Back to account details
+                </button>
+
+                <button
+                    type="submit"
+                    id="complete-registration"
+                    disabled
+                >
+                    Complete Registration
+                </button>
+
+            </section>
 
 
             <!-- =================================================

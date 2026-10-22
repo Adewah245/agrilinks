@@ -7,7 +7,35 @@ document.addEventListener("DOMContentLoaded", () => {
     initClockAndGreeting();
     initAnimatedCounters();
     initProgressBars();
+    initMarketplaceProductSlider();
 });
+
+function initMarketplaceProductSlider() {
+    const track = document.getElementById("marketplace-product-track");
+    const previousButton = document.querySelector('[data-product-slide="previous"]');
+    const nextButton = document.querySelector('[data-product-slide="next"]');
+
+    if (!track || !previousButton || !nextButton) return;
+
+    const updateButtons = () => {
+        const maxScroll = track.scrollWidth - track.clientWidth;
+        previousButton.disabled = track.scrollLeft <= 1;
+        nextButton.disabled = track.scrollLeft >= maxScroll - 1;
+    };
+
+    const scrollTrack = (direction) => {
+        const card = track.querySelector(".marketplace-product-card");
+        const gap = Number.parseFloat(getComputedStyle(track).columnGap) || 0;
+        const amount = card ? card.getBoundingClientRect().width + gap : track.clientWidth;
+        track.scrollBy({ left: direction * amount, behavior: "smooth" });
+    };
+
+    previousButton.addEventListener("click", () => scrollTrack(-1));
+    nextButton.addEventListener("click", () => scrollTrack(1));
+    track.addEventListener("scroll", updateButtons, { passive: true });
+    window.addEventListener("resize", updateButtons);
+    updateButtons();
+}
 
 /**
  * 1. Clock & Dynamic Greeting

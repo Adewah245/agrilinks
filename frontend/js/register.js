@@ -13,7 +13,15 @@ const community = document.getElementById("community");
 const password = document.getElementById("password");
 const confirmPassword = document.getElementById("confirm-password");
 
-const button = document.getElementById("register-submit");
+const completeButton = document.getElementById("complete-registration");
+const backButton = document.getElementById("back-to-details");
+const profileSection = document.querySelector(".profile-section");
+const profilePicture = document.getElementById("profile-picture");
+const registerHeading = document.getElementById("register-heading");
+const registrationSections = Array.from(
+    registerForm.querySelectorAll(":scope > .form-section")
+);
+let selfieStep = false;
 
 
 // ===============================
@@ -23,6 +31,7 @@ const button = document.getElementById("register-submit");
 const message = document.createElement("p");
 
 message.className = "message";
+message.setAttribute("aria-live", "polite");
 
 registerForm.appendChild(message);
 
@@ -363,29 +372,38 @@ registerForm.addEventListener("submit", (event) => {
     }
 
 
-    // -------------------------------
-    // FARMING TYPES
-    // -------------------------------
+    if (!selfieStep) {
+        event.preventDefault();
+        selfieStep = true;
+        registrationSections.forEach((section) => {
+            section.hidden = section !== profileSection;
+            section.style.display = section === profileSection ? "" : "none";
+        });
+        profilePicture.required = true;
+        completeButton.disabled = profilePicture.files.length === 0;
+        registerHeading.textContent = "Complete your registration";
+        profilePicture.focus();
+        return;
+    }
 
-    const selectedFarms =
-        Array.from(farmTypes)
-            .map(item => item.value);
+    completeButton.disabled = true;
+    completeButton.textContent = "Completing registration...";
 
-    console.log(
-        "Selected farming types:",
-        selectedFarms
-    );
+});
 
+profilePicture.addEventListener("change", () => {
+    completeButton.disabled = profilePicture.files.length === 0;
+});
 
-    // -------------------------------
-    // SUBMIT
-    // -------------------------------
-
-    button.disabled = true;
-
-    button.textContent =
-        "Creating Account...";
-
+backButton.addEventListener("click", () => {
+    selfieStep = false;
+    profilePicture.required = false;
+    registrationSections.forEach((section) => {
+        section.hidden = false;
+        section.style.display = "";
+    });
+    registerHeading.textContent = "Create Your Account";
+    confirmPassword.focus();
 });
 
 

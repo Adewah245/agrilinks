@@ -64,10 +64,11 @@ func NewDashboardHandler(
 // fields. The template decides which sections to display based on
 // the authenticated user's role.
 type DashboardData struct {
-	FullName string
-	Role     string
-	IsBuyer  bool
-	PhotoURL string
+	FullName            string
+	Role                string
+	IsBuyer             bool
+	PhotoURL            string
+	MarketplaceProducts []models.Product
 
 	// FarmingTypes contains the authenticated user's selected farming
 	// activities. It is used by the seller dashboard to personalise the
@@ -227,6 +228,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 				if h.product != nil {
 					if available, err := h.product.AvailableProducts(); err == nil {
 						data.AvailableProduce = len(available)
+						data.MarketplaceProducts = dashboardProductPreview(available)
 					} else {
 						log.Printf(
 							"dashboard available products unavailable for buyer %d: %v",
@@ -341,6 +343,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 				if h.product != nil {
 					if available, err := h.product.AvailableProducts(); err == nil {
 						data.MarketListings = len(available)
+						data.MarketplaceProducts = dashboardProductPreview(available)
 
 						prices := make([]float64, 0, len(available))
 
@@ -571,6 +574,15 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 			http.StatusMethodNotAllowed,
 		)
 	}
+}
+
+const dashboardMarketplacePreviewLimit = 8
+
+func dashboardProductPreview(products []models.Product) []models.Product {
+	if len(products) > dashboardMarketplacePreviewLimit {
+		return products[:dashboardMarketplacePreviewLimit]
+	}
+	return products
 }
 
 // clientDisconnected reports whether an HTTP response failed because
