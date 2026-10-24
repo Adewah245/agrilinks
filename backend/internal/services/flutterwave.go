@@ -88,7 +88,7 @@ func (c *FlutterwaveClient) InitializePayment(
 	req InitializePaymentRequest,
 ) (string, error) {
 	if c == nil || c.httpClient == nil || c.secretKey == "" {
-		return "", fmt.Errorf("Flutterwave is not configured")
+		return "", fmt.Errorf("flutterwave is not configured")
 	}
 
 	if strings.TrimSpace(req.Reference) == "" ||
@@ -140,7 +140,7 @@ func (c *FlutterwaveClient) InitializePayment(
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf(
-			"Flutterwave payment initialization failed with status %d",
+			"flutterwave payment initialization failed with status %d",
 			resp.StatusCode,
 		)
 	}
@@ -150,16 +150,16 @@ func (c *FlutterwaveClient) InitializePayment(
 		return "", fmt.Errorf("decode Flutterwave response: %w", err)
 	}
 	if !strings.EqualFold(strings.TrimSpace(parsed.Status), "success") {
-		return "", fmt.Errorf("Flutterwave rejected the payment request")
+		return "", fmt.Errorf("flutterwave rejected the payment request")
 	}
 	if strings.TrimSpace(parsed.Data.Link) == "" {
-		return "", fmt.Errorf("Flutterwave returned no checkout URL")
+		return "", fmt.Errorf("flutterwave returned no checkout URL")
 	}
 	checkoutURL, err := url.Parse(parsed.Data.Link)
 	if err != nil ||
 		(checkoutURL.Scheme != "http" && checkoutURL.Scheme != "https") ||
 		checkoutURL.Host == "" {
-		return "", fmt.Errorf("Flutterwave returned an invalid checkout URL")
+		return "", fmt.Errorf("flutterwave returned an invalid checkout URL")
 	}
 
 	return checkoutURL.String(), nil
@@ -190,7 +190,7 @@ func (c *FlutterwaveClient) VerifyTransaction(
 	transactionID string,
 ) (*VerifiedTransaction, error) {
 	if c == nil || c.httpClient == nil || c.secretKey == "" {
-		return nil, fmt.Errorf("Flutterwave is not configured")
+		return nil, fmt.Errorf("flutterwave is not configured")
 	}
 
 	transactionID = strings.TrimSpace(transactionID)
@@ -223,7 +223,7 @@ func (c *FlutterwaveClient) VerifyTransaction(
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf(
-			"Flutterwave verification failed with status %d",
+			"flutterwave verification failed with status %d",
 			resp.StatusCode,
 		)
 	}
@@ -233,17 +233,17 @@ func (c *FlutterwaveClient) VerifyTransaction(
 		return nil, fmt.Errorf("decode Flutterwave verification: %w", err)
 	}
 	if !strings.EqualFold(strings.TrimSpace(parsed.Status), "success") {
-		return nil, fmt.Errorf("Flutterwave could not verify the transaction")
+		return nil, fmt.Errorf("flutterwave could not verify the transaction")
 	}
 	if parsed.Data.ID <= 0 ||
 		strings.TrimSpace(parsed.Data.TxRef) == "" ||
 		strings.TrimSpace(parsed.Data.Status) == "" ||
 		strings.TrimSpace(parsed.Data.Currency) == "" {
-		return nil, fmt.Errorf("Flutterwave verification response is incomplete")
+		return nil, fmt.Errorf("flutterwave verification response is incomplete")
 	}
 	if strings.EqualFold(strings.TrimSpace(parsed.Data.Status), "successful") &&
 		parsed.Data.Amount <= 0 {
-		return nil, fmt.Errorf("Flutterwave returned a successful transaction without an amount")
+		return nil, fmt.Errorf("flutterwave returned a successful transaction without an amount")
 	}
 
 	return &VerifiedTransaction{
@@ -261,7 +261,7 @@ func readFlutterwaveBody(body io.Reader) ([]byte, error) {
 		return nil, fmt.Errorf("read Flutterwave response: %w", err)
 	}
 	if len(data) > maxFlutterwaveResponseBytes {
-		return nil, fmt.Errorf("Flutterwave response is too large")
+		return nil, fmt.Errorf("flutterwave response is too large")
 	}
 	return data, nil
 }

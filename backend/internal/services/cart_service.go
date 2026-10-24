@@ -89,7 +89,7 @@ func (s *CartService) addFromNegotiation(
 	}
 
 	if negotiation.Quantity <= 0 {
-		return errors.New("The negotiated amount is invalid.")
+		return errors.New("the negotiated amount is invalid")
 	}
 
 	if agreedPrice <= 0 {
@@ -116,7 +116,7 @@ func (s *CartService) addFromNegotiation(
 	// Verify that the negotiated quantity is still available.
 	if negotiation.Quantity > product.Quantity {
 		return errors.New(
-			"The amount you asked for is no longer available.",
+			"the amount you asked for is no longer available",
 		)
 	}
 

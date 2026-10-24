@@ -35,7 +35,7 @@ func NewGeminiProvider(apiKey string, modelName ...string) (*GeminiProvider, err
 		return nil, errors.New("gemini API key is missing")
 	}
 	if len(modelName) != 1 || strings.TrimSpace(modelName[0]) == "" {
-		return nil, errors.New("Gemini model is required")
+		return nil, errors.New("gemini model is required")
 	}
 
 	// Create the Gemini client.

@@ -110,13 +110,13 @@ func (s *NegotiationService) StartNegotiation(
 
 	if quantity <= 0 || math.IsNaN(quantity) || math.IsInf(quantity, 0) {
 		return nil, errors.New(
-			"Enter how much you want.",
+			"enter how much you want",
 		)
 	}
 
 	if offerPrice <= 0 || math.IsNaN(offerPrice) || math.IsInf(offerPrice, 0) {
 		return nil, errors.New(
-			"Enter an offer greater than zero.",
+			"enter an offer greater than zero",
 		)
 	}
 
@@ -175,7 +175,7 @@ func (s *NegotiationService) StartNegotiation(
 
 	if quantity > product.Quantity {
 		return nil, errors.New(
-			"There is not enough available.",
+			"there is not enough available",
 		)
 	}
 
@@ -327,7 +327,7 @@ func (s *NegotiationService) SendOffer(
 
 	if offerPrice <= 0 || math.IsNaN(offerPrice) || math.IsInf(offerPrice, 0) {
 		return errors.New(
-			"Enter an offer greater than zero.",
+			"enter an offer greater than zero",
 		)
 	}
 
@@ -524,7 +524,7 @@ func (s *NegotiationService) Accept(
 
 	if negotiation.Quantity > product.Quantity {
 		return errors.New(
-			"The amount you asked for is no longer available.",
+			"the amount you asked for is no longer available",
 		)
 	}
 

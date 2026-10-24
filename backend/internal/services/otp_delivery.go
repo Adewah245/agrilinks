@@ -41,7 +41,7 @@ func NewBrevoOTPDelivery(
 	fromName = strings.TrimSpace(fromName)
 
 	if host == "" || login == "" || key == "" || fromEmail == "" {
-		return nil, fmt.Errorf("Brevo SMTP host, login, key, and sender email are required")
+		return nil, fmt.Errorf("brevo SMTP host, login, key, and sender email are required")
 	}
 
 	return &BrevoOTPDelivery{
@@ -56,7 +56,7 @@ func NewBrevoOTPDelivery(
 
 func (d *BrevoOTPDelivery) SendOTP(ctx context.Context, message OTPMessage) error {
 	if d == nil || d.sendMail == nil {
-		return fmt.Errorf("Brevo OTP delivery is not configured")
+		return fmt.Errorf("brevo OTP delivery is not configured")
 	}
 	if err := ctx.Err(); err != nil {
 		return err

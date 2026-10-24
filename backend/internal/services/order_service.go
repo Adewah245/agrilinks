@@ -108,7 +108,7 @@ func buildOrderFromCart(
 			return nil, nil, errors.New("cart contains an invalid item")
 		}
 		if item.Quantity <= 0 {
-			return nil, nil, errors.New("The cart contains an invalid amount.")
+			return nil, nil, errors.New("the cart contains an invalid amount")
 		}
 		if item.PricePerUnit < 0 {
 			return nil, nil, errors.New("cart item price cannot be negative")
