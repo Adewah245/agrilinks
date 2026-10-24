@@ -28,6 +28,7 @@ type User struct {
 	// Verification
 	NIN                string
 	VerificationStatus string
+	PhoneVerifiedAt    *time.Time
 
 	// Organisation / Partner
 	OrganisationName string

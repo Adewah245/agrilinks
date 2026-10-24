@@ -58,7 +58,7 @@ func fixtureUser(t *testing.T, c *app.Container, number int, role string) *model
 	}
 	u := &models.User{FullName: fmt.Sprintf("Test User %d", number), Phone: fmt.Sprintf("234801%07d", number),
 		Email: fmt.Sprintf("user%d@example.test", number), PasswordHash: string(hash), Role: role, AccountType: "individual",
-		Location: "Otukpo", LGA: "Otukpo", State: "Benue", Country: "Nigeria", PhotoURL: "/static/assets/images/un.jpeg"}
+		Location: "Makurdi", LGA: "Makurdi", State: "Benue", Country: "Nigeria", PhotoURL: "/static/assets/images/un.jpeg"}
 	if _, err := c.UserRepo.Create(u); err != nil {
 		t.Fatal(err)
 	}

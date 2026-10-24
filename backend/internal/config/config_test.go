@@ -1,12 +1,57 @@
 package config
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
 
+func setOTPDevTestEnvironment(t *testing.T) {
+	t.Helper()
+	setValidTestEnvironment(t)
+	t.Setenv("SMS_PROVIDER", "otpdev")
+	t.Setenv("OTPDEV_API_KEY", "test-otpdev-key")
+	t.Setenv("OTPDEV_SENDER", "AgroShield")
+	t.Setenv("OTPDEV_TEMPLATE_ID", "6d16aa9d-bf19-4141-8169-48b46d972fc6")
+	t.Setenv("OTPDEV_BASE_URL", "")
+}
+
+func TestLoadOTPDevConfiguration(t *testing.T) {
+	setOTPDevTestEnvironment(t)
+	t.Setenv("SMS_PROVIDER", " OTPDEV ")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.SMSProvider != "otpdev" || cfg.OTPDevAPIKey != "test-otpdev-key" || cfg.OTPDevSender != "AgroShield" || cfg.OTPDevTemplateID != "6d16aa9d-bf19-4141-8169-48b46d972fc6" || cfg.OTPDevBaseURL != "https://api.otp.dev/v1" {
+		t.Fatal("OTP.dev configuration was not loaded correctly")
+	}
+}
+
+func TestLoadRejectsIncompleteOTPDevConfiguration(t *testing.T) {
+	for _, name := range []string{"OTPDEV_API_KEY", "OTPDEV_SENDER", "OTPDEV_TEMPLATE_ID"} {
+		t.Run(name, func(t *testing.T) {
+			setOTPDevTestEnvironment(t)
+			t.Setenv(name, " ")
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), name) {
+				t.Fatalf("expected missing %s error, got %v", name, err)
+			}
+		})
+	}
+}
+
+func TestLoadRejectsInvalidOTPDevEndpoint(t *testing.T) {
+	setOTPDevTestEnvironment(t)
+	t.Setenv("OTPDEV_BASE_URL", "https://api.otp.dev/v1?key=secret")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "OTPDEV_BASE_URL") {
+		t.Fatalf("expected invalid endpoint error, got %v", err)
+	}
+}
+
 func setValidTestEnvironment(t *testing.T) {
 	t.Helper()
+	t.Chdir(t.TempDir()) // Configuration tests must not load a developer's .env.
+	t.Setenv("OTPDEV_BASE_URL", "")
 	t.Setenv("DATABASE_URL", "postgres://test:test@localhost:5432/test")
 	t.Setenv("GEMINI_API_KEY", "test-key")
 	t.Setenv("GEMINI_MODEL", "test-diagnosis-model")
@@ -79,6 +124,7 @@ func TestLoadDefaultsToNoForwardedHeaderTrust(t *testing.T) {
 }
 
 func TestLoadNegotiationPolicyDefaultsMatchDocumentedRules(t *testing.T) {
+	t.Chdir(t.TempDir())
 	t.Setenv("NEGOTIATION_MAX_ROUNDS", "")
 	t.Setenv("NEGOTIATION_WINDOW", "")
 
@@ -97,6 +143,7 @@ func TestLoadNegotiationPolicyDefaultsMatchDocumentedRules(t *testing.T) {
 }
 
 func TestLoadNegotiationPolicyReadsOverrides(t *testing.T) {
+	t.Chdir(t.TempDir())
 	t.Setenv("NEGOTIATION_MAX_ROUNDS", "7")
 	t.Setenv("NEGOTIATION_WINDOW", "36h")
 
@@ -115,6 +162,7 @@ func TestLoadNegotiationPolicyReadsOverrides(t *testing.T) {
 }
 
 func TestLoadNegotiationPolicyRejectsInvalidValues(t *testing.T) {
+	t.Chdir(t.TempDir())
 	tests := []struct {
 		name      string
 		maxRounds string
@@ -140,6 +188,7 @@ func TestLoadNegotiationPolicyRejectsInvalidValues(t *testing.T) {
 
 func setValidFlutterwaveEnvironment(t *testing.T) {
 	t.Helper()
+	t.Chdir(t.TempDir())
 	t.Setenv("FLUTTERWAVE_SECRET_KEY", "test-secret-key")
 	t.Setenv("FLUTTERWAVE_SECRET_HASH", "test-secret-hash")
 	t.Setenv("PAYMENT_REDIRECT_URL", "https://example.test/payments/callback")

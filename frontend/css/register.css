@@ -805,6 +805,19 @@ body {
     background: var(--color-page, #f5f7f6);
 }
 
+.registration-back-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.phone-confirmation {
+    margin-top: 24px;
+}
+
+.auth-right [hidden] {
+    display: none !important;
+}
+
 
 /* ============================================================
    FORM FOOTER

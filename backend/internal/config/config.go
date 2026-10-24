@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultNegotiationMaxRounds = 5
+	defaultNegotiationMaxRounds = 10
 	defaultNegotiationWindow    = 24 * time.Hour
 	defaultPaymentCurrency      = "NGN"
 )
@@ -88,14 +88,15 @@ type Config struct {
 	// a reporting threshold only — nothing is credited or expired automatically.
 	WalletStaleDepositHours string
 
-	// OTP delivery — SMS
+	// OTP delivery
 	//
-	// SMSProvider selects real OTP delivery: "termii" or "brevo".
+	// SMSProvider selects OTP delivery: "otpdev" (SMS) or "brevo" (email).
 	// "disabled" leaves password recovery unavailable until configured.
 	SMSProvider       string
-	TermiiAPIKey      string
-	TermiiSenderID    string
-	TermiiBaseURL     string
+	OTPDevAPIKey      string
+	OTPDevSender      string
+	OTPDevTemplateID  string
+	OTPDevBaseURL     string
 	OTPTTL            time.Duration
 	OTPMaxAttempts    int
 	OTPResendInterval time.Duration
@@ -256,11 +257,12 @@ func Load() (Config, error) {
 		CommissionPercent:       strings.TrimSpace(os.Getenv("COMMISSION_PERCENT")),
 
 		// SMS / OTP
-		SMSProvider:    strings.TrimSpace(os.Getenv("SMS_PROVIDER")),
-		TermiiAPIKey:   strings.TrimSpace(os.Getenv("TERMII_API_KEY")),
-		TermiiSenderID: strings.TrimSpace(os.Getenv("TERMII_SENDER_ID")),
-		TermiiBaseURL:  strings.TrimSpace(os.Getenv("TERMII_BASE_URL")),
-		USSDToken:      strings.TrimSpace(os.Getenv("USSD_TOKEN")),
+		SMSProvider:      strings.ToLower(strings.TrimSpace(os.Getenv("SMS_PROVIDER"))),
+		OTPDevAPIKey:     strings.TrimSpace(os.Getenv("OTPDEV_API_KEY")),
+		OTPDevSender:     strings.TrimSpace(os.Getenv("OTPDEV_SENDER")),
+		OTPDevTemplateID: strings.TrimSpace(os.Getenv("OTPDEV_TEMPLATE_ID")),
+		OTPDevBaseURL:    envString("OTPDEV_BASE_URL", "https://api.otp.dev/v1"),
+		USSDToken:        strings.TrimSpace(os.Getenv("USSD_TOKEN")),
 	}
 	var err error
 	for _, field := range []struct {
@@ -360,10 +362,6 @@ func Load() (Config, error) {
 		cfg.SMSProvider = "disabled"
 	}
 
-	if cfg.TermiiBaseURL == "" {
-		cfg.TermiiBaseURL = "https://api.ng.termii.com"
-	}
-
 	// Wallet reporting threshold.
 	if cfg.WalletStaleDepositHours == "" {
 		cfg.WalletStaleDepositHours = "24"
@@ -387,7 +385,7 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("%s is required when its provider key is configured", provider.setting)
 		}
 	}
-	for name, value := range map[string]string{"GROQ_BASE_URL": cfg.GroqBaseURL, "OPENROUTER_BASE_URL": cfg.OpenRouterBaseURL, "FLUTTERWAVE_BASE_URL": cfg.FlutterwaveBaseURL, "TERMII_BASE_URL": cfg.TermiiBaseURL} {
+	for name, value := range map[string]string{"GROQ_BASE_URL": cfg.GroqBaseURL, "OPENROUTER_BASE_URL": cfg.OpenRouterBaseURL, "FLUTTERWAVE_BASE_URL": cfg.FlutterwaveBaseURL, "OTPDEV_BASE_URL": cfg.OTPDevBaseURL} {
 		if err := validateHTTPURL(name, value); err != nil {
 			return Config{}, err
 		}
@@ -413,20 +411,22 @@ func Load() (Config, error) {
 	// Validate SMS provider configuration.
 	switch cfg.SMSProvider {
 	case "disabled":
-	case "termii":
-		if cfg.TermiiAPIKey == "" {
-			return Config{}, fmt.Errorf("TERMII_API_KEY must not be empty when SMS_PROVIDER=termii")
-		}
-
-		if cfg.TermiiSenderID == "" {
-			return Config{}, fmt.Errorf("TERMII_SENDER_ID must not be empty when SMS_PROVIDER=termii")
+	case "otpdev":
+		for _, field := range []struct{ name, value string }{
+			{"OTPDEV_API_KEY", cfg.OTPDevAPIKey},
+			{"OTPDEV_SENDER", cfg.OTPDevSender},
+			{"OTPDEV_TEMPLATE_ID", cfg.OTPDevTemplateID},
+		} {
+			if field.value == "" {
+				return Config{}, fmt.Errorf("%s must not be empty when SMS_PROVIDER=otpdev", field.name)
+			}
 		}
 	case "brevo":
 		if cfg.BrevoSMTPHost == "" || cfg.BrevoSMTPLogin == "" || cfg.BrevoSMTPKey == "" || cfg.BrevoFromEmail == "" {
 			return Config{}, fmt.Errorf("Brevo SMTP host, login, key, and sender email are required when SMS_PROVIDER=brevo")
 		}
 	default:
-		return Config{}, fmt.Errorf("SMS_PROVIDER must be disabled, termii, or brevo")
+		return Config{}, fmt.Errorf("SMS_PROVIDER must be disabled, otpdev, or brevo")
 	}
 
 	return cfg, nil

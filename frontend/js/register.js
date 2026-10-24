@@ -22,6 +22,69 @@ const registrationSections = Array.from(
     registerForm.querySelectorAll(":scope > .form-section")
 );
 let selfieStep = false;
+const detailsButton = document.getElementById("register-submit");
+const sendCodeButton = document.getElementById("send-registration-code");
+const registrationCode = document.getElementById("registration-code");
+const confirmationPhone = document.getElementById("confirmation-phone");
+const confirmationStatus = document.getElementById("confirmation-status");
+let codePhone = "";
+let resendAt = 0;
+let sendingCode = false;
+let submitting = false;
+
+function updateConfirmationControls() {
+    const wait = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
+    sendCodeButton.disabled = sendingCode || submitting || wait > 0;
+    sendCodeButton.textContent = sendingCode ? "Sending code…" : wait > 0
+        ? `Resend code in ${wait}s` : codePhone ? "Resend confirmation code" : "Send confirmation code";
+    backButton.disabled = sendingCode || submitting;
+    completeButton.disabled = submitting || sendingCode || profilePicture.files.length === 0
+        || codePhone !== phone.value.trim() || !/^[0-9]{6}$/.test(registrationCode.value.trim());
+}
+
+sendCodeButton.addEventListener("click", async () => {
+    if (sendingCode || Date.now() < resendAt) return;
+    sendingCode = true;
+    confirmationStatus.textContent = "";
+    updateConfirmationControls();
+    const targetPhone = phone.value.trim();
+    try {
+        const response = await fetch("/register/phone-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ phone: targetPhone }),
+        });
+        if (!response.ok) {
+            const retry = Number(response.headers.get("Retry-After"));
+            if (retry > 0) resendAt = Date.now() + retry * 1000;
+            throw new Error(await response.text());
+        }
+        const data = await response.json();
+        codePhone = targetPhone;
+        registrationCode.value = "";
+        registrationCode.disabled = false;
+        registrationCode.required = true;
+        resendAt = Date.now() + (Number(data.retry_after) || 0) * 1000;
+        confirmationStatus.textContent = data.message;
+        registrationCode.focus();
+    } catch (error) {
+        confirmationStatus.textContent = error.message || "Could not send the code. Please try again.";
+    } finally {
+        sendingCode = false;
+        updateConfirmationControls();
+    }
+});
+
+registrationCode.addEventListener("input", updateConfirmationControls);
+phone.addEventListener("input", () => {
+    codePhone = "";
+    registrationCode.value = "";
+    registrationCode.disabled = true;
+    registrationCode.required = false;
+    confirmationStatus.textContent = "";
+    updateConfirmationControls();
+});
+setInterval(updateConfirmationControls, 1000);
 
 
 // ===============================
@@ -246,7 +309,10 @@ state.addEventListener("change", async () => {
 // FORM VALIDATION
 // ===============================
 
-registerForm.addEventListener("submit", (event) => {
+registerForm.addEventListener("submit", async (event) => {
+	// Keep form details and the selected photo in place if confirmation fails.
+    event.preventDefault();
+    if (submitting || sendingCode) return;
 
     message.textContent = "";
 
@@ -380,26 +446,57 @@ registerForm.addEventListener("submit", (event) => {
             section.style.display = section === profileSection ? "" : "none";
         });
         profilePicture.required = true;
-        completeButton.disabled = profilePicture.files.length === 0;
-        registerHeading.textContent = "Complete your registration";
+        detailsButton.hidden = true;
+        confirmationPhone.textContent = phone.value.trim();
+        registrationCode.disabled = codePhone !== phone.value.trim();
+        registrationCode.required = !registrationCode.disabled;
+        updateConfirmationControls();
+        registerHeading.textContent = "Confirm your phone and finish registration";
         profilePicture.focus();
         return;
     }
 
-    completeButton.disabled = true;
-    completeButton.textContent = "Completing registration...";
+    if (codePhone !== phone.value.trim() || !/^[0-9]{6}$/.test(registrationCode.value.trim())) {
+        message.textContent = "Request and enter the SMS code for your phone number.";
+        message.style.color = "red";
+        return;
+    }
+    submitting = true;
+    updateConfirmationControls();
+    completeButton.textContent = "Confirming and creating account…";
+    try {
+        const response = await fetch(registerForm.action, {
+            method: "POST",
+            body: new FormData(registerForm),
+        });
+        if (response.ok && response.redirected && new URL(response.url).pathname === "/login") {
+            window.location.assign(response.url);
+            return;
+        }
+        throw new Error(response.ok ? "Could not complete registration. Please try again." : await response.text());
+    } catch (error) {
+        message.textContent = error.message || "Could not complete registration. Please try again.";
+        message.style.color = "red";
+    } finally {
+        submitting = false;
+        completeButton.textContent = "Complete Registration";
+        updateConfirmationControls();
+    }
 
 });
 
 profilePicture.addEventListener("change", () => {
-    completeButton.disabled = profilePicture.files.length === 0;
+    updateConfirmationControls();
 });
 
 backButton.addEventListener("click", () => {
     selfieStep = false;
     profilePicture.required = false;
+    registrationCode.required = false;
+    registrationCode.disabled = true;
+    detailsButton.hidden = false;
     registrationSections.forEach((section) => {
-        section.hidden = false;
+        section.hidden = section === profileSection;
         section.style.display = "";
     });
     registerHeading.textContent = "Create Your Account";

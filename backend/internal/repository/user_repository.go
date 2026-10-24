@@ -84,6 +84,19 @@ func mapUserUniqueViolation(err error) error {
 // receives its permanent wallet number from the wallets trigger in migration
 // 040. Creating one here as well would duplicate that ownership rule.
 func (r *UserRepository) Create(user *models.User) (int, error) {
+	return r.create(user, nil)
+}
+
+// CreateWithVerifiedPhone consumes a checked signup code and creates the
+// account together. A failed insert leaves the code usable for a retry.
+func (r *UserRepository) CreateWithVerifiedPhone(user *models.User, proof *models.RegistrationPhoneCode) (int, error) {
+	if proof == nil {
+		return 0, ErrRegistrationOTPInvalid
+	}
+	return r.create(user, proof)
+}
+
+func (r *UserRepository) create(user *models.User, proof *models.RegistrationPhoneCode) (int, error) {
 	if user == nil {
 		return 0, fmt.Errorf("user cannot be nil")
 	}
@@ -132,6 +145,11 @@ func (r *UserRepository) Create(user *models.User) (int, error) {
 		return 0, err
 	}
 	defer tx.Rollback()
+	if proof != nil {
+		if err := consumeRegistrationPhone(tx, user.Phone, proof); err != nil {
+			return 0, err
+		}
+	}
 	if err = resolveUserLocation(tx, user); err != nil {
 		return 0, err
 	}
@@ -140,6 +158,11 @@ func (r *UserRepository) Create(user *models.User) (int, error) {
 		user.FullName, user.Phone, emailValue, user.PasswordHash, user.Location, user.LGA, user.State, user.Country, user.Role, user.AccountType, user.OrganisationName, user.PhotoURL, user.StateID, user.LGAID, user.CommunityID).Scan(&user.ID)
 	if err != nil {
 		return 0, mapUserUniqueViolation(err)
+	}
+	if proof != nil {
+		if err := tx.QueryRow(`UPDATE users SET phone_verified_at=CURRENT_TIMESTAMP WHERE id=$1 RETURNING phone_verified_at`, user.ID).Scan(&user.PhoneVerifiedAt); err != nil {
+			return 0, err
+		}
 	}
 	if err = saveUserFarmingTypes(tx, user.ID, user.FarmingTypes); err != nil {
 		return 0, err
@@ -191,7 +214,7 @@ const userSelectColumns = `
 	) AS farming_types,
 	created_at,
 	updated_at,
- state_id,lga_id,community_id
+ state_id,lga_id,community_id,phone_verified_at
 `
 
 func scanUser(scanner interface {
@@ -218,6 +241,7 @@ func scanUser(scanner interface {
 		&user.CreatedAt,
 		&user.UpdatedAt,
 		&user.StateID, &user.LGAID, &user.CommunityID,
+		&user.PhoneVerifiedAt,
 	)
 	if err != nil {
 		return nil, err

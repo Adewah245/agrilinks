@@ -31,8 +31,8 @@ type OTPMessage struct {
 	ExpiresAt time.Time
 }
 
-// OTPDelivery sends an OTP through a concrete provider such as Termii or
-// Brevo. Providers can be replaced without changing OTP generation or storage.
+// OTPDelivery sends an OTP through a provider such as OTP.dev. Providers can
+// be replaced without changing OTP generation, storage, or verification.
 type OTPDelivery interface {
 	SendOTP(ctx context.Context, message OTPMessage) error
 }

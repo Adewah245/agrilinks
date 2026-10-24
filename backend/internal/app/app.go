@@ -72,21 +72,35 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	container.Config = cfg
 	container.Sessions = services.NewSessionService(repository.NewSessionRepository(db), cfg.SessionTTL)
 	container.Weather = services.NewWeatherService()
-	var delivery services.OTPDelivery
-	switch cfg.SMSProvider {
-	case "termii":
-		delivery, err = services.NewTermiiOTPDelivery(cfg.TermiiAPIKey, cfg.TermiiSenderID, cfg.TermiiBaseURL)
-	case "brevo":
-		delivery, err = services.NewBrevoOTPDelivery(cfg.BrevoSMTPHost, cfg.BrevoSMTPLogin, cfg.BrevoSMTPKey, cfg.BrevoFromEmail, cfg.BrevoFromName)
-	}
+	delivery, err := newOTPDelivery(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("configure password recovery: %w", err)
+		return nil, fmt.Errorf("configure OTP delivery: %w", err)
 	}
 	container.OTP = services.NewOTPService(repository.NewOTPRepository(db), delivery)
 	container.OTP.Configure(cfg.OTPTTL, cfg.OTPMaxAttempts, cfg.OTPResendInterval)
 	container.Auth.SetOTP(container.OTP)
+	var phoneDelivery services.OTPDelivery
+	if cfg.SMSProvider == "otpdev" {
+		phoneDelivery = delivery
+	}
+	container.Auth.SetRegistrationOTP(services.NewRegistrationOTPService(
+		repository.NewRegistrationOTPRepository(db), phoneDelivery, cfg.OTPTTL, cfg.OTPMaxAttempts, cfg.OTPResendInterval,
+	))
 	container.Wallet = services.NewWalletService(repository.NewWalletRepository(db, cfg.PaymentCurrency, commission), repository.NewPaymentRepository(db, commission), walletProvider, container.OTP, cfg.PaymentCurrency)
 	container.Payment.SetWallet(container.Wallet)
 	container.Learning.SetProvider(services.NewLearningProvider(cfg))
 	return container, nil
+}
+
+func newOTPDelivery(cfg config.Config) (services.OTPDelivery, error) {
+	switch cfg.SMSProvider {
+	case "", "disabled":
+		return nil, nil
+	case "otpdev":
+		return services.NewOTPDevDelivery(cfg.OTPDevAPIKey, cfg.OTPDevSender, cfg.OTPDevTemplateID, cfg.OTPDevBaseURL)
+	case "brevo":
+		return services.NewBrevoOTPDelivery(cfg.BrevoSMTPHost, cfg.BrevoSMTPLogin, cfg.BrevoSMTPKey, cfg.BrevoFromEmail, cfg.BrevoFromName)
+	default:
+		return nil, fmt.Errorf("unsupported OTP delivery provider %q", cfg.SMSProvider)
+	}
 }

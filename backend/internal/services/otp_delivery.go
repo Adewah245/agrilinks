@@ -1,112 +1,13 @@
 package services
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net"
-	"net/http"
 	"net/smtp"
 	"strings"
 	"time"
 )
-
-const defaultTermiiBaseURL = "https://api.ng.termii.com"
-
-// TermiiOTPDelivery sends OTP messages through Termii's SMS API.
-type TermiiOTPDelivery struct {
-	apiKey   string
-	senderID string
-	baseURL  string
-	client   *http.Client
-}
-
-func NewTermiiOTPDelivery(
-	apiKey string,
-	senderID string,
-	baseURL string,
-) (*TermiiOTPDelivery, error) {
-	apiKey = strings.TrimSpace(apiKey)
-	senderID = strings.TrimSpace(senderID)
-	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
-
-	if apiKey == "" {
-		return nil, fmt.Errorf("Termii API key is required")
-	}
-	if senderID == "" {
-		return nil, fmt.Errorf("Termii sender ID is required")
-	}
-	if baseURL == "" {
-		baseURL = defaultTermiiBaseURL
-	}
-
-	return &TermiiOTPDelivery{
-		apiKey:   apiKey,
-		senderID: senderID,
-		baseURL:  baseURL,
-		client:   &http.Client{Timeout: 10 * time.Second},
-	}, nil
-}
-
-func (d *TermiiOTPDelivery) SendOTP(ctx context.Context, message OTPMessage) error {
-	if d == nil || d.client == nil {
-		return fmt.Errorf("Termii OTP delivery is not configured")
-	}
-
-	phone := strings.TrimSpace(message.Phone)
-	if phone == "" {
-		return fmt.Errorf("phone number is required for SMS delivery")
-	}
-
-	payload, err := json.Marshal(struct {
-		APIKey  string `json:"api_key"`
-		To      string `json:"to"`
-		From    string `json:"from"`
-		SMS     string `json:"sms"`
-		Type    string `json:"type"`
-		Channel string `json:"channel"`
-	}{
-		APIKey:  d.apiKey,
-		To:      phone,
-		From:    d.senderID,
-		SMS:     otpDeliveryText(message),
-		Type:    "plain",
-		Channel: "generic",
-	})
-	if err != nil {
-		return fmt.Errorf("encode Termii request: %w", err)
-	}
-
-	request, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodPost,
-		d.baseURL+"/api/sms/send",
-		bytes.NewReader(payload),
-	)
-	if err != nil {
-		return fmt.Errorf("create Termii request: %w", err)
-	}
-	request.Header.Set("Content-Type", "application/json")
-
-	response, err := d.client.Do(request)
-	if err != nil {
-		return fmt.Errorf("send Termii OTP: %w", err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-		return fmt.Errorf(
-			"Termii rejected OTP delivery with status %d: %s",
-			response.StatusCode,
-			strings.TrimSpace(string(body)),
-		)
-	}
-
-	return nil
-}
 
 type smtpSendFunc func(
 	addr string,

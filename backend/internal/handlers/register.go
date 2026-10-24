@@ -3,6 +3,8 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"backend/internal/render"
@@ -45,6 +47,7 @@ func (h *Register) RegisterHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	w.Header().Set("Cache-Control", "no-store")
 	switch r.Method {
 
 	case http.MethodGet:
@@ -86,6 +89,11 @@ func (h *Register) RegisterHandler(
 		}
 
 		defer r.MultipartForm.RemoveAll()
+		confirmation, cookieErr := r.Cookie(registrationCookieName)
+		if cookieErr != nil || len(confirmation.Value) != 64 || strings.TrimSpace(r.FormValue("registration_code")) == "" {
+			http.Error(w, "Confirm your phone number with the SMS code before completing registration.", http.StatusBadRequest)
+			return
+		}
 
 		// ====================================================
 		// SAVE PROFILE PICTURE
@@ -109,6 +117,14 @@ func (h *Register) RegisterHandler(
 			)
 			return
 		}
+		registered := false
+		defer func() {
+			if !registered {
+				if directory, err := frontendDirectory(); err == nil {
+					_ = os.Remove(filepath.Join(directory, "uploads", "users", filepath.Base(photoURL)))
+				}
+			}
+		}()
 
 		// ====================================================
 		// COLLECT REGISTRATION DATA
@@ -316,6 +332,7 @@ func (h *Register) RegisterHandler(
 		// ====================================================
 
 		err = h.service.Register(
+			r.Context(), confirmation.Value, r.FormValue("registration_code"),
 			user.First_Name,
 			user.Last_Name,
 			user.Phone,
@@ -354,6 +371,8 @@ func (h *Register) RegisterHandler(
 			"User registered successfully as",
 			role,
 		)
+		registered = true
+		clearRegistrationCookie(w, r)
 
 		http.Redirect(
 			w,

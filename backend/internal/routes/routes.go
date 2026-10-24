@@ -121,6 +121,8 @@ func NewHandler(container *app.Container) http.Handler {
 		),
 	)
 
+	mux.HandleFunc("/register/phone-code", middleware.OnlyPath("/register/phone-code", registerHandler.PhoneCodeHandler))
+
 	loginHandler := handlers.NewLoginHandler(
 		container.Auth, container.Sessions,
 	)

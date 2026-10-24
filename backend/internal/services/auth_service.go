@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/mail"
 	"strings"
+	"time"
 
 	"backend/internal/models"
 	"backend/internal/repository"
@@ -15,11 +16,34 @@ import (
 // AuthService handles user registration, authentication,
 // profile updates, and password management.
 type AuthService struct {
-	repo *repository.UserRepository
-	otp  *OTPService
+	repo            *repository.UserRepository
+	otp             *OTPService
+	registrationOTP *RegistrationOTPService
 }
 
 func (s *AuthService) SetOTP(otp *OTPService) { s.otp = otp }
+
+func (s *AuthService) SetRegistrationOTP(otp *RegistrationOTPService) { s.registrationOTP = otp }
+
+func (s *AuthService) RequestRegistrationCode(ctx context.Context, phone string) (string, error) {
+	if !s.registrationOTP.Available() {
+		return "", ErrRegistrationOTPUnavailable
+	}
+	if NormalizeNigerianPhone(phone) == "" {
+		return "", errors.New("enter a valid Nigerian phone number")
+	}
+	user, err := s.FindByPhone(phone)
+	if err != nil {
+		return "", errors.New("we could not start phone confirmation; please try again")
+	}
+	if user != nil {
+		return "", errors.New("that phone number already has an account; please sign in")
+	}
+	return s.registrationOTP.Issue(ctx, phone)
+}
+
+func (s *AuthService) RegistrationCodeTTL() time.Duration      { return s.registrationOTP.ttl }
+func (s *AuthService) RegistrationCodeCooldown() time.Duration { return s.registrationOTP.cooldown }
 
 var ErrRecoveryUnavailable = errors.New("password recovery is unavailable; please contact support")
 
@@ -79,12 +103,13 @@ func NewAuthService(repo *repository.UserRepository) *AuthService {
 // - account_type describes the account structure.
 // - farmingTypes represent farming activities the user
 //   already practices.
-// - NIN is OPTIONAL for now because the verification API
-//   has not yet been integrated.
+// - Phone confirmation is required before an account is created.
 // - Profile picture IS REQUIRED.
 // ============================================================
 
 func (s *AuthService) Register(
+	ctx context.Context,
+	registrationToken, registrationCode string,
 	firstName,
 	lastName,
 	phone,
@@ -100,6 +125,9 @@ func (s *AuthService) Register(
 	organisationName string,
 	farmingTypes []string,
 ) error {
+	if !s.registrationOTP.Available() {
+		return ErrRegistrationOTPUnavailable
+	}
 
 	// --------------------------------------------------------
 	// Normalize input
@@ -242,6 +270,10 @@ func (s *AuthService) Register(
 	if existing != nil {
 		return errors.New("phone number already registered")
 	}
+	proof, err := s.registrationOTP.Check(ctx, registrationToken, phone, registrationCode)
+	if err != nil {
+		return err
+	}
 
 	// --------------------------------------------------------
 	// Hash password
@@ -286,7 +318,7 @@ func (s *AuthService) Register(
 	// Create user
 	// --------------------------------------------------------
 
-	_, err = s.repo.Create(user)
+	_, err = s.repo.CreateWithVerifiedPhone(user, proof)
 	if err != nil {
 		return err
 	}

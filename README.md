@@ -1149,6 +1149,10 @@ A compatibility layer should have a clear reason and should not silently recreat
 
 # 35. Security and Trust
 
+OTP delivery for password resets, wallet withdrawals, and transfers supports
+OTP.dev. See [OTP verification setup](docs/otp-verification.md) for configuration
+and how codes are generated, delivered, and verified.
+
 Agro-Shield should prioritize trust because the platform involves:
 
 - Farmers
