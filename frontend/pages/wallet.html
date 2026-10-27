@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My wallet | Agro-Shield</title><link rel="stylesheet" href="/static/css/style.css"><link rel="stylesheet" href="/static/css/learning.css"><script defer src="/static/js/wallet.js"></script></head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My wallet | Agro-Shield</title><link rel="stylesheet" href="/static/css/style.css"><link rel="stylesheet" href="/static/css/learning.css"><script defer src="/static/js/wallet.js"></script>    <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
+</head>
 <body><header class="navbar"><a href="/dashboard">Agro-Shield</a><nav><a href="/marketplace">Market</a><a href="/orders">Orders</a><a href="/payments">Payments</a>{{if .User.IsAdmin}}<a href="/wallet/admin">Wallet requests</a>{{end}}<a href="/logout">Log out</a></nav></header>
-<main class="learning-page"><h1>My wallet</h1>
+<main class="learning-page account-page"><h1>My wallet</h1>
 {{if .Error}}<p role="alert">{{.Error}}</p>{{end}}{{if .Notice}}<p role="status">{{.Notice}}</p>{{end}}
 <section class="panel"><h2>{{.Wallet.Currency}} {{.Wallet.Balance}}</h2><p>Available balance</p><p>Your wallet number: <strong>{{.Wallet.WalletNumber}}</strong></p><p>Money waiting for a transfer or withdrawal is held until the request is completed or cancelled.</p></section>
 {{if .VirtualAccount}}{{if .VirtualAccount.Ready}}<section class="panel"><h2>Your bank funding account</h2><p>{{.VirtualAccount.BankName}} · {{.VirtualAccount.AccountName}}</p><p>Account number: <strong>{{.VirtualAccount.AccountNumber}}</strong></p><p>Your balance changes after the payment provider confirms the transfer.</p></section>{{end}}{{end}}
@@ -16,4 +17,5 @@
 <section class="panel"><h2>Withdrawals</h2>{{range .Withdrawals}}<article><p>{{.Currency}} {{.Amount}} · {{humanStatus .Status}} · {{.BankName}} {{.MaskedAccountNumber}}</p>{{if eq .Status "pending"}}<form method="POST" action="/wallet"><input type="hidden" name="action" value="cancel_withdrawal"><input type="hidden" name="id" value="{{.ID}}"><button>Cancel and return money</button></form>{{end}}</article>{{else}}<p>No withdrawals yet.</p>{{end}}</section>
 <section class="panel"><h2>Transfers</h2>{{range .Transfers}}<article><p>{{.SenderName}} → {{.RecipientName}} · {{.Currency}} {{.Amount}} · {{humanStatus .Status}}</p>{{if and (eq .Status "pending") (eq .SenderID $.User.ID)}}<form method="POST" action="/wallet"><input type="hidden" name="action" value="cancel_transfer"><input type="hidden" name="id" value="{{.ID}}"><button>Cancel and return money</button></form>{{end}}</article>{{else}}<p>No transfers yet.</p>{{end}}</section>
 <section class="panel"><h2>Balance history</h2>{{range .History}}<article><p>{{humanStatus .Type}} · {{.Amount}} · {{.CreatedAt.Format "02 Jan 2006 15:04"}}</p><small>{{.Reference}}</small></article>{{else}}<p>No balance changes yet.</p>{{end}}<p>The latest 200 changes are shown.</p></section>
-</main></body></html>
+</main>    <script defer src="/static/js/navigation.js?v=20261027"></script>
+</body></html>

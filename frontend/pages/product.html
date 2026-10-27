@@ -24,6 +24,7 @@
         rel="stylesheet"
         href="/static/css/product.css?v=20260904"
     >
+    <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
 </head>
 
 <body>
@@ -415,7 +416,7 @@
 
             {{if eq .Product.Status "active"}}
 
-                {{if gt .Product.Quantity 0}}
+        {{if gt .Product.Quantity 0.0}}
 
                     <span class="product-status available">
                         Available for Sale
@@ -497,7 +498,7 @@
 ></script>
 
 <script
-    src="/static/js/navigation.js?v=20260904"
+    src="/static/js/navigation.js?v=20261027"
 ></script>
 
 </body>

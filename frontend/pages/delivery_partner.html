@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Delivery Partner | Agro-Shield</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
 </head>
 <body>
-    <main class="dashboard">
+    <main class="dashboard account-page">
         <p><a href="/deliveries">← Deliveries</a></p>
         <h1>Delivery partner</h1>
 
@@ -80,7 +81,8 @@
         {{if .PartnersForReview}}
         <section class="panel">
             <h2>Delivery partners waiting for review</h2>
-            <table>
+            <div class="table-scroll" role="region" aria-label="Delivery Partner table" tabindex="0">
+<table>
                 <thead>
                     <tr>
                         <th>Business</th>
@@ -116,9 +118,11 @@
                     {{end}}
                 </tbody>
             </table>
+</div>
         </section>
         {{end}}
     </main>
     <script src="/static/js/delivery_partner.js" defer></script>
+    <script defer src="/static/js/navigation.js?v=20261027"></script>
 </body>
 </html>

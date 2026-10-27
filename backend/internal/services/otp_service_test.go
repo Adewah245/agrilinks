@@ -13,13 +13,12 @@ import (
 )
 
 type fakeOTPStore struct {
-	created       *models.OTPCode
-	active        *models.OTPCode
-	attempts      int
-	consumed      int
-	deleted       int
-	createError   error
-	deliveryError error
+	created     *models.OTPCode
+	active      *models.OTPCode
+	attempts    int
+	consumed    int
+	deleted     int
+	createError error
 }
 
 func (s *fakeOTPStore) Create(otp *models.OTPCode) error {

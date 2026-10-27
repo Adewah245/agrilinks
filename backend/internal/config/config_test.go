@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -11,32 +12,62 @@ func setOTPDevTestEnvironment(t *testing.T) {
 	setValidTestEnvironment(t)
 	t.Setenv("SMS_PROVIDER", "otpdev")
 	t.Setenv("OTPDEV_API_KEY", "test-otpdev-key")
-	t.Setenv("OTPDEV_SENDER", "AgroShield")
-	t.Setenv("OTPDEV_TEMPLATE_ID", "6d16aa9d-bf19-4141-8169-48b46d972fc6")
+	t.Setenv("OTPDEV_SENDER", "")
+	t.Setenv("OTPDEV_TEMPLATE_ID", "")
 	t.Setenv("OTPDEV_BASE_URL", "")
 }
 
 func TestLoadOTPDevConfiguration(t *testing.T) {
 	setOTPDevTestEnvironment(t)
 	t.Setenv("SMS_PROVIDER", " OTPDEV ")
+	// Old environment settings must not override the built-in account settings.
+	t.Setenv("OTPDEV_SENDER", "OTP DEV")
+	t.Setenv("OTPDEV_TEMPLATE_ID", "Your verification code is {code}")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.SMSProvider != "otpdev" || cfg.OTPDevAPIKey != "test-otpdev-key" || cfg.OTPDevSender != "AgroShield" || cfg.OTPDevTemplateID != "6d16aa9d-bf19-4141-8169-48b46d972fc6" || cfg.OTPDevBaseURL != "https://api.otp.dev/v1" {
+	if cfg.SMSProvider != "otpdev" || cfg.OTPDevAPIKey != "test-otpdev-key" || cfg.OTPDevSender != "OTP Dev" || cfg.OTPDevTemplateID != "a724614a-3a7c-4625-930e-2a8b45141474" || cfg.OTPDevBaseURL != "https://api.otp.dev/v1" {
 		t.Fatal("OTP.dev configuration was not loaded correctly")
 	}
 }
 
-func TestLoadRejectsIncompleteOTPDevConfiguration(t *testing.T) {
-	for _, name := range []string{"OTPDEV_API_KEY", "OTPDEV_SENDER", "OTPDEV_TEMPLATE_ID"} {
-		t.Run(name, func(t *testing.T) {
+func TestLoadDefaultsToOTPDev(t *testing.T) {
+	for _, value := range []string{"", " "} {
+		t.Run("provider="+value, func(t *testing.T) {
 			setOTPDevTestEnvironment(t)
-			t.Setenv(name, " ")
-			if _, err := Load(); err == nil || !strings.Contains(err.Error(), name) {
-				t.Fatalf("expected missing %s error, got %v", name, err)
+			t.Setenv("SMS_PROVIDER", value)
+			if value == "" {
+				if err := os.Unsetenv("SMS_PROVIDER"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cfg, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.SMSProvider != "otpdev" {
+				t.Fatalf("default provider = %q, want otpdev", cfg.SMSProvider)
+			}
+			if cfg.OTPDevSender != "OTP Dev" || cfg.OTPDevTemplateID != "a724614a-3a7c-4625-930e-2a8b45141474" {
+				t.Fatal("API-key-only setup did not supply the sender and template")
 			}
 		})
+	}
+}
+
+func TestLoadRejectsMissingOTPDevAPIKey(t *testing.T) {
+	for _, provider := range []string{"otpdev", ""} {
+		for _, value := range []string{"", " "} {
+			t.Run(provider+"/key="+value, func(t *testing.T) {
+				setOTPDevTestEnvironment(t)
+				t.Setenv("SMS_PROVIDER", provider)
+				t.Setenv("OTPDEV_API_KEY", value)
+				if _, err := Load(); err == nil || !strings.Contains(err.Error(), "OTPDEV_API_KEY") {
+					t.Fatalf("expected missing OTPDEV_API_KEY error, got %v", err)
+				}
+			})
+		}
 	}
 }
 

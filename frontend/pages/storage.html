@@ -22,6 +22,7 @@
     href="/static/css/storage.css?v=20260904-storage"
 >
 
+    <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
 </head>
 
 <body>
@@ -197,7 +198,8 @@
     class="storage-table-wrapper"
     aria-label="Stored products"
 >
-    <table>
+    <div class="table-scroll" role="region" aria-label="My products table" tabindex="0">
+<table>
 
         <thead>
             <tr>
@@ -429,6 +431,7 @@
 
         </tbody>
     </table>
+</div>
 </section>
 
 
@@ -780,7 +783,7 @@
 ></script>
 
 <script
-    src="/static/js/navigation.js?v=20260904"
+    src="/static/js/navigation.js?v=20261027"
     defer
 ></script>
 

@@ -80,7 +80,7 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	container.OTP.Configure(cfg.OTPTTL, cfg.OTPMaxAttempts, cfg.OTPResendInterval)
 	container.Auth.SetOTP(container.OTP)
 	var phoneDelivery services.OTPDelivery
-	if cfg.SMSProvider == "otpdev" {
+	if cfg.SMSProvider == "" || cfg.SMSProvider == "otpdev" {
 		phoneDelivery = delivery
 	}
 	container.Auth.SetRegistrationOTP(services.NewRegistrationOTPService(
@@ -94,9 +94,9 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 
 func newOTPDelivery(cfg config.Config) (services.OTPDelivery, error) {
 	switch cfg.SMSProvider {
-	case "", "disabled":
+	case "disabled":
 		return nil, nil
-	case "otpdev":
+	case "", "otpdev":
 		return services.NewOTPDevDelivery(cfg.OTPDevAPIKey, cfg.OTPDevSender, cfg.OTPDevTemplateID, cfg.OTPDevBaseURL)
 	case "brevo":
 		return services.NewBrevoOTPDelivery(cfg.BrevoSMTPHost, cfg.BrevoSMTPLogin, cfg.BrevoSMTPKey, cfg.BrevoFromEmail, cfg.BrevoFromName)

@@ -1,0 +1,125 @@
+/* Shared layout rules, loaded after each page's styles. */
+:root { --page-gutter: clamp(12px, 3vw, 32px); }
+html { width: 100%; min-height: 100%; }
+body { min-height: 100%; padding-top: 0; overflow-wrap: anywhere; }
+:where(main, section, article, div, form, fieldset, header, footer) { min-width: 0; }
+fieldset { min-inline-size: 0; }
+:where(img, video, canvas, svg, iframe, audio) { max-width: 100%; }
+:where(input, select, textarea, button) { max-width: 100%; }
+textarea { resize: vertical; }
+button, .page-button, .primary-btn, .secondary-btn { white-space: normal; line-height: 1.35; overflow-wrap: anywhere; }
+pre { max-width: 100%; overflow: auto; }
+
+/* Keep wide data inside its own keyboard-accessible scroll region. */
+.table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; margin-block: 16px; }
+.table-scroll table { width: 100%; border-collapse: collapse; }
+.table-scroll table:has(th:nth-child(5)) { min-width: 640px; }
+.table-scroll th, .table-scroll td { vertical-align: top; }
+.table-scroll:focus-visible { outline: 3px solid var(--color-brand); outline-offset: 2px; }
+
+/* Pages that use the shared stylesheet without a dedicated page layout. */
+.account-page { width: min(1200px, calc(100% - 2 * var(--page-gutter))); margin: 0 auto; padding: 32px 0 64px; line-height: 1.6; }
+.account-page h1 { font-size: clamp(1.75rem, 4vw, 2.75rem); line-height: 1.2; margin-block: 16px; }
+.account-page h2 { font-size: 1.3rem; margin-bottom: 16px; }
+.account-page p { margin-block: 12px; }
+.account-page .panel { margin-block: 24px; padding: clamp(16px, 3vw, 28px); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); box-shadow: var(--shadow-sm); }
+.account-page article { padding-block: 16px; border-bottom: 1px solid var(--color-border); }
+.account-page article:last-child { border-bottom: 0; }
+.account-page form { display: flex; flex-wrap: wrap; gap: 12px; margin-block: 16px; align-items: end; }
+.account-page form > :is(h3, h4, p) { flex-basis: 100%; }
+.account-page label { display: grid; gap: 6px; flex: 1 1 240px; }
+.account-page input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), .account-page select, .account-page textarea { width: 100%; min-width: 0; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: #fff; }
+.account-page button { min-height: 44px; padding: 10px 16px; border: 0; border-radius: var(--radius-sm); background: var(--color-brand); color: #fff; cursor: pointer; }
+.account-page th, .account-page td { padding: 12px; text-align: left; border-bottom: 1px solid var(--color-border); }
+.account-page ol { padding-inline-start: 24px; }
+
+/* One header layout for both direct and nested navigation markup. */
+.navbar { position: sticky; top: 0; height: auto; min-height: 68px; padding: 12px var(--page-gutter); flex-direction: row; align-items: center; gap: 18px; }
+.navbar .navbar-container { display: flex; width: 100%; max-width: 1400px; height: auto; margin: 0 auto; padding: 0; align-items: center; justify-content: space-between; gap: 18px; }
+.navbar :is(.logo, .navbar-brand) { display: inline-flex; flex: 0 0 auto; width: 176px; max-width: 100%; height: 44px; align-items: center; }
+.navbar :is(.logo, .navbar-brand) img { width: 100%; height: 100%; object-fit: contain; }
+.navbar-title { display: none; }
+.navbar nav { min-width: 0; flex: 1 1 auto; overflow-x: auto; gap: clamp(12px, 2vw, 24px); }
+.navbar .nav-toggle, .navbar .nav-quick-actions { display: none; }
+
+/* Fluid tracks avoid a card's minimum width exceeding the viewport. */
+.profile { width: 100%; max-width: 1400px; margin: 0 auto; }
+.profile-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.profile-header { flex-wrap: wrap; }
+.profile-header-content { flex: 1 1 240px; }
+.profile-header > img, .profile-photo-placeholder { flex-shrink: 0; }
+.product-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+.cart-container { grid-template-columns: minmax(0, 1fr) minmax(0, 340px); }
+.learning-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.learning-workspace { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+.dashboard-price-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.footer-container, .footer-container > * { min-width: 0; }
+.time-left, .thread-header, .seller-identity, .negotiation-person { min-width: 0; max-width: 100%; }
+.seller-identity img, .negotiation-person img { flex-shrink: 0; }
+
+/* Dialogs remain reachable on short screens and in landscape orientation. */
+.modal, .result-modal { padding: var(--page-gutter); max-height: 100vh; max-height: 100dvh; overflow-y: auto; overscroll-behavior: contain; }
+.modal form, .modal form#storage-form, .result-modal .modal-content { min-width: 0; max-width: 100%; max-height: calc(100vh - 2 * var(--page-gutter)); max-height: calc(100dvh - 2 * var(--page-gutter)); overflow-y: auto; margin-block: auto; }
+.modal form { padding: clamp(16px, 4vw, 32px); }
+.modal form :is(input, select, textarea) { min-width: 0; }
+
+/* Size chat from the actual header and the changing mobile browser viewport. */
+body:has(.message-form) .chat-container { width: min(1000px, calc(100% - 2 * var(--page-gutter))); height: calc(100vh - var(--navbar-height, 76px) - 24px); height: calc(100dvh - var(--navbar-height, 76px) - 24px); margin: 12px auto; }
+.messages { min-height: 0; }
+.message-form, .chat-header, .members-section { flex-shrink: 0; }
+.chat-header-left, .chat-title, .chat-profile-link { min-width: 0; }
+.chat-profile-link { overflow-wrap: anywhere; }
+.thread-avatar { flex-shrink: 0; }
+
+@media (max-width: 1100px) {
+    .navbar, .navbar .navbar-container { flex-wrap: wrap; }
+    /* Navigation remains available when JavaScript is unavailable. */
+    .navbar nav { display: flex; position: static; width: 100%; flex-basis: 100%; flex-direction: row; flex-wrap: wrap; gap: 8px 16px; padding: 8px 0; max-height: none; white-space: normal; transform: none; opacity: 1; visibility: visible; }
+    .navbar.nav-enhanced nav { display: none; position: absolute; top: 100%; left: 0; right: 0; width: 100%; padding: 8px var(--page-gutter) 16px; background: var(--color-surface); border-bottom: 1px solid var(--color-border); box-shadow: var(--shadow-md); max-height: calc(100vh - var(--navbar-height, 76px)); max-height: calc(100dvh - var(--navbar-height, 76px)); overflow: auto; }
+    .navbar.nav-enhanced.nav-open nav { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+    .navbar nav a { min-height: 44px; padding: 12px 0; white-space: normal; }
+    .navbar.nav-enhanced .nav-toggle { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; margin-left: auto; padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-brand); font-size: 24px; cursor: pointer; }
+    .navbar .nav-quick-actions { display: flex; margin-left: auto; gap: 2px; }
+    .navbar .nav-quick-actions a { width: 44px; height: 44px; }
+    .navbar .nav-quick-actions + .nav-toggle { margin-left: 0; }
+    .cart-container { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+    .learning-columns, .learning-workspace { grid-template-columns: minmax(0, 1fr); }
+    .profile { padding: 28px var(--page-gutter); }
+    .profile-header { padding: 24px; gap: 20px; }
+    .profile-header h1 { font-size: clamp(1.6rem, 6vw, 2.25rem); }
+    .profile-grid { gap: 20px; }
+    .profile .card { padding: 20px; }
+}
+
+@media (max-width: 600px) {
+    .navbar, .navbar .navbar-container { gap: 6px; }
+    .navbar :is(.logo, .navbar-brand) { width: clamp(80px, 30vw, 148px); }
+    .navbar { padding-inline: max(12px, env(safe-area-inset-left)); }
+    input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+    button { min-height: 44px; }
+    .profile-header { align-items: flex-start; padding: 20px; }
+    .profile-header > img, .profile-photo-placeholder { width: 112px; height: 112px; }
+    .profile-header-content { flex-basis: 100%; }
+    .profile .card { padding: 16px; }
+    .product-grid { grid-template-columns: minmax(0, 1fr); }
+    .account-page form { align-items: stretch; }
+    .account-page form > :is(label, button, input:not([type="hidden"]), select, textarea) { flex-basis: 100%; }
+    .modal-actions, .decision-actions { flex-wrap: wrap; }
+    .modal-actions button, .decision-actions form { flex: 1 1 140px; }
+    .auth-left { min-height: 240px; padding: 28px var(--page-gutter); }
+    .auth-right { padding-inline: var(--page-gutter); }
+    .auth-right form { padding-inline: clamp(16px, 5vw, 32px); }
+    .brand-area { height: 180px; }
+    body:has(.message-form) .chat-container { width: 100%; margin: 0; height: calc(100dvh - var(--navbar-height, 68px)); }
+    .chat-header-left { gap: 8px; }
+    .chat-heading { font-size: 18px; }
+    .chat-header { align-items: flex-start; gap: 8px; }
+    .chat-type { flex-wrap: wrap; }
+    .members-section { max-height: 96px; overflow-y: auto; }
+    .message-form { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

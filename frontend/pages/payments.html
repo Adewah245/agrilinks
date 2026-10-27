@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payments | Agro-Shield</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
 </head>
 <body>
     <header class="navbar">
@@ -22,7 +23,7 @@
         </nav>
     </header>
 
-    <main class="dashboard">
+    <main class="dashboard account-page">
         <p><a href="/dashboard">← Dashboard</a></p>
         <h1>Payments</h1>
         <p>Payments are verified with Flutterwave before an order is confirmed.</p>
@@ -38,7 +39,8 @@
         <section class="panel">
             <h2>Orders awaiting payment</h2>
             {{if .Orders}}
-            <table>
+            <div class="table-scroll" role="region" aria-label="Payments table" tabindex="0">
+<table>
                 <thead>
                     <tr>
                         <th>Order</th>
@@ -68,6 +70,7 @@
                     {{end}}
                 </tbody>
             </table>
+</div>
             {{else}}
             <p>No orders are waiting for payment.</p>
             <a href="/orders">View orders</a>
@@ -77,7 +80,8 @@
         <section class="panel">
             <h2>Payment history</h2>
             {{if .Payments}}
-            <table>
+            <div class="table-scroll" role="region" aria-label="Payments table" tabindex="0">
+<table>
                 <thead>
                     <tr>
                         <th>Order</th>
@@ -99,10 +103,12 @@
                     {{end}}
                 </tbody>
             </table>
+</div>
             {{else}}
             <p>No payment attempts yet.</p>
             {{end}}
         </section>
     </main>
+    <script defer src="/static/js/navigation.js?v=20261027"></script>
 </body>
 </html>

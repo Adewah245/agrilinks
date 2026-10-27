@@ -16,6 +16,8 @@ const (
 	defaultNegotiationMaxRounds = 10
 	defaultNegotiationWindow    = 24 * time.Hour
 	defaultPaymentCurrency      = "NGN"
+	defaultOTPDevSender         = "OTP Dev"
+	defaultOTPDevTemplateID     = "a724614a-3a7c-4625-930e-2a8b45141474" // "Agro-Shield" template
 )
 
 // Config holds all application settings in one place.
@@ -90,10 +92,11 @@ type Config struct {
 
 	// OTP delivery
 	//
-	// SMSProvider selects OTP delivery: "otpdev" (SMS) or "brevo" (email).
+	// SMSProvider defaults to "otpdev" (SMS); "brevo" selects email.
 	// "disabled" leaves password recovery unavailable until configured.
-	SMSProvider       string
-	OTPDevAPIKey      string
+	SMSProvider  string
+	OTPDevAPIKey string
+	// Sender and template are built into the backend; only the API key is required.
 	OTPDevSender      string
 	OTPDevTemplateID  string
 	OTPDevBaseURL     string
@@ -259,8 +262,8 @@ func Load() (Config, error) {
 		// SMS / OTP
 		SMSProvider:      strings.ToLower(strings.TrimSpace(os.Getenv("SMS_PROVIDER"))),
 		OTPDevAPIKey:     strings.TrimSpace(os.Getenv("OTPDEV_API_KEY")),
-		OTPDevSender:     strings.TrimSpace(os.Getenv("OTPDEV_SENDER")),
-		OTPDevTemplateID: strings.TrimSpace(os.Getenv("OTPDEV_TEMPLATE_ID")),
+		OTPDevSender:     defaultOTPDevSender,
+		OTPDevTemplateID: defaultOTPDevTemplateID,
 		OTPDevBaseURL:    envString("OTPDEV_BASE_URL", "https://api.otp.dev/v1"),
 		USSDToken:        strings.TrimSpace(os.Getenv("USSD_TOKEN")),
 	}
@@ -359,7 +362,7 @@ func Load() (Config, error) {
 	}
 
 	if cfg.SMSProvider == "" {
-		cfg.SMSProvider = "disabled"
+		cfg.SMSProvider = "otpdev"
 	}
 
 	// Wallet reporting threshold.
@@ -412,14 +415,8 @@ func Load() (Config, error) {
 	switch cfg.SMSProvider {
 	case "disabled":
 	case "otpdev":
-		for _, field := range []struct{ name, value string }{
-			{"OTPDEV_API_KEY", cfg.OTPDevAPIKey},
-			{"OTPDEV_SENDER", cfg.OTPDevSender},
-			{"OTPDEV_TEMPLATE_ID", cfg.OTPDevTemplateID},
-		} {
-			if field.value == "" {
-				return Config{}, fmt.Errorf("%s must not be empty when SMS_PROVIDER=otpdev", field.name)
-			}
+		if cfg.OTPDevAPIKey == "" {
+			return Config{}, fmt.Errorf("OTPDEV_API_KEY must not be empty when SMS_PROVIDER=otpdev")
 		}
 	case "brevo":
 		if cfg.BrevoSMTPHost == "" || cfg.BrevoSMTPLogin == "" || cfg.BrevoSMTPKey == "" || cfg.BrevoFromEmail == "" {

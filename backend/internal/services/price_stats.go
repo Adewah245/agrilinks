@@ -22,11 +22,9 @@ func median(values []float64) float64 {
 	return sorted[mid]
 }
 
-// medianAbsoluteDeviation (MAD) measures spread the same robust way median
-// measures center. Used to build an outlier threshold that adapts to how
-// volatile a commodity/market's recent prices actually are, instead of a
-// fixed "+/-20%" rule that would be too strict for volatile crops and too
-// loose for stable ones.
+// minSamplesForStats is the minimum number of recent accepted prices
+// needed before we compare a new submission with the local median.
+// Below this, we lean on submitter trust instead (cold start).
 func medianAbsoluteDeviation(values []float64, med float64) float64 {
 	if len(values) == 0 {
 		return 0

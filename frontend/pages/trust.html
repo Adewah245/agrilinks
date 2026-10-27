@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trust Badges | Agro-Shield</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
 </head>
 <body>
-    <main class="dashboard">
+    <main class="dashboard account-page">
         <p><a href="/dashboard">← Dashboard</a></p>
         <h1>Trust badges</h1>
         <p>
@@ -72,7 +73,8 @@
             </form>
 
             {{if .Badges}}
-            <table>
+            <div class="table-scroll" role="region" aria-label="Trust Badges table" tabindex="0">
+<table>
                 <thead>
                     <tr><th>Badge</th><th>Note</th><th>Issued</th><th>Expires</th><th>Action</th></tr>
                 </thead>
@@ -96,10 +98,12 @@
                     {{end}}
                 </tbody>
             </table>
+</div>
             {{else if gt .OwnerID 0}}
             <p>No active trust badges for this account.</p>
             {{end}}
         </section>
     </main>
+    <script defer src="/static/js/navigation.js?v=20261027"></script>
 </body>
 </html>

@@ -1,22 +1,26 @@
 # OTP verification with OTP.dev
 
 Registration phone confirmation, password resets, wallet withdrawals, and wallet
-transfers use OTP.dev SMS delivery. Select the provider with:
+transfers use OTP.dev SMS delivery. OTP.dev is the default when `SMS_PROVIDER`
+is unset or blank. OTP.dev setup requires only the API key:
 
 ```dotenv
-SMS_PROVIDER=otpdev
 OTPDEV_API_KEY=your-api-key
-OTPDEV_SENDER=your-sender
-OTPDEV_TEMPLATE_ID=your-template-uuid
 ```
 
-Set these in the server environment or an untracked `backend/.env` file when
-starting the server from `backend/`. Use the sender and SMS template configured
-in your OTP.dev account. The template must contain `{code}`. Keep the API key
-on the backend.
+Set the key in the server environment or an untracked `backend/.env` file when
+starting the server from `backend/`. Keep the API key on the backend.
+
+The sender `OTP Dev` and approved Agro-Shield template UUID
+`a724614a-3a7c-4625-930e-2a8b45141474` are built into
+`backend/internal/config/config.go`. `OTPDEV_SENDER` and `OTPDEV_TEMPLATE_ID`
+are no longer read from the environment. The API key must belong to the account
+that owns this template. Edit the SMS message in the OTP.dev dashboard and retain
+the `{code}` placeholder; message text is not a template ID.
 
 `OTPDEV_BASE_URL` defaults to `https://api.otp.dev/v1`. An override is available
-for testing. Startup rejects missing OTP.dev settings when `SMS_PROVIDER=otpdev`.
+for testing. Startup rejects a missing API key when using the default
+provider or setting `SMS_PROVIDER=otpdev` explicitly.
 
 Agro-Shield generates a six-digit code and stores its bcrypt hash, account ID,
 purpose, and expiry. It sends the same code to `POST /v1/verifications` with
@@ -43,7 +47,7 @@ Avoid putting a different validity period in the SMS template. Agro-Shield's
 Resending invalidates the previous code. Failed delivery removes the newly
 created code, and provider response bodies are not exposed in errors.
 
-Without `SMS_PROVIDER` configured, delivery remains disabled. Brevo remains
+Set `SMS_PROVIDER=disabled` explicitly to disable delivery. Brevo remains
 available for email delivery; OTP.dev SMS never falls back to email.
 Signup requires a phone delivery provider; an email code cannot confirm a phone.
 Identity/NIN checks are separate from phone confirmation.

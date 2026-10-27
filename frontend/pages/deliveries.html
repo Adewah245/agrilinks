@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deliveries | Agro-Shield</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
 </head>
 <body>
-    <main class="dashboard">
+    <main class="dashboard account-page">
         <p><a href="/dashboard">← Dashboard</a></p>
         <h1>Deliveries</h1>
 
@@ -172,7 +173,8 @@
         {{if .AllDeliveries}}
         <section class="panel">
             <h2>All deliveries</h2>
-            <table>
+            <div class="table-scroll" role="region" aria-label="Deliveries table" tabindex="0">
+<table>
                 <thead>
                     <tr><th>Order</th><th>Buyer</th><th>Partner</th><th>Status</th><th>Tracking</th></tr>
                 </thead>
@@ -188,6 +190,7 @@
                     {{end}}
                 </tbody>
             </table>
+</div>
         </section>
         {{end}}
 
@@ -209,5 +212,6 @@
         </section>
         {{end}}
     </main>
+    <script defer src="/static/js/navigation.js?v=20261027"></script>
 </body>
 </html>

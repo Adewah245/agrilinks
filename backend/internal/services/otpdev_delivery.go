@@ -49,16 +49,20 @@ func (d *OTPDevDelivery) SendOTP(ctx context.Context, message OTPMessage) error 
 	if d == nil || d.client == nil {
 		return errors.New("OTP.dev delivery is not configured")
 	}
-	phone := NormalizeNigerianPhone(message.Phone)
-	if phone == "" {
+	normalized := NormalizeNigerianPhone(message.Phone)
+	if normalized == "" {
 		return errors.New("a valid Nigerian phone number is required for OTP.dev delivery")
+	}
+	phone := otpDevPhone(normalized)
+	if phone == "" {
+		return errors.New("could not convert the phone number to international format")
 	}
 	if len(message.Code) != otpCodeDigits || strings.IndexFunc(message.Code, func(r rune) bool { return r < '0' || r > '9' }) != -1 {
 		return errors.New("OTP.dev delivery requires a six-digit code")
 	}
 
-	// OTP.dev accepts either code or code_length. Supplying our code ensures
-	// the delivered value matches the hash stored by OTPService.
+	// Supplying our own code keeps the SMS identical to the hash stored by
+	// OTPService. Verified against OTP.dev: it returns 201 for this payload.
 	payload, err := json.Marshal(map[string]any{"data": map[string]string{
 		"channel": "sms", "sender": d.sender, "phone": phone,
 		"template": d.templateID, "code": message.Code,
@@ -81,17 +85,60 @@ func (d *OTPDevDelivery) SendOTP(ctx context.Context, message OTPMessage) error 
 		return errors.New("OTP.dev delivery request failed")
 	}
 	defer response.Body.Close()
-	// Provider errors can echo the request, including the code and phone.
-	// Keep those bodies out of errors that handlers may log or render.
+
+	body := io.LimitReader(response.Body, 64<<10)
+
+	// Provider errors can echo the request, including the code and phone, so
+	// only the numeric error code is surfaced (e.g. 1136 not authorized,
+	// 1512 invalid template, 1620 missing sender).
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		var apiErr struct {
+			Errors []struct {
+				Code any `json:"code"`
+			} `json:"errors"`
+		}
+		_ = json.NewDecoder(body).Decode(&apiErr)
+		if len(apiErr.Errors) > 0 {
+			return fmt.Errorf("OTP.dev rejected delivery (HTTP %d, code %v)", response.StatusCode, apiErr.Errors[0].Code)
+		}
 		return fmt.Errorf("OTP.dev rejected delivery (HTTP %d)", response.StatusCode)
 	}
+
+	// OTP.dev wraps the confirmation in a "data" object.
 	var result struct {
-		MessageID string `json:"message_id"`
-		Phone     string `json:"phone"`
+		Data struct {
+			MessageID string `json:"message_id"`
+			Phone     string `json:"phone"`
+		} `json:"data"`
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 64<<10)).Decode(&result); err != nil || strings.TrimSpace(result.MessageID) == "" || result.Phone != phone {
+	if err := json.NewDecoder(body).Decode(&result); err != nil ||
+		strings.TrimSpace(result.Data.MessageID) == "" ||
+		otpDevDigits(result.Data.Phone) != phone {
 		return errors.New("OTP.dev returned an invalid delivery confirmation")
 	}
 	return nil
+}
+
+// otpDevPhone converts any common way of writing a Nigerian mobile number to
+// the digits-only international form OTP.dev expects (e.g. 2349060904492).
+// It returns "" for anything that is not a valid Nigerian mobile number.
+func otpDevPhone(input string) string {
+	d := otpDevDigits(input)
+	d = strings.TrimPrefix(d, "00") // international dialing prefix
+	d = strings.TrimPrefix(d, "234")
+	d = strings.TrimPrefix(d, "0") // local trunk zero, also after +234
+	// Nigerian mobile numbers are 10 digits starting with 7, 8 or 9.
+	if len(d) != 10 || d[0] < '7' || d[0] > '9' {
+		return ""
+	}
+	return "234" + d
+}
+
+func otpDevDigits(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, s)
 }

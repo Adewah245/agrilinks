@@ -5,6 +5,7 @@
   <title>Your learning journey | Agro-Shield</title>
   <link rel="stylesheet" href="/static/css/style.css"><link rel="stylesheet" href="/static/css/learning.css">
   <script src="/static/js/learning.js" defer></script>
+    <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
 </head>
 <body class="learning-page">
   <nav class="learning-nav" aria-label="Learning navigation"><a href="/learn">← Your learning space</a><a href="/learn/rooms">Learning rooms</a><a href="/chat">Messages</a><a href="/profile">My profile</a></nav>
@@ -26,5 +27,6 @@
     </div>
     <section class="learning-card"><h2>Manage this journey</h2><p>This checklist records your own progress. It does not certify your farm or replace advice from a qualified local expert.</p><form class="journey-actions" method="post" action="/learn/journey/update"><input type="hidden" name="journey_id" value="{{.Journey.ID}}">{{if eq .Journey.Status "active"}}<button name="status" value="paused">Pause learning</button><button name="status" value="completed">I have finished my checklist</button>{{else}}<button name="status" value="active">Resume learning</button>{{end}}</form></section>
   </main>
+    <script defer src="/static/js/navigation.js?v=20261027"></script>
 </body>
 </html>

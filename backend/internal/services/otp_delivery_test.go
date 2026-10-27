@@ -2,18 +2,11 @@ package services
 
 import (
 	"context"
-	"net/http"
 	"net/smtp"
 	"strings"
 	"testing"
 	"time"
 )
-
-type roundTripFunc func(*http.Request) (*http.Response, error)
-
-func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
-	return f(request)
-}
 
 func TestBrevoOTPDeliverySendsExpectedMessage(t *testing.T) {
 	delivery, err := NewBrevoOTPDelivery(

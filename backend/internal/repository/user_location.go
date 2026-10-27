@@ -51,8 +51,18 @@ func saveUserFarmingTypes(tx *sql.Tx, userID int, types []string) error {
 		}
 		seen[value] = true
 		var typeID int
-		if err := tx.QueryRow(`SELECT id FROM farming_types WHERE slug=$1 AND is_active=TRUE`, value).Scan(&typeID); err != nil {
-			return fmt.Errorf("choose a farming activity from the list")
+
+		err := tx.QueryRow(
+			`SELECT id FROM farming_types WHERE slug=$1`,
+			value,
+		).Scan(&typeID)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return fmt.Errorf("choose a farming activity from the list")
+			}
+
+			return fmt.Errorf("look up farming activity %q: %w", value, err)
 		}
 		if _, err := tx.Exec(`INSERT INTO user_farming_types(user_id,farming_type_id) VALUES($1,$2) ON CONFLICT(user_id,farming_type_id) DO NOTHING`, userID, typeID); err != nil {
 			return err
