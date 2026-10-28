@@ -60,26 +60,28 @@ func (h *Register) RegisterHandler(
 		// DISPLAY REGISTRATION PAGE
 		// ====================================================
 
-		log.Println("User Visited Register page")
+		log.Println("[registration] page.opened")
 
 		if err := render.RenderTemplates(
 			w,
 			"register.html",
 			map[string]any{"FarmingTypes": types},
 		); err != nil {
-			log.Println("render error:", err)
+			log.Println("[registration] page.render_failed:", err)
 			return
 		}
 
 	case http.MethodPost:
+		log.Println("[registration] submission.received")
 		// ====================================================
 		// PARSE REGISTRATION FORM
 		// ====================================================
 
 		// Parse multipart form because registration includes
-		// a profile picture upload.
+		// the selfie captured with the user's camera.
 		r.Body = http.MaxBytesReader(w, r.Body, 11<<20)
 		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			log.Println("[registration] submission.invalid_form:", err)
 			http.Error(
 				w,
 				"Invalid registration form",
@@ -91,6 +93,7 @@ func (h *Register) RegisterHandler(
 		defer r.MultipartForm.RemoveAll()
 		confirmation, cookieErr := r.Cookie(registrationCookieName)
 		if cookieErr != nil || len(confirmation.Value) != 64 || strings.TrimSpace(r.FormValue("registration_code")) == "" {
+			log.Println("[registration] submission.phone_confirmation_missing")
 			http.Error(w, "Confirm your phone number with the SMS code before completing registration.", http.StatusBadRequest)
 			return
 		}
@@ -110,18 +113,24 @@ func (h *Register) RegisterHandler(
 		)
 
 		if err != nil || photoURL == "" {
+			log.Printf("[registration] selfie.save_failed: missing=%t error=%v", photoURL == "", err)
 			http.Error(
 				w,
-				"Profile picture is required",
+				"Take a selfie before completing registration.",
 				http.StatusBadRequest,
 			)
 			return
 		}
+		log.Printf("[registration] selfie.saved: path=%s", photoURL)
 		registered := false
 		defer func() {
 			if !registered {
 				if directory, err := frontendDirectory(); err == nil {
-					_ = os.Remove(filepath.Join(directory, "uploads", "users", filepath.Base(photoURL)))
+					if err := os.Remove(filepath.Join(directory, "uploads", "users", filepath.Base(photoURL))); err != nil {
+						log.Printf("[registration] selfie.cleanup_failed: path=%s error=%v", photoURL, err)
+					} else {
+						log.Printf("[registration] selfie.removed_after_failure: path=%s", photoURL)
+					}
 				}
 			}
 		}()
@@ -184,7 +193,7 @@ func (h *Register) RegisterHandler(
 			user.Password == "" ||
 			user.Confirm_Password == "" {
 
-			log.Println("Required user details are missing")
+			log.Println("[registration] submission.required_details_missing")
 
 			http.Error(
 				w,
@@ -195,7 +204,7 @@ func (h *Register) RegisterHandler(
 		}
 
 		if user.Password != user.Confirm_Password {
-			log.Println("Password mismatch")
+			log.Println("[registration] submission.password_mismatch")
 
 			http.Error(
 				w,
@@ -353,7 +362,7 @@ func (h *Register) RegisterHandler(
 		)
 
 		if err != nil {
-			log.Println("registration error:", err)
+			log.Println("[registration] submission.failed:", err)
 
 			http.Error(
 				w,
@@ -367,10 +376,7 @@ func (h *Register) RegisterHandler(
 		// REGISTRATION SUCCESS
 		// ====================================================
 
-		log.Println(
-			"User registered successfully as",
-			role,
-		)
+		log.Printf("[registration] completed: role=%s selfie=%s", role, photoURL)
 		registered = true
 		clearRegistrationCookie(w, r)
 

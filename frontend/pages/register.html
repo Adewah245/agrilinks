@@ -26,7 +26,7 @@
 
 <link
     rel="stylesheet"
-    href="/static/css/register.css?v=20261024"
+    href="/static/css/register.css?v=20261028"
 >
 
 
@@ -721,29 +721,33 @@
                 </h3>
 
                 <p class="field-help">
-                    Take a clear photo of yourself. On a phone or tablet,
-                    choose the camera when prompted. You can choose a photo
-                    from your device if a camera is not available.
+                    Take a clear selfie to finish creating your account.
+                    This selfie will become your profile picture.
+                    Allow camera access when your device asks.
                 </p>
 
-                <div class="form-group profile-upload">
+                <div class="form-group selfie-camera">
+                    <div id="selfie-viewport" class="selfie-viewport" hidden>
+                        <video id="selfie-video" aria-label="Live selfie camera preview"
+                            autoplay muted playsinline hidden></video>
+                        <img id="selfie-preview" alt="Your captured selfie" hidden>
+                    </div>
 
-                    <label for="profile-picture">
-                        Take a selfie
-                    </label>
-
-                    <input
-                        type="file"
-                        name="profile_picture"
-                        id="profile-picture"
-                        accept="image/jpeg,image/png,image/webp"
-                        capture="user"
-                    >
-
-                    <p class="field-help">
-                        Use a clear JPG, PNG, or WebP image.
+                    <button type="button" id="open-selfie-camera"
+                        class="registration-back-button" aria-describedby="selfie-status">
+                        Open camera
+                    </button>
+                    <button type="button" id="take-selfie"
+                        class="registration-back-button selfie-capture-button" disabled hidden>
+                        Take selfie
+                    </button>
+                    <button type="button" id="retake-selfie"
+                        class="registration-back-button" hidden>
+                        Retake selfie
+                    </button>
+                    <p id="selfie-status" class="field-help" role="status" aria-live="polite">
+                        Open your camera to take a selfie.
                     </p>
-
                 </div>
 
                 <div class="form-group phone-confirmation">
@@ -803,7 +807,7 @@
      REGISTER JAVASCRIPT
 ============================================================== -->
 
-<script src="/static/js/register.js?v=20261024"></script>
+<script src="/static/js/register.js?v=20261028"></script>
 
     <script defer src="/static/js/navigation.js?v=20261027"></script>
 </body>

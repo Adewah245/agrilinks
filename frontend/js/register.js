@@ -16,7 +16,13 @@ const confirmPassword = document.getElementById("confirm-password");
 const completeButton = document.getElementById("complete-registration");
 const backButton = document.getElementById("back-to-details");
 const profileSection = document.querySelector(".profile-section");
-const profilePicture = document.getElementById("profile-picture");
+const cameraButton = document.getElementById("open-selfie-camera");
+const captureButton = document.getElementById("take-selfie");
+const retakeButton = document.getElementById("retake-selfie");
+const selfieViewport = document.getElementById("selfie-viewport");
+const selfieVideo = document.getElementById("selfie-video");
+const selfiePreview = document.getElementById("selfie-preview");
+const selfieStatus = document.getElementById("selfie-status");
 const registerHeading = document.getElementById("register-heading");
 const registrationSections = Array.from(
     registerForm.querySelectorAll(":scope > .form-section")
@@ -31,6 +37,207 @@ let codePhone = "";
 let resendAt = 0;
 let sendingCode = false;
 let submitting = false;
+let selfieBlob = null;
+let selfiePreviewURL = "";
+let cameraStream = null;
+let cameraRequest = 0;
+let openingCamera = false;
+let capturingSelfie = false;
+
+function registrationLog(event, details = {}, level = "info") {
+    console[level]("[registration]", event, details);
+}
+
+function cameraIsReady() {
+    return cameraStream !== null && selfieVideo.readyState >= 2
+        && selfieVideo.videoWidth > 0 && selfieVideo.videoHeight > 0;
+}
+
+function updateSelfieControls() {
+    const hasSelfie = selfieBlob !== null;
+    const hasCamera = cameraStream !== null;
+    cameraButton.hidden = hasSelfie || hasCamera;
+    cameraButton.disabled = openingCamera || submitting;
+    captureButton.hidden = !hasCamera;
+    captureButton.disabled = openingCamera || !cameraIsReady() || capturingSelfie || submitting;
+    captureButton.textContent = capturingSelfie ? "Taking selfie…" : "Take selfie";
+    retakeButton.hidden = !hasSelfie;
+    retakeButton.disabled = submitting;
+    selfieVideo.hidden = !hasCamera;
+    selfiePreview.hidden = !hasSelfie;
+    selfieViewport.hidden = !hasCamera && !hasSelfie;
+}
+
+function stopSelfieCamera(reason) {
+    if (cameraStream || openingCamera || capturingSelfie) {
+        registrationLog("selfie.camera.stopped", { reason, request: cameraRequest });
+    }
+    // Invalidate pending permission and capture requests before leaving the step.
+    cameraRequest++;
+    openingCamera = false;
+    capturingSelfie = false;
+    cameraButton.textContent = "Open camera";
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+    selfieVideo.srcObject = null;
+    updateSelfieControls();
+}
+
+function cameraErrorMessage(error) {
+    switch (error.name) {
+        case "NotAllowedError":
+        case "PermissionDeniedError":
+        case "SecurityError":
+            return "Camera access was blocked. Allow camera access for this site in your browser and device settings, then retry.";
+        case "NotFoundError":
+        case "DevicesNotFoundError":
+            return "No camera was found. Connect a camera or use a device with a camera, then retry.";
+        case "NotReadableError":
+        case "TrackStartError":
+            return "Your camera could not open. Close other apps using it and check your device camera permissions, then retry.";
+        default:
+            return "Could not open your camera. Check camera permissions and retry.";
+    }
+}
+
+async function openSelfieCamera() {
+    if (!selfieStep || openingCamera || capturingSelfie || submitting || cameraStream || selfieBlob) return;
+    if (!window.isSecureContext) {
+        registrationLog("selfie.camera.unavailable", { reason: "insecure_connection" }, "warn");
+        selfieStatus.textContent = "Camera access requires a secure connection. Open this site using HTTPS, then retry.";
+        cameraButton.textContent = "Retry camera";
+        return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        registrationLog("selfie.camera.unavailable", { reason: "unsupported_browser" }, "warn");
+        selfieStatus.textContent = "This browser cannot access your camera. Use a current browser on a device with a camera to finish registration.";
+        cameraButton.textContent = "Retry camera";
+        return;
+    }
+
+    const request = ++cameraRequest;
+    registrationLog("selfie.camera.requested", { request });
+    openingCamera = true;
+    selfieStatus.textContent = "Allow camera access when prompted. Opening your camera…";
+    cameraButton.textContent = "Opening camera…";
+    updateConfirmationControls();
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "user" } },
+            audio: false,
+        });
+        if (request !== cameraRequest || !selfieStep) {
+            stream.getTracks().forEach(track => track.stop());
+            registrationLog("selfie.camera.stale_request", { request });
+            return;
+        }
+        cameraStream = stream;
+        selfieVideo.srcObject = stream;
+        updateSelfieControls();
+        stream.getVideoTracks().forEach(track => track.addEventListener("ended", () => {
+            if (cameraStream !== stream) return;
+            registrationLog("selfie.camera.interrupted", { request }, "warn");
+            stopSelfieCamera("camera_ended");
+            selfieStatus.textContent = "Camera access ended. Check your camera permissions and retry.";
+            cameraButton.textContent = "Retry camera";
+            updateConfirmationControls();
+        }, { once: true }));
+        await selfieVideo.play();
+        if (request !== cameraRequest || !selfieStep) return;
+        openingCamera = false;
+        registrationLog("selfie.camera.ready", {
+            request, width: selfieVideo.videoWidth, height: selfieVideo.videoHeight,
+        });
+        selfieStatus.textContent = "Position your face in the preview, then take your selfie.";
+        updateSelfieControls();
+        captureButton.focus();
+    } catch (error) {
+        if (request !== cameraRequest || !selfieStep) return;
+        registrationLog("selfie.camera.failed", { request, error: error.name }, "error");
+        stopSelfieCamera("camera_error");
+        selfieStatus.textContent = cameraErrorMessage(error);
+        cameraButton.textContent = "Retry camera";
+        updateConfirmationControls();
+    } finally {
+        if (request === cameraRequest) {
+            openingCamera = false;
+            cameraButton.textContent = "Open camera";
+            updateConfirmationControls();
+        }
+    }
+}
+
+async function takeSelfie() {
+    if (!selfieStep || openingCamera || !cameraIsReady() || capturingSelfie || submitting) return;
+    const request = cameraRequest;
+    registrationLog("selfie.capture.started", { request });
+    capturingSelfie = true;
+    updateConfirmationControls();
+    try {
+        const canvas = document.createElement("canvas");
+        const scale = Math.min(1, 1024 / Math.max(selfieVideo.videoWidth, selfieVideo.videoHeight));
+        canvas.width = Math.max(1, Math.round(selfieVideo.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(selfieVideo.videoHeight * scale));
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Camera capture is unavailable in this browser. Try another browser.");
+        context.drawImage(selfieVideo, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
+        if (request !== cameraRequest || !selfieStep) {
+            registrationLog("selfie.capture.discarded", { request });
+            return;
+        }
+        if (!blob || blob.size === 0 || blob.size > 10 * 1024 * 1024) {
+            throw new Error("Could not save your selfie. Please take it again.");
+        }
+        const previewURL = URL.createObjectURL(blob);
+        if (selfiePreviewURL) URL.revokeObjectURL(selfiePreviewURL);
+        selfieBlob = blob;
+        selfiePreviewURL = previewURL;
+        selfiePreview.src = previewURL;
+        registrationLog("selfie.capture.completed", {
+            bytes: blob.size, type: blob.type, width: canvas.width, height: canvas.height,
+        });
+        stopSelfieCamera("selfie_captured");
+        message.textContent = "";
+        selfieStatus.textContent = "Selfie captured. This will be your profile picture when registration is complete.";
+        updateConfirmationControls();
+        retakeButton.focus();
+    } catch (error) {
+        if (request !== cameraRequest || !selfieStep) return;
+        registrationLog("selfie.capture.failed", { request, error: error.name }, "error");
+        selfieStatus.textContent = error.message || "Could not take your selfie. Please try again.";
+    } finally {
+        if (request === cameraRequest) {
+            capturingSelfie = false;
+            updateConfirmationControls();
+        }
+    }
+}
+
+cameraButton.addEventListener("click", openSelfieCamera);
+captureButton.addEventListener("click", takeSelfie);
+retakeButton.addEventListener("click", () => {
+    if (!selfieStep || submitting) return;
+    registrationLog("selfie.retake");
+    selfieBlob = null;
+    if (selfiePreviewURL) URL.revokeObjectURL(selfiePreviewURL);
+    selfiePreviewURL = "";
+    selfiePreview.removeAttribute("src");
+    updateConfirmationControls();
+    openSelfieCamera();
+});
+selfieVideo.addEventListener("loadeddata", updateSelfieControls);
+selfieVideo.addEventListener("resize", updateSelfieControls);
+window.addEventListener("pagehide", () => stopSelfieCamera("page_hidden"));
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") return;
+    const hadCamera = cameraStream !== null || openingCamera;
+    stopSelfieCamera("tab_hidden");
+    if (hadCamera) selfieStatus.textContent = "Camera paused. Open it again to take your selfie.";
+    updateConfirmationControls();
+});
 
 function updateConfirmationControls() {
     const wait = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
@@ -38,9 +245,16 @@ function updateConfirmationControls() {
     sendCodeButton.textContent = sendingCode ? "Sending code…" : wait > 0
         ? `Resend code in ${wait}s` : codePhone ? "Resend confirmation code" : "Send confirmation code";
     backButton.disabled = sendingCode || submitting;
-    completeButton.disabled = submitting || sendingCode || profilePicture.files.length === 0
+    completeButton.disabled = submitting || sendingCode || openingCamera || capturingSelfie || !selfieBlob
         || codePhone !== phone.value.trim() || !/^[0-9]{6}$/.test(registrationCode.value.trim());
+    updateSelfieControls();
 }
+
+updateConfirmationControls();
+registrationLog("selfie.initialized", {
+    secureContext: window.isSecureContext,
+    cameraSupported: Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+});
 
 sendCodeButton.addEventListener("click", async () => {
     if (sendingCode || Date.now() < resendAt) return;
@@ -48,12 +262,14 @@ sendCodeButton.addEventListener("click", async () => {
     confirmationStatus.textContent = "";
     updateConfirmationControls();
     const targetPhone = phone.value.trim();
+    registrationLog("phone.code.requested");
     try {
         const response = await fetch("/register/phone-code", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({ phone: targetPhone }),
         });
+        registrationLog("phone.code.response", { status: response.status });
         if (!response.ok) {
             const retry = Number(response.headers.get("Retry-After"));
             if (retry > 0) resendAt = Date.now() + retry * 1000;
@@ -66,8 +282,10 @@ sendCodeButton.addEventListener("click", async () => {
         registrationCode.required = true;
         resendAt = Date.now() + (Number(data.retry_after) || 0) * 1000;
         confirmationStatus.textContent = data.message;
+        registrationLog("phone.code.sent");
         registrationCode.focus();
     } catch (error) {
+        registrationLog("phone.code.failed", { error: error.name }, "error");
         confirmationStatus.textContent = error.message || "Could not send the code. Please try again.";
     } finally {
         sendingCode = false;
@@ -310,7 +528,7 @@ state.addEventListener("change", async () => {
 // ===============================
 
 registerForm.addEventListener("submit", async (event) => {
-	// Keep form details and the selected photo in place if confirmation fails.
+	// Keep form details and the captured selfie in place if confirmation fails.
     event.preventDefault();
     if (submitting || sendingCode) return;
 
@@ -441,40 +659,53 @@ registerForm.addEventListener("submit", async (event) => {
     if (!selfieStep) {
         event.preventDefault();
         selfieStep = true;
+        registrationLog("selfie.step.opened", { hasSelfie: Boolean(selfieBlob) });
         registrationSections.forEach((section) => {
             section.hidden = section !== profileSection;
             section.style.display = section === profileSection ? "" : "none";
         });
-        profilePicture.required = true;
         detailsButton.hidden = true;
         confirmationPhone.textContent = phone.value.trim();
         registrationCode.disabled = codePhone !== phone.value.trim();
         registrationCode.required = !registrationCode.disabled;
         updateConfirmationControls();
         registerHeading.textContent = "Confirm your phone and finish registration";
-        profilePicture.focus();
+        (selfieBlob ? retakeButton : cameraButton).focus();
         return;
     }
 
+    if (!selfieBlob || openingCamera || capturingSelfie) {
+        registrationLog("submission.blocked", { reason: "selfie_required" }, "warn");
+        message.textContent = "Take a selfie with your camera before completing registration.";
+        message.style.color = "red";
+        return;
+    }
     if (codePhone !== phone.value.trim() || !/^[0-9]{6}$/.test(registrationCode.value.trim())) {
+        registrationLog("submission.blocked", { reason: "phone_confirmation_required" }, "warn");
         message.textContent = "Request and enter the SMS code for your phone number.";
         message.style.color = "red";
         return;
     }
     submitting = true;
+    registrationLog("submission.started", { selfieBytes: selfieBlob.size, selfieType: selfieBlob.type });
     updateConfirmationControls();
     completeButton.textContent = "Confirming and creating account…";
     try {
+        const formData = new FormData(registerForm);
+        formData.set("profile_picture", selfieBlob, "selfie.jpg");
         const response = await fetch(registerForm.action, {
             method: "POST",
-            body: new FormData(registerForm),
+            body: formData,
         });
+        registrationLog("submission.response", { status: response.status, redirected: response.redirected });
         if (response.ok && response.redirected && new URL(response.url).pathname === "/login") {
+            registrationLog("submission.completed");
             window.location.assign(response.url);
             return;
         }
         throw new Error(response.ok ? "Could not complete registration. Please try again." : await response.text());
     } catch (error) {
+        registrationLog("submission.failed", { error: error.name }, "error");
         message.textContent = error.message || "Could not complete registration. Please try again.";
         message.style.color = "red";
     } finally {
@@ -485,13 +716,12 @@ registerForm.addEventListener("submit", async (event) => {
 
 });
 
-profilePicture.addEventListener("change", () => {
-    updateConfirmationControls();
-});
-
 backButton.addEventListener("click", () => {
+    if (sendingCode || submitting) return;
     selfieStep = false;
-    profilePicture.required = false;
+    registrationLog("selfie.step.left", { hasSelfie: Boolean(selfieBlob) });
+    stopSelfieCamera("back_to_details");
+    if (!selfieBlob) selfieStatus.textContent = "Open your camera to take a selfie.";
     registrationCode.required = false;
     registrationCode.disabled = true;
     detailsButton.hidden = false;

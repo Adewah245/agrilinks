@@ -810,6 +810,44 @@ body {
     cursor: not-allowed;
 }
 
+.selfie-camera {
+    margin-top: 20px;
+}
+
+.selfie-viewport {
+    overflow: hidden;
+    border: 1px solid var(--color-border, #dbe7dc);
+    border-radius: 12px;
+    background: #17231c;
+}
+
+.selfie-viewport video,
+.selfie-viewport img {
+    display: block;
+    width: 100%;
+    max-height: 380px;
+    object-fit: contain;
+}
+
+.selfie-viewport video {
+    transform: scaleX(-1);
+}
+
+.selfie-capture-button {
+    background: var(--color-brand, #1f7a4d);
+    border-color: var(--color-brand, #1f7a4d);
+    color: #fff;
+}
+
+.selfie-capture-button:hover {
+    background: var(--color-brand-dark, #14532d);
+}
+
+.selfie-camera button:focus-visible {
+    outline: 3px solid var(--color-brand, #1f7a4d);
+    outline-offset: 3px;
+}
+
 .phone-confirmation {
     margin-top: 24px;
 }
@@ -1085,29 +1123,6 @@ body {
 
 
     /* ========================================================
-       PROFILE PICTURE
-       ======================================================== */
-
-    .profile-upload {
-        margin-top: 20px;
-    }
-
-    .profile-upload input[type="file"] {
-        padding: 7px;
-
-        font-size: 12px;
-    }
-
-    .profile-upload input[type="file"]::file-selector-button {
-        margin-right: 7px;
-
-        padding: 7px 9px;
-
-        font-size: 12px;
-    }
-
-
-    /* ========================================================
        SUBMIT BUTTON
        ======================================================== */
 
@@ -1181,12 +1196,6 @@ body {
         font-size: 13px;
     }
 
-    .profile-upload input[type="file"]::file-selector-button {
-        padding: 6px 8px;
-
-        font-size: 11px;
-    }
-
 }
 
 
@@ -1218,8 +1227,7 @@ body {
     .auth-left,
     .farm-option,
     .auth-right form .role-option,
-    .auth-right form button[type="submit"],
-    .profile-upload input[type="file"]::file-selector-button {
+    .auth-right form button[type="submit"] {
         transition: none;
     }
 

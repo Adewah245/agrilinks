@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"image"
-	"image/png"
+	"image/jpeg"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -215,6 +215,7 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(workspace, "frontend"), 0755); err != nil {
 		t.Fatal(err)
 	}
+	cfg.FrontendDir = filepath.Join(workspace, "frontend")
 	c := application(t, db, cfg)
 	capture := &captureOTP{}
 	c.Auth.SetRegistrationOTP(services.NewRegistrationOTPService(repository.NewRegistrationOTPRepository(db), capture, cfg.OTPTTL, cfg.OTPMaxAttempts, cfg.OTPResendInterval))
@@ -222,7 +223,11 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 	send := request(handler, "POST", "/register/phone-code", url.Values{"phone": {"08012345678"}}, nil)
 	requireStatus(t, send, 200)
 	cookie := send.Result().Cookies()[0]
-	post := func(cookie *http.Cookie, code string) *httptest.ResponseRecorder {
+	var selfie bytes.Buffer
+	if err := jpeg.Encode(&selfie, image.NewRGBA(image.Rect(0, 0, 8, 8)), nil); err != nil {
+		t.Fatal(err)
+	}
+	post := func(cookie *http.Cookie, code string, includeSelfie bool) *httptest.ResponseRecorder {
 		var body bytes.Buffer
 		form := multipart.NewWriter(&body)
 		for key, value := range map[string]string{"first-name": "HTTP", "last-name": "Buyer", "phone": "08012345678", "email": "http@example.test", "password": "signup password", "confirm-password": "signup password", "country": "Nigeria", "state": "Benue", "lga": "Makurdi", "community": "Makurdi", "purpose": "buy", "account_type": "individual", "registration_code": code} {
@@ -230,12 +235,14 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		file, err := form.CreateFormFile("profile_picture", "selfie.png")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := png.Encode(file, image.NewRGBA(image.Rect(0, 0, 1, 1))); err != nil {
-			t.Fatal(err)
+		if includeSelfie {
+			file, err := form.CreateFormFile("profile_picture", "selfie.jpg")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := file.Write(selfie.Bytes()); err != nil {
+				t.Fatal(err)
+			}
 		}
 		if err := form.Close(); err != nil {
 			t.Fatal(err)
@@ -250,11 +257,12 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 		handler.ServeHTTP(w, r)
 		return w
 	}
-	requireStatus(t, post(nil, capture.message.Code), 400)
-	requireStatus(t, post(cookie, ""), 400)
-	bad := post(cookie, "abcdef")
+	requireStatus(t, post(nil, capture.message.Code, true), 400)
+	requireStatus(t, post(cookie, "", true), 400)
+	bad := post(cookie, "abcdef", true)
 	requireStatus(t, bad, 400)
-	success := post(cookie, capture.message.Code)
+	requireStatus(t, post(cookie, capture.message.Code, false), 400)
+	success := post(cookie, capture.message.Code, true)
 	requireStatus(t, success, 303)
 	if success.Header().Get("Location") != "/login" {
 		t.Fatal("confirmed signup did not reach login")
@@ -267,6 +275,21 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 	files, err := os.ReadDir(filepath.Join(workspace, "frontend", "uploads", "users"))
 	if err != nil || len(files) != 1 {
 		t.Fatalf("failed signup left an orphaned photo: %d %v", len(files), err)
+	}
+	if u.PhotoURL != "/static/uploads/users/"+files[0].Name() {
+		t.Fatalf("captured selfie was not saved as the profile picture: %q", u.PhotoURL)
+	}
+	photo := request(handler, "GET", u.PhotoURL, nil, nil)
+	requireStatus(t, photo, http.StatusOK)
+	if photo.Header().Get("Content-Type") != "image/jpeg" || !bytes.Equal(photo.Body.Bytes(), selfie.Bytes()) {
+		t.Fatal("saved profile picture does not match the captured selfie")
+	}
+	login := request(handler, "POST", "/login", url.Values{"phone": {u.Phone}, "password": {"signup password"}}, nil)
+	requireStatus(t, login, http.StatusSeeOther)
+	profile := request(handler, "GET", "/profile", nil, login.Result().Cookies()[0])
+	requireStatus(t, profile, http.StatusOK)
+	if !strings.Contains(profile.Body.String(), `src="`+u.PhotoURL+`"`) {
+		t.Fatal("profile does not show the captured selfie after login")
 	}
 	for _, cookie := range success.Result().Cookies() {
 		if cookie.Name == "agroshield_registration" && cookie.MaxAge < 0 {
