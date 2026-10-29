@@ -253,5 +253,5 @@ func TestWalletMoneyFlowsWithPostgresAndProvider(t *testing.T) {
 		}
 	}
 	requireStatus(t, request(handler, "GET", "/wallet/admin", nil, cookie), http.StatusForbidden)
-	requireStatus(t, request(handler, "GET", "/wallet/admin", nil, session(t, c, admin)), http.StatusOK)
+	requireStatus(t, request(handler, "GET", "/wallet/admin", nil, session(t, c, admin)), http.StatusSeeOther)
 }

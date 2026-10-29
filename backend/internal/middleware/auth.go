@@ -99,7 +99,7 @@ func RequireAuth(sessions *services.SessionService, repo *repository.UserReposit
 			http.Error(w, "Authentication is temporarily unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		if user == nil {
+		if user == nil || user.AccountStatus == "suspended" || user.StaffDisabled {
 			_ = sessions.Delete(r.Context(), token)
 			ClearSessionCookie(w)
 			http.Redirect(w, r, "/login", http.StatusSeeOther)

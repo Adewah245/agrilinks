@@ -54,6 +54,8 @@
 
 <nav aria-label="Main navigation">
 
+    {{if .IsStaff}}<a href="/admin">Admin workspace</a>{{end}}
+
     <a
         class="active"
         href="/dashboard"

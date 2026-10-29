@@ -77,7 +77,7 @@ func (s *AuthService) RequestPasswordReset(ctx context.Context, phone string) er
 	if err != nil {
 		return err
 	}
-	if user == nil {
+	if user == nil || user.AccountStatus == "suspended" || user.StaffDisabled {
 		return nil
 	}
 	return s.otp.Issue(ctx, user.ID, user.Phone, user.Email, models.OTPPurposePasswordReset)
@@ -352,7 +352,7 @@ func (s *AuthService) Login(
 		return nil, err
 	}
 
-	if user == nil {
+	if user == nil || user.AccountStatus == "suspended" || user.StaffDisabled {
 		return nil, errors.New(
 			"invalid phone number or password",
 		)

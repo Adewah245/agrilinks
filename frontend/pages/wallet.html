@@ -2,7 +2,7 @@
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My wallet | Agro-Shield</title><link rel="stylesheet" href="/static/css/style.css"><link rel="stylesheet" href="/static/css/learning.css"><script defer src="/static/js/wallet.js"></script>    <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
 </head>
-<body><header class="navbar"><a href="/dashboard">Agro-Shield</a><nav><a href="/marketplace">Market</a><a href="/orders">Orders</a><a href="/payments">Payments</a>{{if .User.IsAdmin}}<a href="/wallet/admin">Wallet requests</a>{{end}}<a href="/logout">Log out</a></nav></header>
+<body><header class="navbar"><a href="/dashboard">Agro-Shield</a><nav><a href="/marketplace">Market</a><a href="/orders">Orders</a><a href="/payments">Payments</a>{{if .User.IsAdministrator}}<a href="/admin/finance">Admin workspace</a>{{end}}<a href="/logout">Log out</a></nav></header>
 <main class="learning-page account-page"><h1>My wallet</h1>
 {{if .Error}}<p role="alert">{{.Error}}</p>{{end}}{{if .Notice}}<p role="status">{{.Notice}}</p>{{end}}
 <section class="panel"><h2>{{.Wallet.Currency}} {{.Wallet.Balance}}</h2><p>Available balance</p><p>Your wallet number: <strong>{{.Wallet.WalletNumber}}</strong></p><p>Money waiting for a transfer or withdrawal is held until the request is completed or cancelled.</p></section>

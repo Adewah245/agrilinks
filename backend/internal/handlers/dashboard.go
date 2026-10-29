@@ -67,6 +67,7 @@ type DashboardData struct {
 	FullName            string
 	Role                string
 	IsBuyer             bool
+	IsStaff             bool
 	PhotoURL            string
 	MarketplaceProducts []models.Product
 
@@ -174,6 +175,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 			data.FullName = user.FullName
 			data.Role = user.Role
 			data.IsBuyer = user.IsBuyer()
+			data.IsStaff = user.CanAdmin("overview")
 			data.PhotoURL = user.PhotoURL
 			data.FarmingTypes = user.FarmingTypes
 

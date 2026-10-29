@@ -27,6 +27,7 @@ var (
 	ErrAccountHasBalance        = errors.New("account still has a wallet balance")
 	ErrAccountHasPendingRequest = errors.New("account has pending wallet activity")
 	ErrAccountHasFundingAccount = errors.New("account has a funding account")
+	ErrAccountIsStaff           = errors.New("staff accounts must be managed from the admin workspace")
 )
 
 // UserRepository provides persistence for user identities and profiles.
@@ -200,6 +201,7 @@ const userSelectColumns = `
 	COALESCE(role, 'farmer') AS role,
 	COALESCE(account_type, 'individual') AS account_type,
 	COALESCE(is_admin, FALSE) AS is_admin,
+	staff_role, staff_disabled, account_status,
 	COALESCE(organisation_name, '') AS organisation_name,
 	COALESCE(photo_url, '') AS photo_url,
 	COALESCE(
@@ -235,6 +237,7 @@ func scanUser(scanner interface {
 		&user.Role,
 		&user.AccountType,
 		&user.IsAdmin,
+		&user.StaffRole, &user.StaffDisabled, &user.AccountStatus,
 		&user.OrganisationName,
 		&user.PhotoURL,
 		pq.Array(&user.FarmingTypes),
@@ -267,6 +270,9 @@ func (r *UserRepository) GetByPhone(phone string) (*models.User, error) {
 	}
 	if err != nil {
 		return nil, err
+	}
+	if r.configuredAdministrators[user.ID] {
+		user.IsAdmin = true
 	}
 	return user, nil
 }
@@ -524,18 +530,23 @@ func (r *UserRepository) DeleteAccount(ctx context.Context, userID int) error {
 	defer tx.Rollback()
 
 	var id int
+	var staffRole string
+	var isAdmin bool
 	err = tx.QueryRowContext(ctx, `
-		SELECT id
+		SELECT id, staff_role, is_admin
 		FROM users
 		WHERE id = $1
 		AND deleted_at IS NULL
 		FOR UPDATE
-	`, userID).Scan(&id)
+	`, userID).Scan(&id, &staffRole, &isAdmin)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrAccountNotFound
 	}
 	if err != nil {
 		return err
+	}
+	if staffRole != "" || isAdmin || r.configuredAdministrators[userID] {
+		return ErrAccountIsStaff
 	}
 
 	walletRows, err := tx.QueryContext(ctx, `

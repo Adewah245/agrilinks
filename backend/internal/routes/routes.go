@@ -7,11 +7,17 @@ import (
 	"backend/internal/app"
 	"backend/internal/handlers"
 	"backend/internal/middleware"
+	"backend/internal/models"
 	"backend/internal/ussd"
 )
 
 func NewHandler(container *app.Container) http.Handler {
 	mux := http.NewServeMux()
+	adminHandler := handlers.NewAdminWorkspaceHandler(container.Admin, container.Wallet)
+	for _, section := range models.AdminSections {
+		mux.HandleFunc("GET "+section.Path, middleware.OnlyPath(section.Path, middleware.RequireAuth(container.Sessions, container.UserRepo, adminHandler.Handler)))
+	}
+	mux.HandleFunc("POST /admin/action", middleware.RequireAuth(container.Sessions, container.UserRepo, adminHandler.Action))
 
 	// ========================================================
 	// USSD
@@ -978,6 +984,13 @@ func NewHandler(container *app.Container) http.Handler {
 	walletHandler := handlers.NewWalletHandler(container.Wallet)
 	mux.HandleFunc("/wallet", middleware.OnlyPath("/wallet", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Handler)))
 	mux.HandleFunc("GET /wallet/banks", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Banks))
-	mux.HandleFunc("/wallet/admin", middleware.OnlyPath("/wallet/admin", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Admin)))
+	mux.HandleFunc("GET /wallet/admin", middleware.OnlyPath("/wallet/admin", middleware.RequireAuth(container.Sessions, container.UserRepo, func(w http.ResponseWriter, r *http.Request) {
+		user, _ := middleware.UserFromContext(r)
+		if !user.CanAdmin("finance") {
+			http.Error(w, "Administrator access is required", http.StatusForbidden)
+			return
+		}
+		http.Redirect(w, r, "/admin/finance", http.StatusSeeOther)
+	})))
 	return middleware.RequestGuard(mux, container.Config)
 }

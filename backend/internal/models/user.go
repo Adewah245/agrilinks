@@ -21,9 +21,12 @@ type User struct {
 	StateID, LGAID, CommunityID *int
 
 	// Account
-	Role        string
-	AccountType string
-	IsAdmin     bool
+	Role          string
+	AccountType   string
+	IsAdmin       bool
+	StaffRole     string
+	StaffDisabled bool
+	AccountStatus string
 
 	// Verification
 	NIN                string
@@ -96,5 +99,5 @@ func (u *User) IsMinistry() bool {
 // IsAdministrator reports whether the account can review platform-wide
 // operations such as delivery partner approval.
 func (u *User) IsAdministrator() bool {
-	return u != nil && u.IsAdmin
+	return u.CanAdmin("finance")
 }

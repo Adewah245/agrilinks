@@ -7,7 +7,15 @@
 **Database:** PostgreSQL  
 **Payment provider:** Flutterwave (`flutterwave`)
 **Primary deployment database direction:** Neon PostgreSQL  
-**Last updated:** 2026-10-21
+**Last updated:** 2026-10-29
+
+
+## Staff administration
+
+The central admin workspace is available at `/admin` with Super Admin,
+Customer Care, and Operations Manager roles. See [Admin workspace setup and
+permissions](docs/admin-workspace.md) for first-account setup, section access,
+management workflows, and validation.
 
 ---
 

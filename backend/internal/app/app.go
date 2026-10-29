@@ -70,6 +70,7 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	}
 	container.UserRepo.SetConfiguredAdministrators(administratorIDs)
 	container.Config = cfg
+	container.Admin = repository.NewAdminRepository(db)
 	container.Sessions = services.NewSessionService(repository.NewSessionRepository(db), cfg.SessionTTL)
 	container.Weather = services.NewWeatherService()
 	delivery, err := newOTPDelivery(cfg)

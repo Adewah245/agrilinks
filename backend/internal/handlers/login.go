@@ -78,10 +78,14 @@ func (h *Login) LoginHandler(
 		}
 		middleware.SetSessionCookie(w, r, sessionID, h.sessions.TTL())
 
+		destination := "/dashboard"
+		if user.CanAdmin("overview") {
+			destination = "/admin"
+		}
 		http.Redirect(
 			w,
 			r,
-			"/dashboard",
+			destination,
 			http.StatusSeeOther,
 		)
 

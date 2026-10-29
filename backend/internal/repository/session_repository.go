@@ -15,7 +15,7 @@ func NewSessionRepository(db *sql.DB) *SessionRepository {
 
 func (r *SessionRepository) Create(ctx context.Context, hash string, userID int, expires time.Time) error {
 	result, err := r.db.ExecContext(ctx, `INSERT INTO user_sessions (token_hash, user_id, expires_at)
-		SELECT $1, id, $3 FROM users WHERE id = $2 AND deleted_at IS NULL`, hash, userID, expires)
+		SELECT $1, id, $3 FROM users WHERE id = $2 AND deleted_at IS NULL AND account_status='active' AND NOT staff_disabled`, hash, userID, expires)
 	if err != nil {
 		return err
 	}
