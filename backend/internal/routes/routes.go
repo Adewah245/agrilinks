@@ -237,6 +237,8 @@ func NewHandler(container *app.Container) http.Handler {
 	learningHandler := handlers.NewLearningHandler(
 		container.Learning,
 	)
+	mux.HandleFunc("GET /learning", middleware.OnlyPath("/learning", learningHandler.PublicPage))
+	mux.HandleFunc("POST /learning/chat", middleware.OnlyPath("/learning/chat", learningHandler.PublicChat))
 	mux.HandleFunc("/learn/checkpoint/create", middleware.OnlyPath("/learn/checkpoint/create", middleware.RequireAuth(container.Sessions, container.UserRepo, learningHandler.CreateCheckpoint)))
 	mux.HandleFunc("GET /learn/rooms", middleware.RequireAuth(container.Sessions, container.UserRepo, learningHandler.Rooms))
 	mux.HandleFunc("POST /learn/rooms/create", middleware.RequireAuth(container.Sessions, container.UserRepo, learningHandler.CreateRoom))

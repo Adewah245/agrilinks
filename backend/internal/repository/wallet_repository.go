@@ -443,8 +443,7 @@ func (r *WalletRepository) FinishWithdrawal(ctx context.Context, id int64, actor
 
 func (r *WalletRepository) VirtualAccount(ctx context.Context, userID int) (*models.WalletVirtualAccount, error) {
 	a := &models.WalletVirtualAccount{}
-	err := r.db.QueryRowContext(ctx, `SELECT id,user_id,provider,tx_ref,order_ref,provider_ref,account_number,bank_name,account_name,currency,status,identity_kind,consent_version,failure_reason,created_at,updated_at FROM wallet_virtual_accounts WHERE user_id=$1`, userID).
-		Scan(&a.ID, &a.UserID, &a.Provider, &a.TxRef, &a.OrderRef, &a.ProviderRef, &a.AccountNumber, &a.BankName, &a.AccountName, &a.Currency, &a.Status, &a.IdentityKind, &a.ConsentVersion, &a.FailureReason, &a.CreatedAt, &a.UpdatedAt)
+	err := scanVirtualAccount(r.db.QueryRowContext(ctx, `SELECT `+virtualAccountColumns+` FROM wallet_virtual_accounts WHERE user_id=$1`, userID), a)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

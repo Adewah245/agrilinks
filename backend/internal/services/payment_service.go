@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
+	"math/big"
 	"strconv"
 	"strings"
 
@@ -338,13 +338,13 @@ func verifiedPaymentStatus(providerStatus string) string {
 	}
 }
 
-func sameMoney(expected string, actual float64) bool {
-	expectedAmount, err := strconv.ParseFloat(strings.TrimSpace(expected), 64)
-	if err != nil || math.IsNaN(actual) || math.IsInf(actual, 0) || math.IsNaN(expectedAmount) || math.IsInf(expectedAmount, 0) {
+func sameMoney(expected string, actual json.Number) bool {
+	left, ok := new(big.Rat).SetString(strings.TrimSpace(expected))
+	if !ok || left.Sign() <= 0 {
 		return false
 	}
-	return strconv.FormatFloat(expectedAmount, 'f', 2, 64) ==
-		strconv.FormatFloat(actual, 'f', 2, 64)
+	right, ok := new(big.Rat).SetString(actual.String())
+	return ok && right.Sign() > 0 && left.Cmp(right) == 0
 }
 
 // PayableOrders returns only orders that are still waiting for payment.

@@ -93,7 +93,7 @@ func TestFlutterwaveVerifyTransaction(t *testing.T) {
 	if verified.TransactionID != "123" || verified.Reference != "ORDER-9-reference" {
 		t.Fatalf("unexpected verification: %#v", verified)
 	}
-	if verified.Amount != 50000 || verified.Currency != "NGN" || verified.Status != "successful" {
+	if verified.Amount.String() != "50000" || verified.Currency != "NGN" || verified.Status != "successful" {
 		t.Fatalf("unexpected verification: %#v", verified)
 	}
 }

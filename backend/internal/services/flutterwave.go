@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -32,6 +33,9 @@ type FlutterwaveClient struct {
 	redirectURL    string
 	paymentOptions string
 	httpClient     *http.Client
+	bankMu         sync.Mutex
+	bankCache      []Bank
+	bankCacheUntil time.Time
 }
 
 func NewFlutterwaveClient(
@@ -169,7 +173,7 @@ type VerifiedTransaction struct {
 	TransactionID string
 	Reference     string
 	Status        string
-	Amount        float64
+	Amount        json.Number
 	Currency      string
 }
 
@@ -177,11 +181,11 @@ type verifyTransactionResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
 	Data    struct {
-		ID       int64   `json:"id"`
-		TxRef    string  `json:"tx_ref"`
-		Status   string  `json:"status"`
-		Amount   float64 `json:"amount"`
-		Currency string  `json:"currency"`
+		ID       int64       `json:"id"`
+		TxRef    string      `json:"tx_ref"`
+		Status   string      `json:"status"`
+		Amount   json.Number `json:"amount"`
+		Currency string      `json:"currency"`
 	} `json:"data"`
 }
 
@@ -241,9 +245,10 @@ func (c *FlutterwaveClient) VerifyTransaction(
 		strings.TrimSpace(parsed.Data.Currency) == "" {
 		return nil, fmt.Errorf("flutterwave verification response is incomplete")
 	}
-	if strings.EqualFold(strings.TrimSpace(parsed.Data.Status), "successful") &&
-		parsed.Data.Amount <= 0 {
-		return nil, fmt.Errorf("flutterwave returned a successful transaction without an amount")
+	if strings.EqualFold(strings.TrimSpace(parsed.Data.Status), "successful") {
+		if _, err := normalizedMoney(parsed.Data.Amount.String()); err != nil {
+			return nil, fmt.Errorf("flutterwave returned a successful transaction without a valid amount")
+		}
 	}
 
 	return &VerifiedTransaction{

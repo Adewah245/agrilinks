@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Learn about crops, poultry, livestock, fish farming and soil with Agro-Shield's farming guide.">
+  <title>Learn farming with AI | Agro-Shield</title>
+  <link rel="stylesheet" href="/static/css/style.css"><link rel="stylesheet" href="/static/css/learning_chat.css?v=20261030">
+  <script defer src="/static/js/learning_chat.js?v=20261030"></script>
+</head>
+<body class="public-learning-page">
+  <a class="learning-skip" href="#learning-main">Skip to learning</a>
+  <header class="public-learning-nav"><a class="learning-brand" href="/">Agro-Shield<span>Learn. Grow. Connect.</span></a><nav aria-label="Main navigation"><a href="/">Home</a><a href="/learning" aria-current="page">Learn with AI</a><a href="/learn">My journeys</a><a href="/login">Sign in</a></nav></header>
+  <main id="learning-main" class="public-learning-main">
+    <header class="public-learning-intro"><p class="learning-eyebrow">YOUR FARMING QUESTIONS, WELCOME</p><h1>Learn farming, one question at a time.</h1><p>Practical guidance for your next step. Explore crops, livestock and starting a farm at your own pace. You can begin without an account.</p></header>
+    <section class="public-learning-chat" aria-labelledby="learning-chat-title">
+      <div class="learning-chat-heading"><div><h2 id="learning-chat-title">Your farming guide</h2><p>Clear explanations. Practical steps.</p></div><button id="clear-chat" class="learning-reset" type="button">New chat</button></div>
+      {{if not .AIAvailable}}<p class="learning-availability" role="status">The learning guide is temporarily unavailable. Please try again later. You can still explore the categories below.</p>{{end}}
+      <div id="chat-messages" class="public-learning-messages" role="log" aria-live="polite" aria-relevant="additions"><article class="public-learning-message assistant"><span>Agro-Shield guide</span><p>Hello! What would you like to learn about farming today?</p></article></div>
+      <div class="learning-starters" aria-label="Example questions"><button type="button" data-category="Crop farming" data-question="How do I start growing vegetables in a small space?">Growing vegetables</button><button type="button" data-category="Poultry farming" data-question="What should I consider before starting poultry farming?">Starting poultry</button><button type="button" data-category="Soil management" data-question="How can I improve the soil on my farm?">Improving my soil</button></div>
+      <form id="learning-chat-form" class="public-learning-form">
+        <label for="farming-type">What would you like to learn about?</label><select id="farming-type" required><option value="">Choose a farming category</option>{{range .FarmingTypes}}<option value="{{.}}">{{.}}</option>{{end}}<option value="other">Other</option></select>
+        <label for="custom-farming-type" id="custom-farming-label" hidden>Your farming category</label><input id="custom-farming-type" maxlength="80" placeholder="For example, beekeeping" hidden disabled>
+        <label for="learning-question">Your question</label><div class="learning-compose"><textarea id="learning-question" maxlength="1200" rows="3" placeholder="Ask a question about farming…" required></textarea><button id="send-question" type="submit" {{if not .AIAvailable}}disabled{{end}}>Ask your guide</button></div>
+        <p id="learning-status" class="public-learning-status" role="status">Choose a category to begin. Your conversation stays in this tab.</p>
+      </form>
+    </section>
+    <div class="learning-next"><div><h2>Build on what you learn.</h2><p>Save a learning journey, make a checklist and learn with other people.</p></div><a href="/learn">Open my learning space →</a></div>
+    <p class="learning-footnote">For urgent crop or animal health problems, contact a local extension worker or veterinarian.</p>
+  </main>
+  <footer class="public-learning-footer"><a href="/">Agro-Shield</a><span>Growing knowledge. Growing possibilities.</span><a href="/register">Create an account</a></footer>
+</body>
+</html>

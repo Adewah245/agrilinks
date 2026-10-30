@@ -4,11 +4,37 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
+	"time"
 )
+
+var (
+	ErrProviderRefused = errors.New("the payment provider refused the request")
+	ErrProviderNotFound = errors.New("the provider has no record for this reference")
+	ErrProviderAccessDenied = errors.New("the payment provider did not permit the request")
+)
+
+func providerResponseError(status int, data []byte) error {
+	var envelope struct { Message string `json:"message"` }
+	_ = json.Unmarshal(data, &envelope)
+	message := strings.ToLower(envelope.Message)
+	switch {
+	case status == http.StatusUnauthorized || status == http.StatusForbidden:
+		return ErrProviderAccessDenied
+	case status == http.StatusNotFound:
+		return ErrProviderNotFound
+	case (status == http.StatusBadRequest || status == http.StatusUnprocessableEntity) &&
+		!strings.Contains(message, "duplicate") && !strings.Contains(message, "already") && !strings.Contains(message, "processing"):
+		return ErrProviderRefused
+	default:
+		return fmt.Errorf("%w: response %d", ErrPaymentProvider, status)
+	}
+}
 
 // These calls use the same configured provider and timeout as order payments.
 func (c *FlutterwaveClient) walletRequest(ctx context.Context, method, path string, payload any, result any) error {
@@ -37,18 +63,21 @@ func (c *FlutterwaveClient) walletRequest(ctx context.Context, method, path stri
 		return err
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("%w: response %d", ErrPaymentProvider, response.StatusCode)
+		return providerResponseError(response.StatusCode, data)
 	}
 	var envelope struct {
 		Status string `json:"status"`
 	}
 	if err = json.Unmarshal(data, &envelope); err != nil {
-		return err
+		return fmt.Errorf("%w: unreadable response", ErrPaymentProvider)
 	}
 	if envelope.Status != "success" {
 		return fmt.Errorf("the payment provider could not complete this request")
 	}
-	return json.Unmarshal(data, result)
+	if err := json.Unmarshal(data, result); err != nil {
+		return fmt.Errorf("%w: incomplete response", ErrPaymentProvider)
+	}
+	return nil
 }
 
 type Bank struct {
@@ -68,13 +97,19 @@ type VerifiedTransfer struct {
 }
 
 func (c *FlutterwaveClient) ListBanks(ctx context.Context) ([]Bank, error) {
+	c.bankMu.Lock()
+	defer c.bankMu.Unlock()
+	if ctx.Err() != nil { return nil, ctx.Err() }
+	if time.Now().Before(c.bankCacheUntil) { return append([]Bank(nil), c.bankCache...), nil }
 	var response struct {
 		Data []Bank `json:"data"`
 	}
 	if err := c.walletRequest(ctx, "GET", "/banks/NG", nil, &response); err != nil {
 		return nil, err
 	}
-	return response.Data, nil
+	if len(response.Data) == 0 { return nil, errors.New("the bank directory is unavailable") }
+	c.bankCache, c.bankCacheUntil = append([]Bank(nil), response.Data...), time.Now().Add(6*time.Hour)
+	return append([]Bank(nil), response.Data...), nil
 }
 
 func (c *FlutterwaveClient) ResolveAccount(ctx context.Context, number, bank string) (*ResolvedAccount, error) {

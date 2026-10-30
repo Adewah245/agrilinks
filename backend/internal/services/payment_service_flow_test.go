@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"context"
 	"errors"
 	"testing"
@@ -199,7 +200,7 @@ func TestConfirmCallbackFinalizesVerifiedPayment(t *testing.T) {
 		OrderID: 9, BuyerID: 4, Reference: "ORDER-9-ref", Amount: "2500.50", Currency: "NGN", Status: models.PaymentPending,
 	}}
 	gateway := &fakePaymentGateway{verifyResult: &VerifiedTransaction{
-		TransactionID: "123", Reference: "ORDER-9-ref", Status: "successful", Amount: 2500.5, Currency: "NGN",
+		TransactionID: "123", Reference: "ORDER-9-ref", Status: "successful", Amount: json.Number("2500.5"), Currency: "NGN",
 	}}
 	notifier := &fakePaymentNotifier{}
 	service := newPaymentServiceForTest(store, &fakePaymentOrders{}, &fakePaymentUsers{}, gateway, notifier)
@@ -224,7 +225,7 @@ func TestConfirmCallbackRejectsAmountMismatch(t *testing.T) {
 		OrderID: 9, BuyerID: 4, Reference: "ORDER-9-ref", Amount: "2500.50", Currency: "NGN", Status: models.PaymentPending,
 	}}
 	gateway := &fakePaymentGateway{verifyResult: &VerifiedTransaction{
-		TransactionID: "123", Reference: "ORDER-9-ref", Status: "successful", Amount: 1, Currency: "NGN",
+		TransactionID: "123", Reference: "ORDER-9-ref", Status: "successful", Amount: json.Number("1"), Currency: "NGN",
 	}}
 	service := newPaymentServiceForTest(store, &fakePaymentOrders{}, &fakePaymentUsers{}, gateway, &fakePaymentNotifier{})
 
@@ -255,7 +256,7 @@ func TestProcessWebhookFinalizesAndRecordsEvent(t *testing.T) {
 		OrderID: 9, BuyerID: 4, Reference: "ORDER-9-ref", Amount: "2500.50", Currency: "NGN", Status: models.PaymentPending,
 	}}
 	gateway := &fakePaymentGateway{verifyResult: &VerifiedTransaction{
-		TransactionID: "123", Reference: "ORDER-9-ref", Status: "successful", Amount: 2500.5, Currency: "NGN",
+		TransactionID: "123", Reference: "ORDER-9-ref", Status: "successful", Amount: json.Number("2500.5"), Currency: "NGN",
 	}}
 	service := newPaymentServiceForTest(store, &fakePaymentOrders{}, &fakePaymentUsers{}, gateway, &fakePaymentNotifier{})
 

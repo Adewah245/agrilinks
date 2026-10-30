@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -162,11 +161,15 @@ func (s *WalletService) StartDeposit(ctx context.Context, user *models.User, amo
 }
 
 func (s *WalletService) ApplyVerifiedDeposit(ctx context.Context, v *VerifiedTransaction, event *models.WebhookEvent) (string, error) {
-	if v == nil || v.TransactionID == "" || math.IsNaN(v.Amount) || math.IsInf(v.Amount, 0) || v.Amount <= 0 {
+	if v == nil || v.TransactionID == "" {
+		return "", errors.New("the provider returned an invalid funding amount")
+	}
+	amount, err := normalizedMoney(v.Amount.String())
+	if err != nil {
 		return "", errors.New("the provider returned an invalid funding amount")
 	}
 	status := verifiedPaymentStatus(v.Status)
-	_, err := s.repo.FinalizeDeposit(ctx, v.Reference, v.TransactionID, strconv.FormatFloat(v.Amount, 'f', 2, 64), strings.ToUpper(v.Currency), status, event)
+	_, err = s.repo.FinalizeDeposit(ctx, v.Reference, v.TransactionID, amount, strings.ToUpper(v.Currency), status, event)
 	return status, err
 }
 
