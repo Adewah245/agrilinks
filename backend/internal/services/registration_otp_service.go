@@ -18,6 +18,8 @@ var ErrRegistrationOTPUnavailable = errors.New("phone confirmation is unavailabl
 type registrationOTPStore interface {
 	Create(context.Context, *models.RegistrationPhoneCode, time.Duration, time.Duration) error
 	Attempt(context.Context, string, string, int) (*models.RegistrationPhoneCode, error)
+	MarkVerified(context.Context, *models.RegistrationPhoneCode) error
+	Verified(context.Context, string, string) (*models.RegistrationPhoneCode, error)
 	Delete(context.Context, string) error
 }
 
@@ -88,5 +90,19 @@ func (s *RegistrationOTPService) Check(ctx context.Context, token, phone, code s
 	if bcrypt.CompareHashAndPassword([]byte(record.CodeHash), []byte(code)) != nil {
 		return nil, repository.ErrRegistrationOTPInvalid
 	}
+	if err := s.repo.MarkVerified(ctx, record); err != nil {
+		return nil, err
+	}
 	return record, nil
+}
+
+func (s *RegistrationOTPService) Verified(ctx context.Context, token, phone string) (*models.RegistrationPhoneCode, error) {
+	if !s.Available() {
+		return nil, ErrRegistrationOTPUnavailable
+	}
+	phone = NormalizeNigerianPhone(phone)
+	if len(token) != 64 || phone == "" {
+		return nil, repository.ErrRegistrationOTPInvalid
+	}
+	return s.repo.Verified(ctx, sessionHash(token), phone)
 }

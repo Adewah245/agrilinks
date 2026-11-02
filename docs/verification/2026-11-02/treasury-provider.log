@@ -1,0 +1,13 @@
+=== RUN   TestTreasuryProviderExecutionAuthenticationAndRecovery
+2026/11/02 14:51:49 Connected to PostgreSQL database
+2026/11/02 14:51:49 Connected to PostgreSQL database
+2026/11/02 14:51:52 Database migrations checked: 77 files, 77 applied
+=== RUN   TestTreasuryProviderExecutionAuthenticationAndRecovery/ambiguous_submission_recovers_without_second_payout
+=== RUN   TestTreasuryProviderExecutionAuthenticationAndRecovery/definitive_refusal_releases_reservation
+=== NAME  TestTreasuryProviderExecutionAuthenticationAndRecovery
+    treasury_provider_test.go:45: simulated provider workflow balanced: debit=8055000 credit=8055000 kobo
+--- PASS: TestTreasuryProviderExecutionAuthenticationAndRecovery (3.78s)
+    --- PASS: TestTreasuryProviderExecutionAuthenticationAndRecovery/ambiguous_submission_recovers_without_second_payout (0.04s)
+    --- PASS: TestTreasuryProviderExecutionAuthenticationAndRecovery/definitive_refusal_releases_reservation (0.02s)
+PASS
+ok  	backend/internal/integration	3.815s

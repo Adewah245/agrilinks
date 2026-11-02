@@ -14,6 +14,31 @@ import (
 
 const registrationCookieName = "agroshield_registration"
 
+func (h *Register) PhoneVerifyHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "Method Not Allowed", 405)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 2048)
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Invalid phone confirmation request", 400)
+		return
+	}
+	cookie, err := r.Cookie(registrationCookieName)
+	if err != nil {
+		http.Error(w, "Request a phone confirmation code first", 400)
+		return
+	}
+	if err = h.service.VerifyRegistrationPhone(r.Context(), cookie.Value, r.PostForm.Get("phone"), r.PostForm.Get("code")); err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": "Phone verified. Create and confirm your transaction PIN to finish registration."})
+}
+
 func (h *Register) PhoneCodeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if r.Method != http.MethodPost {

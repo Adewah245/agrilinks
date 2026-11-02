@@ -71,6 +71,7 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	container.UserRepo.SetConfiguredAdministrators(administratorIDs)
 	container.Config = cfg
 	container.Admin = repository.NewAdminRepository(db)
+	container.Escrow = repository.NewEscrowRepository(db)
 	container.Sessions = services.NewSessionService(repository.NewSessionRepository(db), cfg.SessionTTL)
 	container.Weather = services.NewWeatherService()
 	delivery, err := newOTPDelivery(cfg)
@@ -88,7 +89,14 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 		repository.NewRegistrationOTPRepository(db), phoneDelivery, cfg.OTPTTL, cfg.OTPMaxAttempts, cfg.OTPResendInterval,
 	))
 	container.Wallet = services.NewWalletService(repository.NewWalletRepository(db, cfg.PaymentCurrency, commission), repository.NewPaymentRepository(db, commission), walletProvider, container.OTP, cfg.PaymentCurrency)
+	container.Wallet.SetPINService(services.NewTransactionPINService(container.UserRepo))
 	container.Payment.SetWallet(container.Wallet)
+	var settlementProvider services.SettlementProvider
+	if walletProvider != nil {
+		settlementProvider = walletProvider
+	}
+	container.Finance = services.NewFinanceService(repository.NewFinanceRepository(db), settlementProvider, container.UserRepo, services.NewTransactionPINService(container.UserRepo), container.OTP)
+	container.Payment.SetFinance(container.Finance)
 	container.Learning.SetProvider(services.NewLearningProvider(cfg))
 	return container, nil
 }

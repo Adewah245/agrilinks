@@ -63,7 +63,11 @@
                             <form method="POST" action="/payments">
                                 <input type="hidden" name="order_id" value="{{.ID}}">
                                 <button type="submit">Pay with Flutterwave</button>
-                                <button type="submit" formaction="/wallet" name="action" value="pay_order">Pay from wallet</button>
+                            </form>
+                            <form method="POST" action="/wallet">
+                                <input type="hidden" name="order_id" value="{{.ID}}">
+                                <label>Transaction PIN <input name="transaction_pin" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" placeholder="6-digit PIN" required></label><small>Create your PIN in <a href="/wallet#wallet-pin-setup">Wallet</a> before paying from your balance.</small>
+                                <button type="submit" name="action" value="pay_order">Pay from wallet</button>
                             </form>
                         </td>
                     </tr>

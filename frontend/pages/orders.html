@@ -49,7 +49,7 @@
                 <tbody>
                     {{range .Orders}}
                     <tr>
-                        <td>#{{.ID}}</td>
+                        <td>#{{.ID}}<br><a href="/orders/protection?order_id={{.ID}}">Purchase protection</a></td>
                         <td>{{.ProductName}}</td>
                         <td>{{.Quantity}} {{.ProductUnit}}</td>
                         <td>{{.SellerName}}</td>

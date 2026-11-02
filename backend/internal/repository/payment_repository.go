@@ -1,11 +1,13 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
 
 	"backend/internal/models"
+	"backend/internal/money"
 )
 
 // PaymentRepository owns persistence for payment attempts and wallet reads.
@@ -317,6 +319,7 @@ func (r *PaymentRepository) FinalizePayment(
 	status,
 	providerTransactionID string,
 	webhook *models.WebhookEvent,
+	costs ...DepositCosts,
 ) (bool, error) {
 	reference = strings.TrimSpace(reference)
 	providerTransactionID = strings.TrimSpace(providerTransactionID)
@@ -325,7 +328,7 @@ func (r *PaymentRepository) FinalizePayment(
 	}
 
 	switch status {
-	case models.PaymentPending, models.PaymentSuccessful, models.PaymentFailed:
+	case models.PaymentPending, models.PaymentSuccessful, models.PaymentFailed, "reversed":
 	default:
 		return false, fmt.Errorf("unsupported payment status %q", status)
 	}
@@ -338,6 +341,9 @@ func (r *PaymentRepository) FinalizePayment(
 		_ = tx.Rollback()
 	}()
 
+	if err = financeLock(context.Background(), tx); err != nil {
+		return false, err
+	}
 	var orderID int
 	var orderStatus string
 	// Every attempt for this order takes the same lock before touching money.
@@ -355,6 +361,27 @@ func (r *PaymentRepository) FinalizePayment(
 	}
 	if currentStatus == models.PaymentSuccessful && oldProviderID.Valid && oldProviderID.String != providerTransactionID {
 		return false, fmt.Errorf("a different provider transaction already paid this reference")
+	}
+	if err = claimProviderReceipt(context.Background(), tx, providerTransactionID, reference); err != nil {
+		return false, err
+	}
+	if status == "reversed" {
+		if err = reverseOrderPayment(tx, reference, providerTransactionID, `{"source":"verified_provider_reversal"}`); err != nil {
+			return false, err
+		}
+		if webhook != nil {
+			if err = recordWebhookEvent(tx, webhook); err != nil {
+				return false, err
+			}
+		}
+		return false, tx.Commit()
+	}
+	var reversed bool
+	if err = tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM payment_reversals WHERE reference=$1)`, reference).Scan(&reversed); err != nil {
+		return false, err
+	}
+	if reversed {
+		return false, nil
 	}
 	newlySuccessful := currentStatus != models.PaymentSuccessful && status == models.PaymentSuccessful
 	if currentStatus == models.PaymentSuccessful {
@@ -376,7 +403,16 @@ func (r *PaymentRepository) FinalizePayment(
 		if err = confirmOrderAfterPayment(tx, orderID); err != nil {
 			return false, err
 		}
-		if err = creditOrderSale(tx, orderID, sellerType, sellerID, amount, currency, r.commissionBPS); err != nil {
+		if err = holdOrderSale(tx, orderID, sellerType, sellerID, amount, currency, r.commissionBPS, costs...); err != nil {
+			return false, err
+		}
+	}
+	if newlySuccessful && reviewRequired {
+		gross, err := money.Positive(amount)
+		if err != nil {
+			return false, err
+		}
+		if err = postJournal(tx, reference+":receipt", "extra_payment_refund_due", currency, 0, "{}", debit("provider_clearing", gross), credit("customer_refunds_payable", gross)); err != nil {
 			return false, err
 		}
 	}

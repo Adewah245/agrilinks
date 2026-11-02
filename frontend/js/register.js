@@ -33,6 +33,12 @@ const sendCodeButton = document.getElementById("send-registration-code");
 const registrationCode = document.getElementById("registration-code");
 const confirmationPhone = document.getElementById("confirmation-phone");
 const confirmationStatus = document.getElementById("confirmation-status");
+const verifyPhoneButton = document.getElementById("verify-registration-phone");
+const pinSection = document.getElementById("registration-pin-section");
+const transactionPIN = document.getElementById("transaction-pin");
+const transactionPINConfirmation = document.getElementById("transaction-pin-confirmation");
+let verifiedPhone = "";
+let verifyingPhone = false;
 let codePhone = "";
 let resendAt = 0;
 let sendingCode = false;
@@ -241,12 +247,21 @@ document.addEventListener("visibilitychange", () => {
 
 function updateConfirmationControls() {
     const wait = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
-    sendCodeButton.disabled = sendingCode || submitting || wait > 0;
+    sendCodeButton.disabled = sendingCode || verifyingPhone || submitting || wait > 0;
     sendCodeButton.textContent = sendingCode ? "Sending code…" : wait > 0
         ? `Resend code in ${wait}s` : codePhone ? "Resend confirmation code" : "Send confirmation code";
-    backButton.disabled = sendingCode || submitting;
-    completeButton.disabled = submitting || sendingCode || openingCamera || capturingSelfie || !selfieBlob
+    backButton.disabled = sendingCode || verifyingPhone || submitting;
+    const verified = verifiedPhone !== "" && verifiedPhone === phone.value.trim();
+    verifyPhoneButton.disabled = verified || verifyingPhone || sendingCode || submitting
         || codePhone !== phone.value.trim() || !/^[0-9]{6}$/.test(registrationCode.value.trim());
+    verifyPhoneButton.textContent = verified ? "Phone verified" : verifyingPhone ? "Verifying…" : "Verify phone number";
+    pinSection.hidden = !verified;
+    transactionPIN.disabled = transactionPINConfirmation.disabled = !verified || !selfieStep;
+    transactionPIN.required = transactionPINConfirmation.required = verified && selfieStep;
+    document.getElementById("registration-pin-status").textContent = transactionPINConfirmation.value
+        && transactionPIN.value !== transactionPINConfirmation.value ? "The PINs do not match. Enter the same six digits in both fields." : "";
+    completeButton.disabled = submitting || sendingCode || verifyingPhone || openingCamera || capturingSelfie || !selfieBlob
+        || !verified || !/^[0-9]{6}$/.test(transactionPIN.value) || transactionPIN.value !== transactionPINConfirmation.value;
     updateSelfieControls();
 }
 
@@ -259,6 +274,8 @@ registrationLog("selfie.initialized", {
 sendCodeButton.addEventListener("click", async () => {
     if (sendingCode || Date.now() < resendAt) return;
     sendingCode = true;
+    verifiedPhone = "";
+    transactionPIN.value = transactionPINConfirmation.value = "";
     confirmationStatus.textContent = "";
     updateConfirmationControls();
     const targetPhone = phone.value.trim();
@@ -293,8 +310,43 @@ sendCodeButton.addEventListener("click", async () => {
     }
 });
 
+verifyPhoneButton.addEventListener("click", async () => {
+    if (verifyPhoneButton.disabled) return;
+    const targetPhone = phone.value.trim();
+    verifyingPhone = true;
+    updateConfirmationControls();
+    try {
+        const response = await fetch("/register/phone-verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ phone: targetPhone, code: registrationCode.value.trim() }),
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        if (targetPhone === phone.value.trim()) {
+            verifiedPhone = targetPhone;
+            confirmationStatus.textContent = data.message;
+            registrationCode.required = false;
+            registrationCode.disabled = true;
+        }
+    } catch (error) {
+        confirmationStatus.textContent = error.message || "Could not verify your phone. Please try again.";
+    } finally {
+        verifyingPhone = false;
+        updateConfirmationControls();
+        if (verifiedPhone) transactionPIN.focus();
+    }
+});
+transactionPIN.addEventListener("input", updateConfirmationControls);
+transactionPINConfirmation.addEventListener("input", updateConfirmationControls);
+window.addEventListener("pagehide", () => {
+    transactionPIN.value = transactionPINConfirmation.value = "";
+});
+window.addEventListener("pageshow", updateConfirmationControls);
 registrationCode.addEventListener("input", updateConfirmationControls);
 phone.addEventListener("input", () => {
+    verifiedPhone = "";
+    transactionPIN.value = transactionPINConfirmation.value = "";
     codePhone = "";
     registrationCode.value = "";
     registrationCode.disabled = true;
@@ -666,7 +718,7 @@ registerForm.addEventListener("submit", async (event) => {
         });
         detailsButton.hidden = true;
         confirmationPhone.textContent = phone.value.trim();
-        registrationCode.disabled = codePhone !== phone.value.trim();
+        registrationCode.disabled = verifiedPhone === phone.value.trim() || codePhone !== phone.value.trim();
         registrationCode.required = !registrationCode.disabled;
         updateConfirmationControls();
         registerHeading.textContent = "Confirm your phone and finish registration";
@@ -680,9 +732,14 @@ registerForm.addEventListener("submit", async (event) => {
         message.style.color = "red";
         return;
     }
-    if (codePhone !== phone.value.trim() || !/^[0-9]{6}$/.test(registrationCode.value.trim())) {
+    if (!verifiedPhone || verifiedPhone !== phone.value.trim()) {
         registrationLog("submission.blocked", { reason: "phone_confirmation_required" }, "warn");
-        message.textContent = "Request and enter the SMS code for your phone number.";
+        message.textContent = "Verify your phone number before creating your transaction PIN.";
+        message.style.color = "red";
+        return;
+    }
+    if (!/^[0-9]{6}$/.test(transactionPIN.value) || transactionPIN.value !== transactionPINConfirmation.value) {
+        message.textContent = "Create a six-digit transaction PIN and enter the same PIN to confirm it.";
         message.style.color = "red";
         return;
     }
@@ -717,8 +774,9 @@ registerForm.addEventListener("submit", async (event) => {
 });
 
 backButton.addEventListener("click", () => {
-    if (sendingCode || submitting) return;
+    if (sendingCode || verifyingPhone || submitting) return;
     selfieStep = false;
+    updateConfirmationControls();
     registrationLog("selfie.step.left", { hasSelfie: Boolean(selfieBlob) });
     stopSelfieCamera("back_to_details");
     if (!selfieBlob) selfieStatus.textContent = "Open your camera to take a selfie.";

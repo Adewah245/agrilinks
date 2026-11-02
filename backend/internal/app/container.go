@@ -25,6 +25,8 @@ import (
 // ============================================================
 
 type Container struct {
+	Finance  *services.FinanceService
+	Escrow   *repository.EscrowRepository
 	Admin    *repository.AdminRepository
 	Wallet   *services.WalletService
 	Config   config.Config

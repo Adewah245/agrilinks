@@ -143,9 +143,7 @@ func TestAdminWorkspacePermissionsAndWorkflows(t *testing.T) {
 	}
 	// Reserve money using the existing wallet repository, then review through HTTP.
 	wallets := repository.NewWalletRepository(db, "NGN", 0)
-	if _, err := db.Exec(`UPDATE wallets SET balance=50 WHERE id=$1`, walletID); err != nil {
-		t.Fatal(err)
-	}
+	seedAccountingWallet(t, db, root.ID, 10000)
 	var recipientNumber string
 	if err := db.QueryRow(`SELECT wallet_number FROM wallets WHERE owner_type='user' AND owner_id=$1 AND currency='NGN'`, farmer.ID).Scan(&recipientNumber); err != nil {
 		t.Fatal(err)
@@ -169,7 +167,7 @@ func TestAdminWorkspacePermissionsAndWorkflows(t *testing.T) {
 	}
 	post(opsCookie, "/admin/finance", url.Values{"action": {"wallet_withdrawal"}, "id": {strconv.Itoa(withdrawalID)}, "value": {"rejected"}, "reason": {"Reject request and release reserved funds"}})
 	var balance string
-	if err := db.QueryRow(`SELECT balance::text FROM wallets WHERE id=$1`, walletID).Scan(&balance); err != nil || balance != "40.00" {
+	if err := db.QueryRow(`SELECT balance::text FROM wallets WHERE id=$1`, walletID).Scan(&balance); err != nil || balance != "90.00" {
 		t.Fatalf("wallet review changed balance incorrectly: %s %v", balance, err)
 	}
 	post(opsCookie, "/admin/users", url.Values{"action": {"user_status"}, "id": {strconv.Itoa(farmer.ID)}, "value": {"suspended"}, "reason": {"Suspended pending investigation"}})

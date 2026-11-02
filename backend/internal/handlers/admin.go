@@ -102,7 +102,7 @@ func (h *AdminWorkspaceHandler) Action(w http.ResponseWriter, r *http.Request) {
 	}
 	action := f["action"]
 	section := repository.AdminActionSection(action)
-	if action == "wallet_withdrawal" || action == "wallet_transfer" {
+	if action == "wallet_withdrawal" || action == "wallet_transfer" || action == "wallet_funding_check" {
 		section = "finance"
 	}
 	if !user.CanAdmin(section) {
@@ -190,6 +190,18 @@ func (h *AdminWorkspaceHandler) walletAction(r *http.Request, user *models.User,
 	reason := strings.TrimSpace(f["reason"])
 	if reason == "" || len(reason) > 2000 {
 		return errors.New("record a reason for the payment decision")
+	}
+	if f["action"] == "wallet_funding_check" {
+		target := "flutterwave-transaction:" + strconv.FormatInt(id, 10)
+		if err := h.repo.Audit(r.Context(), user, "wallet_funding_check_started", target, "{}", "{}", true, reason); err != nil {
+			return err
+		}
+		err := h.wallet.RecoverFundingTransfer(r.Context(), user, strconv.FormatInt(id, 10))
+		auditErr := h.repo.Audit(r.Context(), user, "wallet_funding_check", target, "{}", "{}", err == nil, reason)
+		if err != nil {
+			return err
+		}
+		return auditErr
 	}
 	kind := "transfer"
 	if f["action"] == "wallet_withdrawal" {

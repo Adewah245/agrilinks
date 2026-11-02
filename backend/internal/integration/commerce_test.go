@@ -176,11 +176,11 @@ func TestBuyingPaymentDeliveryAndReviewsWithPostgres(t *testing.T) {
 		t.Fatalf("duplicate attempt paid order again: %v %v", paidAgain, err)
 	}
 	var balance string
-	if err = db.QueryRow(`SELECT balance::text FROM wallets WHERE owner_type='user' AND owner_id=$1 AND currency='NGN'`, seller.ID).Scan(&balance); err != nil || balance != "159.52" {
+	if err = db.QueryRow(`SELECT balance::text FROM wallets WHERE owner_type='user' AND owner_id=$1 AND currency='NGN'`, seller.ID).Scan(&balance); err != nil || balance != "0.00" {
 		t.Fatalf("wrong seller balance %s %v", balance, err)
 	}
-	if err = db.QueryRow(`SELECT count(*) FROM wallet_transactions WHERE type='sale_credit'`).Scan(&count); err != nil || count != 1 {
-		t.Fatalf("sale recorded more than once: %d %v", count, err)
+	if err = db.QueryRow(`SELECT count(*) FROM wallet_transactions WHERE type='sale_credit'`).Scan(&count); err != nil || count != 0 {
+		t.Fatalf("sale released before approval: %d %v", count, err)
 	}
 	payments, err := c.Payment.MyPayments(buyer.ID)
 	if err != nil || len(payments) != 2 {
@@ -228,6 +228,23 @@ func TestBuyingPaymentDeliveryAndReviewsWithPostgres(t *testing.T) {
 	if err = c.Delivery.UpdateStatus(driver, delivery.ID, "delivered"); err != nil {
 		t.Fatal(err)
 	}
+	if _, err = db.Exec(`UPDATE users SET is_admin=true WHERE id=$1`, other.ID); err != nil {
+		t.Fatal(err)
+	}
+	other.IsAdmin = true
+	if err = c.Escrow.Act(context.Background(), buyer, orderID, "confirm_delivery", "Received all purchased items"); err != nil {
+		t.Fatal(err)
+	}
+	if err = c.Escrow.Act(context.Background(), other, orderID, "release", "Reviewed agreement and confirmed delivery"); err != nil {
+		t.Fatal(err)
+	}
+	if err = db.QueryRow(`SELECT balance::text FROM wallets WHERE owner_type='user' AND owner_id=$1 AND currency='NGN'`, seller.ID).Scan(&balance); err != nil || balance != "159.52" {
+		t.Fatalf("seller release %s: %v", balance, err)
+	}
+	if err = db.QueryRow(`SELECT count(*) FROM wallet_transactions WHERE type='sale_credit'`).Scan(&count); err != nil || count != 1 {
+		t.Fatalf("sale credited %d times: %v", count, err)
+	}
+
 	if _, err = c.Review.ReviewProduct(other.ID, p1, orderID, 5, "Not my purchase"); err == nil {
 		t.Fatal("outsider reviewed purchase")
 	}

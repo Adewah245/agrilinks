@@ -288,6 +288,14 @@ func applyAdminAction(ctx context.Context, tx *sql.Tx, actor *models.User, f map
 				return before, after, target, adminInvalid("the order must belong to the ticket's buyer or seller")
 			}
 			order = orderID
+			if kind == "dispute" || kind == "refund" {
+				if err = financeLock(ctx, tx); err != nil {
+					break
+				}
+				if err = freezeTicketEscrow(tx, orderID, actor.ID, description); err != nil {
+					break
+				}
+			}
 		}
 		err = tx.QueryRowContext(ctx, `INSERT INTO admin_support_tickets(user_id,order_id,subject,description,kind,priority,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`, memberID, order, subject, description, kind, priority, actor.ID).Scan(&id)
 		target = "ticket:" + strconv.Itoa(id)
@@ -369,7 +377,7 @@ func applyAdminAction(ctx context.Context, tx *sql.Tx, actor *models.User, f map
 }
 
 func validStaffRole(role string) bool {
-	return role == "super_admin" || role == "customer_care" || role == "operations_manager"
+	return role == "super_admin" || role == "customer_care" || role == "operations_manager" || role == "finance_admin" || role == "senior_finance_admin"
 }
 func adminUserSnapshot(ctx context.Context, tx *sql.Tx, id int) (string, error) {
 	var value string

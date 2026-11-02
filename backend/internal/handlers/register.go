@@ -92,7 +92,7 @@ func (h *Register) RegisterHandler(
 
 		defer r.MultipartForm.RemoveAll()
 		confirmation, cookieErr := r.Cookie(registrationCookieName)
-		if cookieErr != nil || len(confirmation.Value) != 64 || strings.TrimSpace(r.FormValue("registration_code")) == "" {
+		if cookieErr != nil || len(confirmation.Value) != 64 {
 			log.Println("[registration] submission.phone_confirmation_missing")
 			http.Error(w, "Confirm your phone number with the SMS code before completing registration.", http.StatusBadRequest)
 			return
@@ -341,7 +341,7 @@ func (h *Register) RegisterHandler(
 		// ====================================================
 
 		err = h.service.Register(
-			r.Context(), confirmation.Value, r.FormValue("registration_code"),
+			r.Context(), confirmation.Value, r.FormValue("transaction_pin"), r.FormValue("transaction_pin_confirmation"),
 			user.First_Name,
 			user.Last_Name,
 			user.Phone,

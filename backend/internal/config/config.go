@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultNegotiationMaxRounds = 10
+	defaultNegotiationMaxRounds = 5
 	defaultNegotiationWindow    = 24 * time.Hour
 	defaultPaymentCurrency      = "NGN"
 	defaultOTPDevSender         = "OTP Dev"

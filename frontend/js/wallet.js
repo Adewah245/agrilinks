@@ -121,11 +121,22 @@ document.addEventListener("DOMContentLoaded", () => {
     openMove(window.location.hash.slice(1));
     window.addEventListener("hashchange", () => openMove(window.location.hash.slice(1)));
 
+    const newPIN = document.getElementById("wallet-new-pin");
+    const confirmedPIN = document.getElementById("wallet-confirm-pin");
+    const checkPINConfirmation = () => confirmedPIN?.setCustomValidity(
+        confirmedPIN.value && newPIN.value !== confirmedPIN.value ? "Enter the same six-digit PIN in both fields." : ""
+    );
+    newPIN?.addEventListener("input", checkPINConfirmation);
+    confirmedPIN?.addEventListener("input", checkPINConfirmation);
+
     // Keep the selected form and history category through the server's POST redirect.
     const movePanels = document.querySelectorAll(".wallet-move-panel");
-    const actionCategories = { deposit: "funding", transfer: "transfers", withdraw: "withdrawals", cancel_transfer: "transfers", cancel_withdrawal: "withdrawals" };
+    const actionCategories = { deposit: "funding", setup_funding: "funding", check_funding: "funding", transfer: "transfers", withdraw: "withdrawals", cancel_transfer: "transfers", cancel_withdrawal: "withdrawals" };
     const storedActionKey = "agro-shield-wallet-last-action";
-    document.querySelectorAll('form[action="/wallet"]').forEach(form => form.addEventListener("submit", () => {
+    document.querySelectorAll('form[action="/wallet"]').forEach(form => form.addEventListener("submit", event => {
+        if (form.dataset.submitting === "true") { event.preventDefault(); return; }
+        form.dataset.submitting = "true";
+        form.querySelectorAll('button[type="submit"]').forEach(button => { button.disabled = true; });
         try {
             sessionStorage.setItem(storedActionKey, JSON.stringify({ panel: form.closest(".wallet-move-panel")?.id, category: actionCategories[form.elements.namedItem("action")?.value], time: Date.now() }));
         } catch { /* Forms still submit normally without storage. */ }
@@ -154,6 +165,71 @@ document.addEventListener("DOMContentLoaded", () => {
         depositInput.value = button.dataset.depositAmount;
         depositInput.focus({ preventScroll: true });
     }));
+
+    const identityForm = document.querySelector("[data-virtual-account-form]");
+    const identitySubmit = identityForm?.querySelector("[data-va-submit]");
+    const identityStatus = identityForm?.querySelector("[data-va-status]");
+    let submittingIdentity = false;
+    identityForm?.addEventListener("submit", event => {
+        if (submittingIdentity) { event.preventDefault(); return; }
+        submittingIdentity = true;
+        if (identitySubmit) identitySubmit.disabled = true;
+        if (identityStatus) identityStatus.textContent = "Sending your account request. Please wait…";
+    });
+    window.addEventListener("pageshow", event => {
+        if (!event.persisted) return;
+        document.querySelectorAll('form[action="/wallet"]').forEach(form => {
+            delete form.dataset.submitting;
+            form.querySelectorAll('button[type="submit"]').forEach(button => { button.disabled = false; });
+            form.querySelectorAll('input[type="password"]').forEach(input => { input.value = ""; });
+        });
+        submittingIdentity = false;
+        if (identitySubmit) identitySubmit.disabled = false;
+        if (identityStatus) identityStatus.textContent = "";
+        const identityNumber = document.getElementById("wallet-identity-number");
+        if (identityNumber) identityNumber.value = "";
+        const consent = document.getElementById("wallet-funding-consent");
+        if (consent) consent.checked = false;
+    });
+
+    // Poll only committed server state. Never calculate a credit in the browser,
+    // and preserve any form the user has started filling in.
+    const revision = document.body.dataset.walletRevision;
+    let formDirty = false;
+    document.querySelectorAll('form[action="/wallet"]').forEach(form => {
+        form.addEventListener("input", () => { formDirty = true; });
+        form.addEventListener("change", () => { formDirty = true; });
+    });
+    let pollTimer, checking = false, pollingStopped = false;
+    const scheduleCheck = () => { clearTimeout(pollTimer); if (!pollingStopped) pollTimer = setTimeout(checkWallet, 15000); };
+    const checkWallet = async () => {
+        if (!revision || pollingStopped || checking) return;
+        if (document.hidden) { scheduleCheck(); return; }
+        checking = true;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+            const response = await fetch("/wallet/status", { signal: controller.signal, cache: "no-store", headers: { Accept: "application/json" } });
+            if (response.redirected || response.status === 401) { pollingStopped = true; return; }
+            if (!response.ok) return;
+            const status = await response.json();
+            if (typeof status.revision !== "string" || status.revision === revision) return;
+            pollingStopped = true;
+            if (formDirty || document.activeElement?.closest("form") || document.querySelector(".wallet-alert-error")) {
+                const notice = document.getElementById("wallet-update-notice");
+                if (notice) notice.hidden = false;
+            } else {
+                window.location.reload();
+            }
+        } catch { /* A temporary connection failure must not interrupt money forms. */ }
+        finally { clearTimeout(timeout); checking = false; scheduleCheck(); }
+    };
+    if (revision) {
+        scheduleCheck();
+        document.addEventListener("visibilitychange", () => { if (!document.hidden) checkWallet(); });
+        window.addEventListener("pagehide", () => clearTimeout(pollTimer));
+        window.addEventListener("pageshow", scheduleCheck);
+    }
 
     const sidebar = document.querySelector(".wallet-sidebar");
     const menuToggle = document.querySelector(".wallet-menu-toggle");

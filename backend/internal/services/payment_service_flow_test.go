@@ -1,12 +1,13 @@
 package services
 
 import (
-	"encoding/json"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
 	"backend/internal/models"
+	"backend/internal/repository"
 )
 
 type fakePaymentStore struct {
@@ -45,6 +46,8 @@ func (f *fakePaymentStore) CreatePendingForOrder(
 	}, nil
 }
 
+func (f *fakePaymentStore) ClaimCheckout(reference string) (bool, error) { return true, nil }
+
 func (f *fakePaymentStore) SaveCheckoutURL(reference, checkoutURL string) error { return nil }
 
 func (f *fakePaymentStore) UpdateStatus(reference, status, providerTransactionID string) error {
@@ -61,6 +64,7 @@ func (f *fakePaymentStore) FinalizePayment(
 	status,
 	providerTransactionID string,
 	webhook *models.WebhookEvent,
+	costs ...repository.DepositCosts,
 ) (bool, error) {
 	f.finalized = true
 	f.finalStatus = status

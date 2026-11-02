@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"backend/internal/models"
+	"backend/internal/money"
 )
 
 var ErrInsufficientBalance = errors.New("your wallet does not have enough money")
@@ -71,14 +72,46 @@ func (r *WalletRepository) CreateDeposit(ctx context.Context, userID int, refere
 	if err != nil {
 		return nil, err
 	}
-	_, err = r.db.ExecContext(ctx, `INSERT INTO wallet_deposits(wallet_id,provider,reference,amount,currency) VALUES($1,'flutterwave',$2,$3::numeric,$4) ON CONFLICT(reference) DO NOTHING`, w.ID, reference, amount, r.currency)
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
+	defer tx.Rollback()
+	if err = financeLock(ctx, tx); err != nil {
+		return nil, err
+	}
+	// Serialize browser reloads as well as retries carrying the original key.
+	var walletID int64
+	if err = tx.QueryRowContext(ctx, `SELECT id FROM wallets WHERE id=$1 FOR UPDATE`, w.ID).Scan(&walletID); err != nil {
+		return nil, err
+	}
+	var requestedExists bool
+	if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM wallet_deposits WHERE reference=$1)`, reference).Scan(&requestedExists); err != nil {
+		return nil, err
+	}
+	if !requestedExists {
+		var unfinished bool
+		if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM wallet_deposits WHERE wallet_id=$1 AND provider='flutterwave' AND status IN ('pending','processing') AND reference NOT LIKE 'VA-%')`, w.ID).Scan(&unfinished); err != nil {
+			return nil, err
+		}
+		if unfinished {
+			return nil, errors.New("an online top-up is already pending; continue it from funding history before starting another")
+		}
+		if _, err = tx.ExecContext(ctx, `INSERT INTO wallet_deposits(wallet_id,provider,reference,amount,currency) VALUES($1,'flutterwave',$2,$3::numeric,$4)`, w.ID, reference, amount, r.currency); err != nil {
+			return nil, err
+		}
+	}
+
 	d := &models.WalletDeposit{}
-	err = r.db.QueryRowContext(ctx, `SELECT id,provider,amount::text,currency,reference,status,checkout_url,created_at FROM wallet_deposits WHERE reference=$1 AND wallet_id=$2 AND amount=$3::numeric`, reference, w.ID, amount).
+	err = tx.QueryRowContext(ctx, `SELECT id,provider,amount::text,currency,reference,status,checkout_url,created_at FROM wallet_deposits WHERE reference=$1 AND wallet_id=$2 AND amount=$3::numeric`, reference, w.ID, amount).
 		Scan(&d.ID, &d.Provider, &d.Amount, &d.Currency, &d.Reference, &d.Status, &d.CheckoutURL, &d.CreatedAt)
-	return d, err
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrWalletRequestChanged
+	}
+	if err != nil {
+		return nil, err
+	}
+	return d, tx.Commit()
 }
 
 func (r *WalletRepository) SaveDepositURL(ctx context.Context, reference, checkoutURL string) error {
@@ -88,29 +121,39 @@ func (r *WalletRepository) SaveDepositURL(ctx context.Context, reference, checko
 
 // FinalizeDeposit also handles transfers into a previously saved permanent
 // account. The provider's transaction ID identifies each distinct bank transfer.
-func (r *WalletRepository) FinalizeDeposit(ctx context.Context, reference, providerID, amount, currency, status string, event *models.WebhookEvent) (bool, error) {
+func (r *WalletRepository) FinalizeDeposit(ctx context.Context, reference, providerID, amount, currency, status string, event *models.WebhookEvent, providerCosts ...DepositCosts) (bool, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return false, err
 	}
 	defer tx.Rollback()
+	if err = financeLock(ctx, tx); err != nil {
+		return false, err
+	}
 	var walletID int64
 	var savedAmount, savedCurrency, current string
 	var priorID sql.NullString
-	err = tx.QueryRowContext(ctx, `SELECT wallet_id,amount::text,currency,status,provider_transaction_id FROM wallet_deposits WHERE reference=$1 AND provider='flutterwave' FOR UPDATE`, reference).
-		Scan(&walletID, &savedAmount, &savedCurrency, &current, &priorID)
-	if err == sql.ErrNoRows && status == "successful" {
-		err = tx.QueryRowContext(ctx, `SELECT w.id FROM wallet_virtual_accounts a JOIN wallets w ON w.owner_type='user' AND w.owner_id=a.user_id AND w.currency=a.currency WHERE a.tx_ref=$1 AND a.provider='flutterwave' AND a.status='active' AND a.currency=$2`, reference, currency).Scan(&walletID)
+	var feeVersion int
+	err = tx.QueryRowContext(ctx, `SELECT wallet_id,amount::text,currency,status,provider_transaction_id,fee_version FROM wallet_deposits WHERE reference=$1 AND provider='flutterwave' FOR UPDATE`, reference).
+		Scan(&walletID, &savedAmount, &savedCurrency, &current, &priorID, &feeVersion)
+	if err == sql.ErrNoRows {
+		// A verified transfer can arrive before the creation response is saved.
+		// Ownership comes from the stored unique reference, never webhook input.
+		err = tx.QueryRowContext(ctx, `SELECT w.id FROM wallet_virtual_accounts a JOIN wallets w ON w.owner_type='user' AND w.owner_id=a.user_id AND w.currency=a.currency WHERE a.tx_ref=$1 AND a.provider='flutterwave' AND a.status IN ('active','pending') AND a.currency=$2`, reference, currency).Scan(&walletID)
 		if err != nil {
 			return false, fmt.Errorf("wallet funding reference was not found: %w", err)
 		}
 		reference = "VA-" + providerID
+		expectedWalletID := walletID
 		_, err = tx.ExecContext(ctx, `INSERT INTO wallet_deposits(wallet_id,provider,reference,amount,currency) VALUES($1,'flutterwave',$2,$3::numeric,$4) ON CONFLICT(reference) DO NOTHING`, walletID, reference, amount, currency)
 		if err != nil {
 			return false, err
 		}
-		err = tx.QueryRowContext(ctx, `SELECT wallet_id,amount::text,currency,status,provider_transaction_id FROM wallet_deposits WHERE reference=$1 FOR UPDATE`, reference).
-			Scan(&walletID, &savedAmount, &savedCurrency, &current, &priorID)
+		err = tx.QueryRowContext(ctx, `SELECT wallet_id,amount::text,currency,status,provider_transaction_id,fee_version FROM wallet_deposits WHERE reference=$1 FOR UPDATE`, reference).
+			Scan(&walletID, &savedAmount, &savedCurrency, &current, &priorID, &feeVersion)
+		if err == nil && walletID != expectedWalletID {
+			return false, errors.New("provider transaction belongs to a different wallet")
+		}
 	}
 	if err != nil {
 		return false, err
@@ -119,36 +162,67 @@ func (r *WalletRepository) FinalizeDeposit(ctx context.Context, reference, provi
 	if err = tx.QueryRowContext(ctx, `SELECT $1::numeric=$2::numeric`, savedAmount, amount).Scan(&matches); err != nil {
 		return false, err
 	}
-	if savedCurrency != currency || (status == "successful" && !matches) {
+	if savedCurrency != currency || !matches {
 		return false, fmt.Errorf("wallet payment amount or currency did not match")
 	}
-	if current == "successful" && priorID.Valid && priorID.String != providerID {
+	if priorID.Valid && priorID.String != providerID {
 		return false, fmt.Errorf("this funding request already has a payment")
 	}
+	if err = claimProviderReceipt(ctx, tx, providerID, reference); err != nil {
+		return false, err
+	}
 	credited := false
+	if current == "successful" && status == "reversed" {
+		if err = reverseDepositFees(tx, walletID, reference, currency); err != nil {
+			return false, err
+		}
+		if _, err = tx.ExecContext(ctx, `UPDATE wallet_deposits SET status='reversed',review_required=true,updated_at=CURRENT_TIMESTAMP WHERE reference=$1`, reference); err != nil {
+			return false, err
+		}
+	}
+
 	if current != "successful" && current != "reversed" {
 		_, err = tx.ExecContext(ctx, `UPDATE wallet_deposits SET status=$2,provider_transaction_id=$3,verified_amount=$4::numeric,verified_currency=$5,updated_at=CURRENT_TIMESTAMP WHERE reference=$1`, reference, status, providerID, amount, currency)
 		if err != nil {
 			return false, err
 		}
 		if status == "successful" {
-			result, err := tx.ExecContext(ctx, `INSERT INTO wallet_transactions(wallet_id,type,amount,reference,description) VALUES($1,'deposit',$2::numeric,$3,'Wallet funding confirmed by the payment provider') ON CONFLICT(reference) DO NOTHING`, walletID, amount, reference)
+			gross, err := money.Positive(amount)
 			if err != nil {
 				return false, err
 			}
-			n, err := result.RowsAffected()
-			if err != nil {
-				return false, err
-			}
-			if n == 1 {
-				if _, err = tx.ExecContext(ctx, `UPDATE wallets SET balance=balance+$2::numeric,updated_at=CURRENT_TIMESTAMP WHERE id=$1`, walletID, amount); err != nil {
+			if feeVersion > 0 && currency == "NGN" {
+				costs := DepositCosts{}
+				if len(providerCosts) > 0 {
+					costs = providerCosts[0]
+				}
+				if err = applyDepositFees(tx, walletID, reference, gross, currency, costs); err != nil {
+					return false, err
+				}
+				if err = tx.QueryRowContext(ctx, `SELECT wallet_credit_kobo>0 FROM wallet_fee_records WHERE reference=$1`, reference).Scan(&credited); err != nil {
+					return false, err
+				}
+			} else {
+				if err = ensureAccount(tx, walletAccount(walletID), "liability"); err != nil {
+					return false, err
+				}
+				if err = postJournal(tx, reference+":receipt", "legacy_wallet_funding", currency, 0, "{}", debit("provider_clearing", gross), credit(walletAccount(walletID), gross)); err != nil {
+					return false, err
+				}
+				if err = walletEntry(tx, walletID, "deposit", gross, reference); err != nil {
+					return false, err
+				}
+				if err = creditWalletKobo(tx, walletID, gross, reference); err != nil {
 					return false, err
 				}
 				credited = true
 			}
 		}
+
 	}
-	if event != nil {
+	// Pending verification must not consume the provider event forever. A later
+	// delivery of the same charge.completed event can carry the final result.
+	if event != nil && status != "pending" && status != "processing" {
 		if err = recordWebhookEvent(tx, event); err != nil {
 			return false, err
 		}
@@ -162,12 +236,22 @@ func (r *WalletRepository) PayOrder(ctx context.Context, buyerID, orderID int) e
 		return err
 	}
 	defer tx.Rollback()
+	if err = financeLock(ctx, tx); err != nil {
+		return err
+	}
 	var status, amount, currency string
 	err = tx.QueryRowContext(ctx, `SELECT status,total_amount::text,currency FROM orders WHERE id=$1 AND buyer_id=$2 FOR UPDATE`, orderID, buyerID).Scan(&status, &amount, &currency)
 	if err != nil {
 		return err
 	}
 	if status != "pending" {
+		var paid bool
+		if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM transactions WHERE order_id=$1 AND buyer_id=$2 AND payment_provider='wallet' AND status='successful')`, orderID, buyerID).Scan(&paid); err != nil {
+			return err
+		}
+		if paid {
+			return nil
+		}
 		return fmt.Errorf("this order is no longer waiting for payment")
 	}
 	var pending bool
@@ -208,7 +292,7 @@ func (r *WalletRepository) PayOrder(ctx context.Context, buyerID, orderID int) e
 		return err
 	}
 	var walletID int64
-	err = tx.QueryRowContext(ctx, `UPDATE wallets SET balance=balance-$3::numeric,updated_at=CURRENT_TIMESTAMP WHERE owner_type='user' AND owner_id=$1 AND currency=$2 AND balance>=$3::numeric RETURNING id`, buyerID, currency, amount).Scan(&walletID)
+	err = tx.QueryRowContext(ctx, `UPDATE wallets SET balance=balance-$3::numeric,updated_at=CURRENT_TIMESTAMP WHERE owner_type='user' AND owner_id=$1 AND currency=$2 AND balance>=$3::numeric AND recovery_debt_kobo=0 AND balance*100=COALESCE((SELECT SUM(p.credit_kobo::numeric-p.debit_kobo::numeric) FROM accounting_postings p WHERE p.account_code='wallet:'||wallets.id AND p.currency=wallets.currency),0) RETURNING id`, buyerID, currency, amount).Scan(&walletID)
 	if err == sql.ErrNoRows {
 		return ErrInsufficientBalance
 	}
@@ -224,7 +308,7 @@ func (r *WalletRepository) PayOrder(ctx context.Context, buyerID, orderID int) e
 	if err != nil {
 		return err
 	}
-	if err = creditOrderSale(tx, orderID, sellerType, sellerID, amount, currency, r.commissionBPS); err != nil {
+	if err = holdOrderSale(tx, orderID, sellerType, sellerID, amount, currency, r.commissionBPS); err != nil {
 		return err
 	}
 	if err = confirmOrderAfterPayment(tx, orderID); err != nil {
@@ -239,6 +323,15 @@ func (r *WalletRepository) RequestTransfer(ctx context.Context, senderID int, re
 		return err
 	}
 	defer tx.Rollback()
+	if err = financeLock(ctx, tx); err != nil {
+		return err
+	}
+	if err = lockWalletRequest(ctx, tx, reference); err != nil {
+		return err
+	}
+	if found, err := transferMatches(ctx, tx, senderID, recipientNumber, amount, reference, note, r.currency); err != nil || found {
+		return err
+	}
 	var recipientID int
 	var recipientWallet int64
 	var recipientPhone string
@@ -250,7 +343,7 @@ func (r *WalletRepository) RequestTransfer(ctx context.Context, senderID int, re
 		return fmt.Errorf("choose another person's wallet")
 	}
 	var senderWallet int64
-	err = tx.QueryRowContext(ctx, `UPDATE wallets SET balance=balance-$3::numeric,updated_at=CURRENT_TIMESTAMP WHERE owner_type='user' AND owner_id=$1 AND currency=$2 AND balance>=$3::numeric RETURNING id`, senderID, r.currency, amount).Scan(&senderWallet)
+	err = tx.QueryRowContext(ctx, `UPDATE wallets SET balance=balance-$3::numeric,updated_at=CURRENT_TIMESTAMP WHERE owner_type='user' AND owner_id=$1 AND currency=$2 AND balance>=$3::numeric AND recovery_debt_kobo=0 AND balance*100=COALESCE((SELECT SUM(p.credit_kobo::numeric-p.debit_kobo::numeric) FROM accounting_postings p WHERE p.account_code='wallet:'||wallets.id AND p.currency=wallets.currency),0) RETURNING id`, senderID, r.currency, amount).Scan(&senderWallet)
 	if err == sql.ErrNoRows {
 		return ErrInsufficientBalance
 	}
@@ -265,6 +358,18 @@ func (r *WalletRepository) RequestTransfer(ctx context.Context, senderID int, re
 	if err != nil {
 		return err
 	}
+	principal, err := money.Positive(amount)
+	if err != nil {
+		return err
+	}
+	for _, account := range []string{walletAccount(senderWallet), "transfer:" + reference} {
+		if err = ensureAccount(tx, account, "liability"); err != nil {
+			return err
+		}
+	}
+	if err = postJournal(tx, reference+":reserve", "wallet_transfer_reservation", r.currency, senderID, "{}", debit(walletAccount(senderWallet), principal), credit("transfer:"+reference, principal)); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
@@ -274,6 +379,9 @@ func (r *WalletRepository) DecideTransfer(ctx context.Context, actorID int, admi
 		return err
 	}
 	defer tx.Rollback()
+	if err = financeLock(ctx, tx); err != nil {
+		return err
+	}
 	var senderID int
 	var senderWallet, recipientWallet int64
 	var status, amount, reference string
@@ -291,7 +399,17 @@ func (r *WalletRepository) DecideTransfer(ctx context.Context, actorID int, admi
 	if decision == "completed" {
 		walletID, kind, suffix = recipientWallet, "transfer_in", ":in"
 	}
-	_, err = tx.ExecContext(ctx, `UPDATE wallets SET balance=balance+$2::numeric,updated_at=CURRENT_TIMESTAMP WHERE id=$1`, walletID, amount)
+	principal, parseErr := money.Positive(amount)
+	if parseErr != nil {
+		return parseErr
+	}
+	if err = ensureAccount(tx, walletAccount(walletID), "liability"); err != nil {
+		return err
+	}
+	if err = postJournal(tx, reference+suffix, "wallet_transfer_"+decision, r.currency, actorID, "{}", debit("transfer:"+reference, principal), credit(walletAccount(walletID), principal)); err != nil {
+		return err
+	}
+	err = creditWalletKobo(tx, walletID, principal, reference+suffix)
 	if err != nil {
 		return err
 	}
@@ -323,14 +441,74 @@ func (r *WalletRepository) Transfers(ctx context.Context, userID int) ([]models.
 	return items, rows.Err()
 }
 
-func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, amount, reference string, account *models.UserBankAccount) error {
+func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, amount, reference string, account *models.UserBankAccount, quotes ...*models.FeeQuote) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	if err = financeLock(ctx, tx); err != nil {
+		return err
+	}
+	if account == nil {
+		return errors.New("save your bank account first")
+	}
+	if err = lockWalletRequest(ctx, tx, reference); err != nil {
+		return err
+	}
+	if found, err := withdrawalMatches(ctx, tx, userID, amount, reference, account.BankCode, account.AccountNumber, r.currency); err != nil || found {
+		return err
+	}
+	principal, err := money.Positive(amount)
+	if err != nil {
+		return err
+	}
+	policy, err := feePolicy(ctx, tx)
+	if err != nil {
+		return err
+	}
+	service, err := policy.WithdrawalFee(principal)
+	if err != nil {
+		return err
+	}
+	q := &models.FeeQuote{AmountKobo: principal, ServiceKobo: service}
+	if len(quotes) > 0 && quotes[0] != nil {
+		q = quotes[0]
+		if q.ID != "" {
+			q, err = scanFeeQuote(tx.QueryRowContext(ctx, `SELECT `+quoteColumns+` FROM wallet_fee_quotes WHERE id=$1 AND user_id=$2 AND kind='withdrawal' AND expires_at>CURRENT_TIMESTAMP`, q.ID, userID))
+			if err != nil {
+				return err
+			}
+		}
+		if q.BankCode != account.BankCode || q.AccountNumber != account.AccountNumber {
+			return errors.New("bank destination does not match quote")
+		}
+	} else {
+		q.PolicyID = policy.ID
+		q.WalletDebitKobo, err = money.Add(principal, service)
+		if err != nil {
+			return err
+		}
+	}
+	expectedDebit, err := money.Add(principal, service, q.CustomerProviderKobo)
+	if err != nil {
+		return err
+	}
+	if q.AmountKobo != principal || q.ServiceKobo != service || q.WalletDebitKobo != expectedDebit {
+		return errors.New("withdrawal quote does not match")
+	}
 	var walletID int64
-	err = tx.QueryRowContext(ctx, `UPDATE wallets SET balance=balance-$3::numeric,updated_at=CURRENT_TIMESTAMP WHERE owner_type='user' AND owner_id=$1 AND currency=$2 AND balance>=$3::numeric RETURNING id`, userID, r.currency, amount).Scan(&walletID)
+	if err = tx.QueryRowContext(ctx, `SELECT id FROM wallets WHERE owner_type='user' AND owner_id=$1 AND currency=$2 FOR UPDATE`, userID, r.currency).Scan(&walletID); err != nil {
+		return err
+	}
+	var outstanding bool
+	if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM wallet_withdrawals WHERE user_id=$1 AND status IN ('pending','processing'))`, userID).Scan(&outstanding); err != nil {
+		return err
+	}
+	if outstanding {
+		return errors.New("a withdrawal is already pending or processing; check its status before starting another")
+	}
+	err = tx.QueryRowContext(ctx, `UPDATE wallets SET balance=balance-$3::numeric,updated_at=CURRENT_TIMESTAMP WHERE owner_type='user' AND owner_id=$1 AND currency=$2 AND balance>=$3::numeric AND recovery_debt_kobo=0 AND balance*100=COALESCE((SELECT SUM(p.credit_kobo::numeric-p.debit_kobo::numeric) FROM accounting_postings p WHERE p.account_code='wallet:'||wallets.id AND p.currency=wallets.currency),0) RETURNING id`, userID, r.currency, money.Format(q.WalletDebitKobo)).Scan(&walletID)
 	if err == sql.ErrNoRows {
 		return ErrInsufficientBalance
 	}
@@ -344,6 +522,9 @@ func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, am
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO wallet_transactions(wallet_id,type,amount,reference) VALUES($1,'withdrawal_reserved',$2::numeric,$3)`, walletID, amount, reference+":reserved")
 	if err != nil {
+		return err
+	}
+	if err = reserveWithdrawalFees(tx, walletID, reference, r.currency, principal, q); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -383,7 +564,7 @@ func (r *WalletRepository) Withdrawals(ctx context.Context, userID int) ([]model
 }
 
 func (r *WalletRepository) ClaimWithdrawal(ctx context.Context, id int64, adminID int) error {
-	result, err := r.db.ExecContext(ctx, `UPDATE wallet_withdrawals SET status='processing',approved_by=$2,updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND status='pending'`, id, adminID)
+	result, err := r.db.ExecContext(ctx, `UPDATE wallet_withdrawals SET status='processing',provider_submission_state='unknown',approved_by=NULLIF($2,0),updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND status='pending' AND provider_submission_state='not_submitted'`, id, adminID)
 	if err != nil {
 		return err
 	}
@@ -398,18 +579,49 @@ func (r *WalletRepository) ClaimWithdrawal(ctx context.Context, id int64, adminI
 }
 
 func (r *WalletRepository) SaveTransferID(ctx context.Context, id int64, providerID string) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE wallet_withdrawals SET provider_transfer_id=$2,updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND status='processing'`, id, providerID)
-	return err
-}
-
-// FinishWithdrawal either records a verified payout or returns reserved money.
-// A processing request can be refunded only after the provider verifies failure.
-func (r *WalletRepository) FinishWithdrawal(ctx context.Context, id int64, actorID int, admin bool, decision string, providerVerified bool) error {
+	if providerID == "" {
+		return errors.New("provider transfer ID is missing")
+	}
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	if err = financeLock(ctx, tx); err != nil {
+		return err
+	}
+	var reference string
+	if err = tx.QueryRowContext(ctx, `SELECT reference FROM wallet_withdrawals WHERE id=$1 FOR UPDATE`, id).Scan(&reference); err != nil {
+		return err
+	}
+	if err = claimProviderTransfer(tx, "flutterwave", providerID, reference); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE wallet_withdrawals SET provider_transfer_id=$2,provider_submission_state='accepted',updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND status IN ('processing','paid','failed','reversed') AND (provider_transfer_id IS NULL OR provider_transfer_id=$2)`, id, providerID)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return errors.New("the provider payout does not match an active withdrawal")
+	}
+	return tx.Commit()
+}
+
+// FinishWithdrawal either records a verified payout or returns reserved money.
+// A processing request can be refunded only after the provider verifies failure.
+func (r *WalletRepository) FinishWithdrawal(ctx context.Context, id int64, actorID int, admin bool, decision string, providerVerified bool, providerActual ...*int64) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err = financeLock(ctx, tx); err != nil {
+		return err
+	}
 	var userID int
 	var walletID int64
 	var status, reference, amount string
@@ -417,16 +629,40 @@ func (r *WalletRepository) FinishWithdrawal(ctx context.Context, id int64, actor
 	if err != nil {
 		return err
 	}
-	if status == decision && providerVerified {
+	if (status == decision || status == "reversed") && providerVerified {
 		return nil
+	}
+	if status == "paid" && decision == "reversed" && providerVerified {
+		if err = reverseCustomerWithdrawal(tx, reference, r.currency, walletID); err != nil {
+			return err
+		}
+		if _, err = tx.ExecContext(ctx, `UPDATE wallet_withdrawals SET status='reversed',updated_at=CURRENT_TIMESTAMP WHERE id=$1`, id); err != nil {
+			return err
+		}
+		return tx.Commit()
 	}
 	valid := (status == "pending" && ((admin && decision == "rejected") || (userID == actorID && decision == "cancelled"))) || (status == "processing" && providerVerified && (decision == "paid" || decision == "failed"))
 	if !valid {
 		return fmt.Errorf("this withdrawal cannot be changed now")
 	}
+	var actual *int64
+	if len(providerActual) > 0 {
+		actual = providerActual[0]
+	}
+	extraRefund, err := settleWithdrawalFees(tx, reference, decision, r.currency, actual)
+	if err != nil {
+		return err
+	}
 	if decision != "paid" {
-		_, err = tx.ExecContext(ctx, `UPDATE wallets SET balance=balance+$2::numeric,updated_at=CURRENT_TIMESTAMP WHERE id=$1`, walletID, amount)
+		principal, err := money.Positive(amount)
 		if err != nil {
+			return err
+		}
+		refund, err := money.Add(principal, extraRefund)
+		if err != nil {
+			return err
+		}
+		if err = creditWalletKobo(tx, walletID, refund, reference+":refund"); err != nil {
 			return err
 		}
 		_, err = tx.ExecContext(ctx, `INSERT INTO wallet_transactions(wallet_id,type,amount,reference) VALUES($1,'withdrawal_refund',$2::numeric,$3)`, walletID, amount, reference+":refund")

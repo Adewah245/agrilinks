@@ -752,13 +752,24 @@
 
                 <div class="form-group phone-confirmation">
                     <h3>Confirm your phone number</h3>
-                    <p class="field-help">We’ll send a code to <strong id="confirmation-phone"></strong>. Enter it below to finish creating your account.</p>
+                    <p class="field-help">We’ll send a code to <strong id="confirmation-phone"></strong>. Verify it, then create your transaction PIN.</p>
                     <button type="button" id="send-registration-code" class="registration-back-button">Send confirmation code</button>
                     <p id="confirmation-status" class="field-help" role="status"></p>
                     <label for="registration-code">SMS confirmation code</label>
                     <input id="registration-code" name="registration_code" type="text"
                         inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}"
                         maxlength="6" placeholder="6-digit code" disabled>
+                    <button type="button" id="verify-registration-phone" class="registration-back-button" disabled>Verify phone number</button>
+                </div>
+
+                <div id="registration-pin-section" class="form-group" hidden>
+                    <h3>Create your transaction PIN</h3>
+                    <p id="registration-pin-help" class="field-help">Choose six digits to authorize wallet payments and withdrawals. Keep your PIN safe and never reveal it to anyone. Agro-Shield staff will never ask for your PIN.</p>
+                    <label for="transaction-pin">Transaction PIN</label>
+                    <input id="transaction-pin" name="transaction_pin" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6}" minlength="6" maxlength="6" aria-describedby="registration-pin-help" disabled>
+                    <label for="transaction-pin-confirmation">Confirm transaction PIN</label>
+                    <input id="transaction-pin-confirmation" name="transaction_pin_confirmation" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6}" minlength="6" maxlength="6" disabled>
+                    <p id="registration-pin-status" class="field-help" role="status"></p>
                 </div>
 
                 <button
@@ -807,7 +818,7 @@
      REGISTER JAVASCRIPT
 ============================================================== -->
 
-<script src="/static/js/register.js?v=20261028"></script>
+<script src="/static/js/register.js?v=20261102"></script>
 
     <script defer src="/static/js/navigation.js?v=20261027"></script>
 </body>

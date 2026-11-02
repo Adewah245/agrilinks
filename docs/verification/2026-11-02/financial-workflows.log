@@ -1,0 +1,222 @@
+=== RUN   TestNormalizeDeliveryStatus
+=== RUN   TestNormalizeDeliveryStatus/default
+=== RUN   TestNormalizeDeliveryStatus/normalizes
+=== RUN   TestNormalizeDeliveryStatus/rejects_unknown
+--- PASS: TestNormalizeDeliveryStatus (0.00s)
+    --- PASS: TestNormalizeDeliveryStatus/default (0.00s)
+    --- PASS: TestNormalizeDeliveryStatus/normalizes (0.00s)
+    --- PASS: TestNormalizeDeliveryStatus/rejects_unknown (0.00s)
+=== RUN   TestPrepareDeliveryTimestamps
+--- PASS: TestPrepareDeliveryTimestamps (0.00s)
+=== RUN   TestOrderStatusForDelivery
+--- PASS: TestOrderStatusForDelivery (0.00s)
+=== RUN   TestNormalizeDiagnosisText
+--- PASS: TestNormalizeDiagnosisText (0.00s)
+=== RUN   TestNormalizeDiagnosisMedia
+--- PASS: TestNormalizeDiagnosisMedia (0.00s)
+=== RUN   TestFinancialFundingAndWithdrawalAccounting
+2026/11/02 14:46:38 Connected to PostgreSQL database
+2026/11/02 14:46:38 Connected to PostgreSQL database
+2026/11/02 14:46:46 Database migrations checked: 76 files, 76 applied
+=== RUN   TestFinancialFundingAndWithdrawalAccounting/tier_100
+=== NAME  TestFinancialFundingAndWithdrawalAccounting
+    finance_workflows_test.go:39: balanced ledger: debit=10020700 credit=10020700 kobo; wallet mismatches=0
+=== RUN   TestFinancialFundingAndWithdrawalAccounting/tier_500000
+=== NAME  TestFinancialFundingAndWithdrawalAccounting
+    finance_workflows_test.go:39: balanced ledger: debit=11033200 credit=11033200 kobo; wallet mismatches=0
+=== RUN   TestFinancialFundingAndWithdrawalAccounting/tier_500100
+=== NAME  TestFinancialFundingAndWithdrawalAccounting
+    finance_workflows_test.go:39: balanced ledger: debit=12075900 credit=12075900 kobo; wallet mismatches=0
+=== RUN   TestFinancialFundingAndWithdrawalAccounting/tier_999900
+=== NAME  TestFinancialFundingAndWithdrawalAccounting
+    finance_workflows_test.go:39: balanced ledger: debit=14118200 credit=14118200 kobo; wallet mismatches=0
+=== RUN   TestFinancialFundingAndWithdrawalAccounting/tier_1000000
+=== NAME  TestFinancialFundingAndWithdrawalAccounting
+    finance_workflows_test.go:39: balanced ledger: debit=16180700 credit=16180700 kobo; wallet mismatches=0
+=== RUN   TestFinancialFundingAndWithdrawalAccounting/complete_debit_required
+=== RUN   TestFinancialFundingAndWithdrawalAccounting/failed_payout_returns_all_customer_fees
+=== NAME  TestFinancialFundingAndWithdrawalAccounting
+    finance_workflows_test.go:42: balanced ledger: debit=16212950 credit=16212950 kobo; wallet mismatches=0
+=== RUN   TestFinancialFundingAndWithdrawalAccounting/payout_reversal_returns_fees_once
+=== NAME  TestFinancialFundingAndWithdrawalAccounting
+    finance_workflows_test.go:43: balanced ledger: debit=16261950 credit=16261950 kobo; wallet mismatches=0
+=== RUN   TestFinancialFundingAndWithdrawalAccounting/deposit_reversal_creates_debt_for_spent_money
+=== NAME  TestFinancialFundingAndWithdrawalAccounting
+    finance_workflows_test.go:44: balanced ledger: debit=35571250 credit=35571250 kobo; wallet mismatches=0
+--- PASS: TestFinancialFundingAndWithdrawalAccounting (10.11s)
+    --- PASS: TestFinancialFundingAndWithdrawalAccounting/tier_100 (0.37s)
+    --- PASS: TestFinancialFundingAndWithdrawalAccounting/tier_500000 (0.09s)
+    --- PASS: TestFinancialFundingAndWithdrawalAccounting/tier_500100 (0.06s)
+    --- PASS: TestFinancialFundingAndWithdrawalAccounting/tier_999900 (0.05s)
+    --- PASS: TestFinancialFundingAndWithdrawalAccounting/tier_1000000 (0.05s)
+    --- PASS: TestFinancialFundingAndWithdrawalAccounting/complete_debit_required (0.01s)
+    --- PASS: TestFinancialFundingAndWithdrawalAccounting/failed_payout_returns_all_customer_fees (0.11s)
+    --- PASS: TestFinancialFundingAndWithdrawalAccounting/payout_reversal_returns_fees_once (0.08s)
+    --- PASS: TestFinancialFundingAndWithdrawalAccounting/deposit_reversal_creates_debt_for_spent_money (0.11s)
+=== RUN   TestAccountingConcurrencyImmutabilityAndRollback
+2026/11/02 14:46:48 Connected to PostgreSQL database
+2026/11/02 14:46:48 Connected to PostgreSQL database
+2026/11/02 14:46:55 Database migrations checked: 76 files, 76 applied
+    finance_workflows_test.go:53: balanced ledger: debit=2523000 credit=2523000 kobo; wallet mismatches=0
+=== RUN   TestAccountingConcurrencyImmutabilityAndRollback/posted_journals_cannot_change
+=== RUN   TestAccountingConcurrencyImmutabilityAndRollback/unbalanced_transaction_rejected
+=== RUN   TestAccountingConcurrencyImmutabilityAndRollback/database_failure_rolls_back_money_and_fees
+=== NAME  TestAccountingConcurrencyImmutabilityAndRollback
+    finance_workflows_test.go:56: balanced ledger: debit=2628000 credit=2628000 kobo; wallet mismatches=0
+--- PASS: TestAccountingConcurrencyImmutabilityAndRollback (9.16s)
+    --- PASS: TestAccountingConcurrencyImmutabilityAndRollback/posted_journals_cannot_change (0.04s)
+    --- PASS: TestAccountingConcurrencyImmutabilityAndRollback/unbalanced_transaction_rejected (0.03s)
+    --- PASS: TestAccountingConcurrencyImmutabilityAndRollback/database_failure_rolls_back_money_and_fees (0.32s)
+=== RUN   TestCompanyTreasurySettlementAndPermissions
+2026/11/02 14:46:57 Connected to PostgreSQL database
+2026/11/02 14:46:57 Connected to PostgreSQL database
+2026/11/02 14:47:03 Database migrations checked: 76 files, 76 applied
+    finance_workflows_test.go:80: balanced ledger: debit=2018000 credit=2018000 kobo; wallet mismatches=0
+    finance_workflows_test.go:85: balanced ledger: debit=2022500 credit=2022500 kobo; wallet mismatches=0
+--- PASS: TestCompanyTreasurySettlementAndPermissions (6.99s)
+=== RUN   TestValidateExternalPrice
+=== RUN   TestValidateExternalPrice/missing_produce
+=== RUN   TestValidateExternalPrice/invalid_price
+=== RUN   TestValidateExternalPrice/missing_unit
+=== RUN   TestValidateExternalPrice/missing_provider
+=== RUN   TestValidateExternalPrice/missing_market
+=== RUN   TestValidateExternalPrice/missing_timestamp
+--- PASS: TestValidateExternalPrice (0.00s)
+    --- PASS: TestValidateExternalPrice/missing_produce (0.00s)
+    --- PASS: TestValidateExternalPrice/invalid_price (0.00s)
+    --- PASS: TestValidateExternalPrice/missing_unit (0.00s)
+    --- PASS: TestValidateExternalPrice/missing_provider (0.00s)
+    --- PASS: TestValidateExternalPrice/missing_market (0.00s)
+    --- PASS: TestValidateExternalPrice/missing_timestamp (0.00s)
+=== RUN   TestDemandRecommendation
+--- PASS: TestDemandRecommendation (0.00s)
+=== RUN   TestMinFloat
+--- PASS: TestMinFloat (0.00s)
+=== RUN   TestDemandClassification
+--- PASS: TestDemandClassification (0.00s)
+=== RUN   TestDemandScoreAndTrend
+--- PASS: TestDemandScoreAndTrend (0.00s)
+=== RUN   TestSellThroughBounds
+--- PASS: TestSellThroughBounds (0.00s)
+=== RUN   TestViewWindowDefaults
+--- PASS: TestViewWindowDefaults (0.00s)
+=== RUN   TestRecentForUserRejectsInvalidUser
+--- PASS: TestRecentForUserRejectsInvalidUser (0.00s)
+=== RUN   TestUpsertLGANeighborValidation
+--- PASS: TestUpsertLGANeighborValidation (0.00s)
+=== RUN   TestMapUserUniqueViolation
+=== RUN   TestMapUserUniqueViolation/phone
+=== RUN   TestMapUserUniqueViolation/email
+=== RUN   TestMapUserUniqueViolation/other_unique_constraint
+=== RUN   TestMapUserUniqueViolation/different_postgres_error
+=== RUN   TestMapUserUniqueViolation/non-postgres_error
+--- PASS: TestMapUserUniqueViolation (0.00s)
+    --- PASS: TestMapUserUniqueViolation/phone (0.00s)
+    --- PASS: TestMapUserUniqueViolation/email (0.00s)
+    --- PASS: TestMapUserUniqueViolation/other_unique_constraint (0.00s)
+    --- PASS: TestMapUserUniqueViolation/different_postgres_error (0.00s)
+    --- PASS: TestMapUserUniqueViolation/non-postgres_error (0.00s)
+=== RUN   TestCreateRejectsNilUser
+--- PASS: TestCreateRejectsNilUser (0.00s)
+PASS
+ok  	backend/internal/repository	26.303s
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/overview
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/users
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/marketplace
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/orders
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/finance
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/support
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/reports
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/audit
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/staff
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/super_admin/settings
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/overview
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/users
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/marketplace
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/orders
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/finance
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/support
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/reports
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/customer_care/overview
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/customer_care/users
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/customer_care/orders
+=== RUN   TestAdminTemplateRendersEveryStaffWorkspace/customer_care/support
+--- PASS: TestAdminTemplateRendersEveryStaffWorkspace (0.18s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/overview (0.05s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/users (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/marketplace (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/orders (0.00s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/finance (0.00s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/support (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/reports (0.02s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/audit (0.00s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/staff (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/super_admin/settings (0.00s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/overview (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/users (0.00s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/marketplace (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/orders (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/finance (0.00s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/support (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/operations_manager/reports (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/customer_care/overview (0.01s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/customer_care/users (0.00s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/customer_care/orders (0.00s)
+    --- PASS: TestAdminTemplateRendersEveryStaffWorkspace/customer_care/support (0.01s)
+=== RUN   TestAdminTemplatePreservesReviewFormsAndTokens
+--- PASS: TestAdminTemplatePreservesReviewFormsAndTokens (0.01s)
+=== RUN   TestAIDiagnosisHistoryTemplateUsesSymptoms
+--- PASS: TestAIDiagnosisHistoryTemplateUsesSymptoms (0.00s)
+=== RUN   TestDashboardTemplateHasAllRequiredDataFields
+--- PASS: TestDashboardTemplateHasAllRequiredDataFields (0.02s)
+=== RUN   TestSellerPrioritiesUrgentFirstAndLimited
+--- PASS: TestSellerPrioritiesUrgentFirstAndLimited (0.00s)
+=== RUN   TestSellerPrioritiesOnTrack
+--- PASS: TestSellerPrioritiesOnTrack (0.00s)
+=== RUN   TestFarmHealthUrgentDiagnosis
+--- PASS: TestFarmHealthUrgentDiagnosis (0.00s)
+=== RUN   TestBuyerPriorities
+--- PASS: TestBuyerPriorities (0.00s)
+=== RUN   TestPrioritizeDemandSummariesLimitsAndRanksActions
+--- PASS: TestPrioritizeDemandSummariesLimitsAndRanksActions (0.00s)
+=== RUN   TestCartSummary
+--- PASS: TestCartSummary (0.00s)
+=== RUN   TestDeliveryWorkspaceRendersBuyerSellerAndPartnerViews
+--- PASS: TestDeliveryWorkspaceRendersBuyerSellerAndPartnerViews (0.01s)
+=== RUN   TestDeliveryPartnerTemplateRendersRegistrationAndReview
+--- PASS: TestDeliveryPartnerTemplateRendersRegistrationAndReview (0.00s)
+=== RUN   TestOptionalPositiveID
+--- PASS: TestOptionalPositiveID (0.00s)
+=== RUN   TestMarketplaceTemplateRendersProductModel
+--- PASS: TestMarketplaceTemplateRendersProductModel (0.00s)
+=== RUN   TestParseBadgeExpiryIncludesWholeSelectedDay
+--- PASS: TestParseBadgeExpiryIncludesWholeSelectedDay (0.00s)
+=== RUN   TestParseBadgeExpiryAllowsNoExpiry
+--- PASS: TestParseBadgeExpiryAllowsNoExpiry (0.00s)
+=== RUN   TestParseBadgeExpiryRejectsInvalidDate
+--- PASS: TestParseBadgeExpiryRejectsInvalidDate (0.00s)
+=== RUN   TestUploadRejectsSpoofedContentType
+--- PASS: TestUploadRejectsSpoofedContentType (0.00s)
+=== RUN   TestWalletTemplateRendersAccountStates
+=== RUN   TestWalletTemplateRendersAccountStates/payments_unavailable
+=== RUN   TestWalletTemplateRendersAccountStates/new_account
+=== RUN   TestWalletTemplateRendersAccountStates/profile_incomplete
+=== RUN   TestWalletTemplateRendersAccountStates/failed_account
+=== RUN   TestWalletTemplateRendersAccountStates/non_NGN_wallet
+=== RUN   TestWalletTemplateRendersAccountStates/saved_payout_account
+=== RUN   TestWalletTemplateRendersAccountStates/active_funding_account
+=== RUN   TestWalletTemplateRendersAccountStates/pending_funding_account
+--- PASS: TestWalletTemplateRendersAccountStates (0.03s)
+    --- PASS: TestWalletTemplateRendersAccountStates/payments_unavailable (0.01s)
+    --- PASS: TestWalletTemplateRendersAccountStates/new_account (0.00s)
+    --- PASS: TestWalletTemplateRendersAccountStates/profile_incomplete (0.00s)
+    --- PASS: TestWalletTemplateRendersAccountStates/failed_account (0.00s)
+    --- PASS: TestWalletTemplateRendersAccountStates/non_NGN_wallet (0.00s)
+    --- PASS: TestWalletTemplateRendersAccountStates/saved_payout_account (0.00s)
+    --- PASS: TestWalletTemplateRendersAccountStates/active_funding_account (0.00s)
+    --- PASS: TestWalletTemplateRendersAccountStates/pending_funding_account (0.00s)
+=== RUN   TestWalletTemplatePreservesMoneyActionForms
+--- PASS: TestWalletTemplatePreservesMoneyActionForms (0.01s)
+PASS
+ok  	backend/internal/handlers	0.439s

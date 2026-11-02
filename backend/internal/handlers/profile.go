@@ -14,10 +14,11 @@ import (
 
 // Profile handles authenticated and public user profile requests.
 type Profile struct {
-	product *services.ProductService
-	order   *services.OrderService
-	review  *services.ReviewService
-	users   *repository.UserRepository
+	product      *services.ProductService
+	order        *services.OrderService
+	review       *services.ReviewService
+	users        *repository.UserRepository
+	notification *services.NotificationService
 }
 
 // NewProfileHandler creates a new Profile handler.
@@ -26,12 +27,14 @@ func NewProfileHandler(
 	order *services.OrderService,
 	review *services.ReviewService,
 	users *repository.UserRepository,
+	notification *services.NotificationService,
 ) *Profile {
 	return &Profile{
-		product: product,
-		order:   order,
-		review:  review,
-		users:   users,
+		product:      product,
+		order:        order,
+		review:       review,
+		users:        users,
+		notification: notification,
 	}
 }
 
@@ -42,11 +45,12 @@ func NewProfileHandler(
 // Products, purchases, and sales contain role-specific profile data.
 type ProfilePageData struct {
 	*models.User
-	IsOwner   bool
-	Products  []models.Product
-	Purchases []models.Order
-	Sales     []models.Order
-	Badges    []models.VerificationBadge
+	IsOwner     bool
+	Products    []models.Product
+	Purchases   []models.Order
+	Sales       []models.Order
+	Badges      []models.VerificationBadge
+	UnreadCount int
 }
 
 // ProfileHandler displays the authenticated user's profile or
@@ -82,6 +86,7 @@ func (h *Profile) ProfileHandler(
 	// ========================================================
 
 	idValue := r.URL.Query().Get("id")
+	viewerID := user.ID
 
 	if idValue != "" {
 		id, err := strconv.Atoi(idValue)
@@ -120,6 +125,11 @@ func (h *Profile) ProfileHandler(
 	data := ProfilePageData{
 		User:    user,
 		IsOwner: idValue == "",
+	}
+	if h.notification != nil {
+		if count, err := h.notification.GetUnreadCount(viewerID); err == nil {
+			data.UnreadCount = count
+		}
 	}
 
 	if h.review != nil {

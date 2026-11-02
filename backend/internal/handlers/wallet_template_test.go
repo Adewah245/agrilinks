@@ -13,27 +13,37 @@ import (
 
 func TestWalletTemplateRendersAccountStates(t *testing.T) {
 	for _, test := range []struct {
-		name      string
-		provider  bool
-		account   *models.WalletVirtualAccount
-		profile   *models.User
-		want      string
-		forbidden string
+		name         string
+		provider     bool
+		profileReady bool
+		currency     string
+		account      *models.WalletVirtualAccount
+		profile      *models.User
+		want         string
+		forbidden    string
 	}{
-		{name: "payments unavailable", want: "Bank payments are not set up yet.", forbidden: `name="request_key"`},
-		{name: "new account", provider: true, profile: &models.User{}, want: "Connect your bank account"},
+		{name: "payments unavailable", want: "Bank payments are not set up yet.", forbidden: `name="action" value="deposit"`},
+		{name: "new account", provider: true, profileReady: true, profile: &models.User{}, want: `name="action" value="setup_funding"`},
+		{name: "profile incomplete", provider: true, profile: &models.User{}, want: `href="/profile#edit-profile-btn"`, forbidden: `name="identity_number"`},
+		{name: "failed account", provider: true, profileReady: true, profile: &models.User{}, account: &models.WalletVirtualAccount{Status: models.VirtualAccountFailed}, want: "Retry account setup"},
+		{name: "non NGN wallet", provider: true, profileReady: true, currency: "USD", profile: &models.User{}, want: "available for NGN wallets", forbidden: `name="identity_number"`},
 		{name: "saved payout account", provider: true, profile: &models.User{BankName: "Payout Bank", AccountNumber: "0123456789"}, want: "Your saved account for withdrawals."},
 		{name: "active funding account", provider: true, profile: &models.User{}, account: &models.WalletVirtualAccount{Status: models.VirtualAccountActive, BankName: "Funding Bank", AccountNumber: "0987654321"}, want: `id="wallet-funding-number">0987654321`},
-		{name: "pending funding account", provider: true, profile: &models.User{}, account: &models.WalletVirtualAccount{Status: models.VirtualAccountPending, AccountNumber: "0987654321"}, want: "Connect your bank account", forbidden: "0987654321"},
+		{name: "pending funding account", provider: true, profile: &models.User{}, account: &models.WalletVirtualAccount{Status: models.VirtualAccountPending, AccountNumber: "0987654321"}, want: `name="action" value="check_funding"`, forbidden: "0987654321"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			response := httptest.NewRecorder()
+			currency := test.currency
+			if currency == "" {
+				currency = "NGN"
+			}
 			page := services.WalletPage{
-				User:              &models.User{ID: 1, FullName: "Ada Farmer"},
-				Wallet:            &models.Wallet{Balance: "0.00", Currency: "NGN", WalletNumber: "AS1234567890"},
-				Profile:           test.profile,
-				VirtualAccount:    test.account,
-				ProviderAvailable: test.provider,
+				User:                &models.User{ID: 1, FullName: "Ada Farmer"},
+				Wallet:              &models.Wallet{Balance: "0.00", Currency: currency, WalletNumber: "AS1234567890"},
+				Profile:             test.profile,
+				VirtualAccount:      test.account,
+				ProviderAvailable:   test.provider,
+				FundingProfileReady: test.profileReady,
 			}
 			if err := render.RenderTemplates(response, "wallet.html", page); err != nil {
 				t.Fatalf("wallet account state should render: %v", err)
@@ -73,7 +83,7 @@ func TestWalletTemplatePreservesMoneyActionForms(t *testing.T) {
 		t.Fatalf("populated wallet should render: %v", err)
 	}
 	body := response.Body.String()
-	for _, action := range []string{"deposit", "save_bank", "send_code", "withdraw", "transfer", "cancel_transfer", "cancel_withdrawal"} {
+	for _, action := range []string{"quote_deposit", "save_bank", "send_code", "quote_withdrawal", "transfer", "cancel_transfer", "cancel_withdrawal"} {
 		if !strings.Contains(body, `name="action" value="`+action+`"`) {
 			t.Errorf("missing existing money action %s", action)
 		}

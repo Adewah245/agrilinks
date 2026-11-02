@@ -14,13 +14,15 @@ import (
 )
 
 var (
-	ErrProviderRefused = errors.New("the payment provider refused the request")
-	ErrProviderNotFound = errors.New("the provider has no record for this reference")
+	ErrProviderRefused      = errors.New("the payment provider refused the request")
+	ErrProviderNotFound     = errors.New("the provider has no record for this reference")
 	ErrProviderAccessDenied = errors.New("the payment provider did not permit the request")
 )
 
 func providerResponseError(status int, data []byte) error {
-	var envelope struct { Message string `json:"message"` }
+	var envelope struct {
+		Message string `json:"message"`
+	}
 	_ = json.Unmarshal(data, &envelope)
 	message := strings.ToLower(envelope.Message)
 	switch {
@@ -63,6 +65,9 @@ func (c *FlutterwaveClient) walletRequest(ctx context.Context, method, path stri
 		return err
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		if method == http.MethodGet && (response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusNotFound) && providerRecordMissing(data) {
+			return ErrProviderNotFound
+		}
 		return providerResponseError(response.StatusCode, data)
 	}
 	var envelope struct {
@@ -72,12 +77,31 @@ func (c *FlutterwaveClient) walletRequest(ctx context.Context, method, path stri
 		return fmt.Errorf("%w: unreadable response", ErrPaymentProvider)
 	}
 	if envelope.Status != "success" {
+		if method == http.MethodGet && providerRecordMissing(data) {
+			return ErrProviderNotFound
+		}
 		return fmt.Errorf("the payment provider could not complete this request")
 	}
 	if err := json.Unmarshal(data, result); err != nil {
 		return fmt.Errorf("%w: incomplete response", ErrPaymentProvider)
 	}
 	return nil
+}
+
+func providerRecordMissing(data []byte) bool {
+	var envelope struct {
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(data, &envelope) != nil {
+		return false
+	}
+	message := strings.ToLower(envelope.Message)
+	for _, marker := range []string{"not found", "no transaction was found", "no virtual account", "no account found"} {
+		if strings.Contains(message, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 type Bank struct {
@@ -89,25 +113,34 @@ type ResolvedAccount struct {
 	AccountNumber string `json:"account_number"`
 }
 type VerifiedTransfer struct {
-	ID        json.Number `json:"id"`
-	Reference string      `json:"reference"`
-	Status    string      `json:"status"`
-	Amount    json.Number `json:"amount"`
-	Currency  string      `json:"currency"`
+	AccountNumber string      `json:"account_number"`
+	BankCode      string      `json:"bank_code"`
+	Fee           json.Number `json:"fee"`
+	ID            json.Number `json:"id"`
+	Reference     string      `json:"reference"`
+	Status        string      `json:"status"`
+	Amount        json.Number `json:"amount"`
+	Currency      string      `json:"currency"`
 }
 
 func (c *FlutterwaveClient) ListBanks(ctx context.Context) ([]Bank, error) {
 	c.bankMu.Lock()
 	defer c.bankMu.Unlock()
-	if ctx.Err() != nil { return nil, ctx.Err() }
-	if time.Now().Before(c.bankCacheUntil) { return append([]Bank(nil), c.bankCache...), nil }
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	if time.Now().Before(c.bankCacheUntil) {
+		return append([]Bank(nil), c.bankCache...), nil
+	}
 	var response struct {
 		Data []Bank `json:"data"`
 	}
 	if err := c.walletRequest(ctx, "GET", "/banks/NG", nil, &response); err != nil {
 		return nil, err
 	}
-	if len(response.Data) == 0 { return nil, errors.New("the bank directory is unavailable") }
+	if len(response.Data) == 0 {
+		return nil, errors.New("the bank directory is unavailable")
+	}
 	c.bankCache, c.bankCacheUntil = append([]Bank(nil), response.Data...), time.Now().Add(6*time.Hour)
 	return append([]Bank(nil), response.Data...), nil
 }

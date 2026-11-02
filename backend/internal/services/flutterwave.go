@@ -55,12 +55,13 @@ func NewFlutterwaveClient(
 func (c *FlutterwaveClient) SetBaseURL(value string) { c.baseURL = strings.TrimRight(value, "/") }
 
 type InitializePaymentRequest struct {
-	Reference     string
-	Amount        string
-	Currency      string
-	CustomerEmail string
-	CustomerName  string
-	Description   string
+	Reference      string
+	Amount         string
+	Currency       string
+	CustomerEmail  string
+	CustomerName   string
+	Description    string
+	PaymentOptions string
 }
 
 type initializePaymentPayload struct {
@@ -108,6 +109,9 @@ func (c *FlutterwaveClient) InitializePayment(
 		Currency:       req.Currency,
 		RedirectURL:    c.redirectURL,
 		PaymentOptions: c.paymentOptions,
+	}
+	if req.PaymentOptions != "" {
+		payload.PaymentOptions = req.PaymentOptions
 	}
 	payload.Customer.Email = req.CustomerEmail
 	payload.Customer.Name = req.CustomerName
@@ -170,6 +174,8 @@ func (c *FlutterwaveClient) InitializePayment(
 }
 
 type VerifiedTransaction struct {
+	AppFee        json.Number
+	ChargedAmount json.Number
 	TransactionID string
 	Reference     string
 	Status        string
@@ -181,11 +187,13 @@ type verifyTransactionResponse struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
 	Data    struct {
-		ID       int64       `json:"id"`
-		TxRef    string      `json:"tx_ref"`
-		Status   string      `json:"status"`
-		Amount   json.Number `json:"amount"`
-		Currency string      `json:"currency"`
+		AppFee        json.Number `json:"app_fee"`
+		ChargedAmount json.Number `json:"charged_amount"`
+		ID            int64       `json:"id"`
+		TxRef         string      `json:"tx_ref"`
+		Status        string      `json:"status"`
+		Amount        json.Number `json:"amount"`
+		Currency      string      `json:"currency"`
 	} `json:"data"`
 }
 
@@ -253,10 +261,11 @@ func (c *FlutterwaveClient) VerifyTransaction(
 
 	return &VerifiedTransaction{
 		TransactionID: fmt.Sprintf("%d", parsed.Data.ID),
-		Reference:     strings.TrimSpace(parsed.Data.TxRef),
-		Status:        strings.TrimSpace(parsed.Data.Status),
-		Amount:        parsed.Data.Amount,
-		Currency:      strings.ToUpper(strings.TrimSpace(parsed.Data.Currency)),
+		AppFee:        parsed.Data.AppFee, ChargedAmount: parsed.Data.ChargedAmount,
+		Reference: strings.TrimSpace(parsed.Data.TxRef),
+		Status:    strings.TrimSpace(parsed.Data.Status),
+		Amount:    parsed.Data.Amount,
+		Currency:  strings.ToUpper(strings.TrimSpace(parsed.Data.Currency)),
 	}, nil
 }
 

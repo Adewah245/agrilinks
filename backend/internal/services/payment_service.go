@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"backend/internal/models"
+	"backend/internal/repository"
 )
 
 // PaymentService isolates the payment workflow from HTTP handlers and the
@@ -22,8 +23,9 @@ type paymentStore interface {
 	CreatePendingForOrder(buyerID, orderID int, reference, currency, provider string) (*models.Payment, error)
 	UpdateStatus(reference, status, providerTransactionID string) error
 	SaveCheckoutURL(reference, checkoutURL string) error
+	ClaimCheckout(reference string) (bool, error)
 	GetByReference(reference string) (*models.Payment, error)
-	FinalizePayment(reference, status, providerTransactionID string, webhook *models.WebhookEvent) (bool, error)
+	FinalizePayment(reference, status, providerTransactionID string, webhook *models.WebhookEvent, costs ...repository.DepositCosts) (bool, error)
 	HasWebhookBeenProcessed(transactionID, event string) (bool, error)
 	ListByBuyer(buyerID int) ([]models.Payment, error)
 	GetWallet(ownerType string, ownerID int, currency string) (*models.Wallet, error)
@@ -54,6 +56,7 @@ type PaymentService struct {
 	notifier   paymentNotifier
 	secretHash string
 	currency   string
+	finance    *FinanceService
 	wallet     *WalletService
 }
 
@@ -76,6 +79,8 @@ func NewPaymentService(
 		currency:   strings.ToUpper(strings.TrimSpace(currency)),
 	}
 }
+
+func (s *PaymentService) SetFinance(finance *FinanceService) { s.finance = finance }
 
 func (s *PaymentService) SetWallet(wallet *WalletService) { s.wallet = wallet }
 
@@ -159,6 +164,13 @@ func (s *PaymentService) Initiate(
 	if payment.CheckoutURL != "" {
 		return &InitiatePaymentResult{CheckoutURL: payment.CheckoutURL, Reference: payment.Reference}, nil
 	}
+	claimed, err := s.repo.ClaimCheckout(payment.Reference)
+	if err != nil {
+		return nil, err
+	}
+	if !claimed {
+		return nil, errors.New("this payment is already being prepared; check its status before trying again")
+	}
 	checkoutURL, err := s.gateway.InitializePayment(ctx, InitializePaymentRequest{
 		Reference:     payment.Reference,
 		Amount:        payment.Amount,
@@ -208,7 +220,7 @@ func (s *PaymentService) ConfirmCallback(
 		return "", ErrReferenceMismatch
 	}
 
-	return s.applyVerifiedPayment(verified, nil)
+	return s.applyVerifiedPayment(ctx, verified, nil)
 }
 
 // ProcessWebhook authenticates, verifies, and durably processes one provider
@@ -245,6 +257,9 @@ func (s *PaymentService) ProcessWebhook(
 	if payload.Event == "" || payload.Data.ID <= 0 {
 		return fmt.Errorf("%w: event data is incomplete", ErrInvalidWebhook)
 	}
+	if payload.Event == "transfer.completed" && strings.HasPrefix(payload.Data.Reference, "COMPANY-") && s.finance != nil {
+		return s.finance.TransferWebhook(ctx, strconv.FormatInt(payload.Data.ID, 10), payload.Data.Reference)
+	}
 	if payload.Event == "transfer.completed" && s.wallet != nil {
 		return s.wallet.TransferWebhook(ctx, strconv.FormatInt(payload.Data.ID, 10), payload.Data.Reference)
 	}
@@ -269,7 +284,7 @@ func (s *PaymentService) ProcessWebhook(
 		return ErrReferenceMismatch
 	}
 
-	_, err = s.applyVerifiedPayment(verified, &models.WebhookEvent{
+	_, err = s.applyVerifiedPayment(ctx, verified, &models.WebhookEvent{
 		Provider:      models.PaymentProviderFlutterwave,
 		TransactionID: transactionID,
 		Event:         payload.Event,
@@ -279,6 +294,7 @@ func (s *PaymentService) ProcessWebhook(
 }
 
 func (s *PaymentService) applyVerifiedPayment(
+	ctx context.Context,
 	verified *VerifiedTransaction,
 	webhook *models.WebhookEvent,
 ) (string, error) {
@@ -292,24 +308,31 @@ func (s *PaymentService) applyVerifiedPayment(
 	}
 	if payment == nil {
 		if s.wallet != nil {
-			return s.wallet.ApplyVerifiedDeposit(context.Background(), verified, webhook)
+			return s.wallet.ApplyVerifiedDeposit(ctx, verified, webhook)
 		}
 		return "", errors.New("payment not found")
 	}
 
 	status := verifiedPaymentStatus(verified.Status)
+	if strings.EqualFold(verified.Status, "reversed") || strings.EqualFold(verified.Status, "refunded") {
+		status = "reversed"
+	}
 	if !strings.EqualFold(payment.Currency, verified.Currency) {
 		return "", ErrReferenceMismatch
 	}
-	if status == models.PaymentSuccessful && !sameMoney(payment.Amount, verified.Amount) {
+	if (status == models.PaymentSuccessful || status == "reversed") && !sameMoney(payment.Amount, verified.Amount) {
 		return "", ErrReferenceMismatch
 	}
 
+	costs, err := providerDepositCosts(verified)
+	if err != nil {
+		return "", err
+	}
 	paidNow, err := s.repo.FinalizePayment(
 		verified.Reference,
 		status,
 		verified.TransactionID,
-		webhook,
+		webhook, costs,
 	)
 	if err != nil {
 		return "", err

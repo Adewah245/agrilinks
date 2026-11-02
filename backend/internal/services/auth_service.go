@@ -42,7 +42,11 @@ func (s *AuthService) RequestRegistrationCode(ctx context.Context, phone string)
 	return s.registrationOTP.Issue(ctx, phone)
 }
 
-func (s *AuthService) RegistrationCodeTTL() time.Duration      { return s.registrationOTP.ttl }
+func (s *AuthService) RegistrationCodeTTL() time.Duration { return s.registrationOTP.ttl }
+func (s *AuthService) VerifyRegistrationPhone(ctx context.Context, token, phone, code string) error {
+	_, err := s.registrationOTP.Check(ctx, token, phone, code)
+	return err
+}
 func (s *AuthService) RegistrationCodeCooldown() time.Duration { return s.registrationOTP.cooldown }
 
 var ErrRecoveryUnavailable = errors.New("password recovery is unavailable; please contact support")
@@ -109,7 +113,7 @@ func NewAuthService(repo *repository.UserRepository) *AuthService {
 
 func (s *AuthService) Register(
 	ctx context.Context,
-	registrationToken, registrationCode string,
+	registrationToken, transactionPIN, transactionPINConfirmation string,
 	firstName,
 	lastName,
 	phone,
@@ -270,7 +274,11 @@ func (s *AuthService) Register(
 	if existing != nil {
 		return errors.New("phone number already registered")
 	}
-	proof, err := s.registrationOTP.Check(ctx, registrationToken, phone, registrationCode)
+	proof, err := s.registrationOTP.Verified(ctx, registrationToken, phone)
+	if err != nil {
+		return err
+	}
+	pinHash, err := hashTransactionPIN(transactionPIN, transactionPINConfirmation)
 	if err != nil {
 		return err
 	}
@@ -318,7 +326,7 @@ func (s *AuthService) Register(
 	// Create user
 	// --------------------------------------------------------
 
-	_, err = s.repo.CreateWithVerifiedPhone(user, proof)
+	_, err = s.repo.CreateWithVerifiedPhone(user, proof, pinHash)
 	if err != nil {
 		return err
 	}

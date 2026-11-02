@@ -52,7 +52,7 @@ func TestRegistrationPhoneConfirmationWithPostgresAndOTPDev(t *testing.T) {
 		if body.Data.Channel != "sms" {
 			t.Error("registration did not use SMS")
 		}
-		json.NewEncoder(w).Encode(map[string]string{"message_id": "signup-message", "phone": body.Data.Phone})
+		json.NewEncoder(w).Encode(map[string]any{"data": map[string]string{"message_id": "signup-message", "phone": body.Data.Phone}})
 	}))
 	defer provider.Close()
 	cfg := testConfig(t)
@@ -63,7 +63,10 @@ func TestRegistrationPhoneConfirmationWithPostgresAndOTPDev(t *testing.T) {
 	handler := routes.NewHandler(c)
 	phone := "2348012345678"
 	register := func(token, enteredCode, targetPhone, email string) error {
-		return c.Auth.Register(ctx, token, enteredCode, "New", "Buyer", targetPhone, email,
+		if err := c.Auth.VerifyRegistrationPhone(ctx, token, targetPhone, enteredCode); err != nil {
+			return err
+		}
+		return c.Auth.Register(ctx, token, "582491", "582491", "New", "Buyer", targetPhone, email,
 			"signup password", "Makurdi", "Makurdi", "Benue", "Nigeria", "buyer", "/static/assets/images/un.jpeg", "individual", "", nil)
 	}
 	noNewAccount := func() {
@@ -207,6 +210,58 @@ func TestRegistrationAttemptLimitIsAtomic(t *testing.T) {
 	}
 }
 
+func TestRegistrationRequiresPINAfterVerifiedFifthAttempt(t *testing.T) {
+	db, _ := testutil.Database(t, true)
+	ctx := context.Background()
+	cfg := testConfig(t)
+	c := application(t, db, cfg)
+	delivery := &captureOTP{}
+	c.Auth.SetRegistrationOTP(services.NewRegistrationOTPService(repository.NewRegistrationOTPRepository(db), delivery, cfg.OTPTTL, 5, 0))
+	phone := "2348012345678"
+	token, err := c.Auth.RequestRegistrationCode(ctx, phone)
+	if err != nil {
+		t.Fatal(err)
+	}
+	register := func(pin, confirmation string) error {
+		return c.Auth.Register(ctx, token, pin, confirmation, "New", "Buyer", phone, "new@example.test", "signup password", "Makurdi", "Makurdi", "Benue", "Nigeria", "buyer", "/static/assets/images/un.jpeg", "individual", "", nil)
+	}
+	if err = register("582491", "582491"); err == nil {
+		t.Fatal("registration bypassed phone verification")
+	}
+	wrong := "000000"
+	if delivery.message.Code == wrong {
+		wrong = "111111"
+	}
+	for i := 0; i < 4; i++ {
+		if err = c.Auth.VerifyRegistrationPhone(ctx, token, phone, wrong); err == nil {
+			t.Fatal("incorrect phone code accepted")
+		}
+	}
+	if err = c.Auth.VerifyRegistrationPhone(ctx, token, phone, delivery.message.Code); err != nil {
+		t.Fatal(err)
+	}
+	if err = register("582491", "582492"); err == nil {
+		t.Fatal("mismatched PIN accepted")
+	}
+	if err = register("", " "); err == nil {
+		t.Fatal("missing PIN accepted")
+	}
+	if err = register("582491", "582491"); err != nil {
+		t.Fatalf("fifth correct attempt could not finish registration: %v", err)
+	}
+	user, err := c.Auth.FindByPhone(phone)
+	if err != nil || user == nil {
+		t.Fatal(err)
+	}
+	if err = c.UserRepo.VerifyTransactionPIN(ctx, user.ID, "582491"); err != nil {
+		t.Fatalf("registration did not persist PIN: %v", err)
+	}
+	sum := sha256.Sum256([]byte(token))
+	if _, err = repository.NewRegistrationOTPRepository(db).Verified(ctx, hex.EncodeToString(sum[:]), phone); !errors.Is(err, repository.ErrRegistrationOTPInvalid) {
+		t.Fatalf("used proof accepted: %v", err)
+	}
+}
+
 func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 	db, _ := testutil.Database(t, true)
 	cfg := testConfig(t)
@@ -230,7 +285,7 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 	post := func(cookie *http.Cookie, code string, includeSelfie bool) *httptest.ResponseRecorder {
 		var body bytes.Buffer
 		form := multipart.NewWriter(&body)
-		for key, value := range map[string]string{"first-name": "HTTP", "last-name": "Buyer", "phone": "08012345678", "email": "http@example.test", "password": "signup password", "confirm-password": "signup password", "country": "Nigeria", "state": "Benue", "lga": "Makurdi", "community": "Makurdi", "purpose": "buy", "account_type": "individual", "registration_code": code} {
+		for key, value := range map[string]string{"first-name": "HTTP", "last-name": "Buyer", "phone": "08012345678", "email": "http@example.test", "password": "signup password", "confirm-password": "signup password", "country": "Nigeria", "state": "Benue", "lga": "Makurdi", "community": "Makurdi", "purpose": "buy", "account_type": "individual", "registration_code": code, "transaction_pin": "582491", "transaction_pin_confirmation": "582491"} {
 			if err := form.WriteField(key, value); err != nil {
 				t.Fatal(err)
 			}
@@ -262,6 +317,8 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 	bad := post(cookie, "abcdef", true)
 	requireStatus(t, bad, 400)
 	requireStatus(t, post(cookie, capture.message.Code, false), 400)
+	verify := request(handler, "POST", "/register/phone-verify", url.Values{"phone": {"08012345678"}, "code": {capture.message.Code}}, cookie)
+	requireStatus(t, verify, 200)
 	success := post(cookie, capture.message.Code, true)
 	requireStatus(t, success, 303)
 	if success.Header().Get("Location") != "/login" {

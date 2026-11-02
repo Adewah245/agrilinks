@@ -43,6 +43,11 @@ func run() error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	fundingDone := make(chan struct{})
+	go func() { defer close(fundingDone); container.Wallet.RunFundingReconciliation(ctx) }()
+	treasuryDone := make(chan struct{})
+	go func() { defer close(treasuryDone); container.Finance.RunReconciliation(ctx) }()
+	defer func() { stop(); <-fundingDone; <-treasuryDone }()
 	server := &http.Server{
 		Addr: ":" + cfg.Port, Handler: routes.NewHandler(container),
 		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: cfg.RequestTimeout,

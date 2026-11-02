@@ -1,0 +1,14 @@
+=== RUN   TestFinanceMigrationPreservesExistingBalances
+2026/11/02 14:35:22 Connected to PostgreSQL database
+2026/11/02 14:35:23 Connected to PostgreSQL database
+2026/11/02 14:35:27 Database migrations checked: 67 files, 67 applied
+    finance_migrations_test.go:44: platform_revenue id:bigint, order_id:integer, reference:character varying, gross_amount:numeric, amount:numeric, currency:character varying, rate_percent:numeric, created_at:timestamp without time zone
+    finance_migrations_test.go:44: transactions id:integer, order_id:integer, buyer_id:integer, seller_type:text, seller_id:integer, amount:numeric, currency:text, payment_method:text, payment_reference:text, payment_provider:text, status:text, paid_at:timestamp without time zone, created_at:timestamp without time zone, updated_at:timestamp without time zone, provider_transaction_id:text, checkout_url:text, review_required:boolean, checkout_claimed_at:timestamp with time zone
+    finance_migrations_test.go:44: wallet_deposits id:bigint, wallet_id:integer, provider:character varying, reference:character varying, provider_transaction_id:character varying, amount:numeric, currency:character varying, verified_amount:numeric, verified_currency:character varying, status:character varying, failure_reason:text, created_at:timestamp without time zone, updated_at:timestamp without time zone, checkout_url:text, review_required:boolean, checkout_claimed_at:timestamp with time zone
+    finance_migrations_test.go:44: wallet_transactions id:integer, wallet_id:integer, type:text, amount:numeric, description:text, reference_type:text, reference_id:integer, created_at:timestamp without time zone, reference:character varying
+    finance_migrations_test.go:44: wallet_withdrawals id:bigint, wallet_id:integer, user_id:integer, reference:character varying, provider_transfer_id:character varying, amount:numeric, currency:character varying, bank_name:text, bank_code:text, account_name:text, account_number:character varying, status:character varying, approved_by:integer, reminded_at:timestamp without time zone, name_check_status:text, name_check_resolved:text, name_check_detail:text, name_check_at:timestamp without time zone, created_at:timestamp without time zone, updated_at:timestamp without time zone, provider_submission_state:text
+    finance_migrations_test.go:44: wallets id:integer, owner_type:text, owner_id:integer, balance:numeric, currency:text, created_at:timestamp without time zone, updated_at:timestamp without time zone, wallet_number:text
+2026/11/02 14:35:28 Database migrations checked: 74 files, 7 applied
+--- PASS: TestFinanceMigrationPreservesExistingBalances (5.25s)
+PASS
+ok  	backend/internal/integration	5.281s

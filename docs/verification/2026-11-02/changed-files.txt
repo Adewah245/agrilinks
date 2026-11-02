@@ -1,0 +1,118 @@
+AgriLinks local delivery file inventory — 2026-11-02
+
+Includes preserved earlier wallet/PIN/virtual-account work, financial implementation, tests and delivery evidence.
+M = modified tracked file; ?? = added, untracked file. No files were committed.
+
+ M README.md
+ M backend/.env.example
+ M backend/cmd/server/main.go
+ M backend/internal/app/app.go
+ M backend/internal/app/container.go
+ M backend/internal/config/config.go
+ M backend/internal/handlers/admin.go
+ M backend/internal/handlers/profile.go
+ M backend/internal/handlers/register.go
+ M backend/internal/handlers/registration_otp.go
+ M backend/internal/handlers/wallet.go
+ M backend/internal/handlers/wallet_template_test.go
+ M backend/internal/integration/admin_test.go
+ M backend/internal/integration/commerce_test.go
+ M backend/internal/integration/registration_test.go
+ M backend/internal/integration/wallet_test.go
+ M backend/internal/models/admin.go
+ M backend/internal/repository/admin_actions.go
+ M backend/internal/repository/admin_repository.go
+ M backend/internal/repository/payment_repository.go
+ M backend/internal/repository/registration_otp_repository.go
+ M backend/internal/repository/sale_credit.go
+ M backend/internal/repository/user_repository.go
+ M backend/internal/repository/wallet_repository.go
+ M backend/internal/repository/wallet_virtual_accounts.go
+ M backend/internal/routes/routes.go
+ M backend/internal/services/auth_service.go
+ M backend/internal/services/flutterwave.go
+ M backend/internal/services/flutterwave_virtual_accounts.go
+ M backend/internal/services/flutterwave_wallet.go
+ M backend/internal/services/payment_service.go
+ M backend/internal/services/payment_service_flow_test.go
+ M backend/internal/services/registration_otp_service.go
+ M backend/internal/services/registration_otp_service_test.go
+ M backend/internal/services/wallet_service.go
+ M backend/internal/services/wallet_virtual_accounts.go
+ M frontend/css/wallet.css
+ M frontend/js/register.js
+ M frontend/js/wallet.js
+ M frontend/pages/admin.html
+ M frontend/pages/orders.html
+ M frontend/pages/payments.html
+ M frontend/pages/register.html
+ M frontend/pages/wallet.html
+?? backend/internal/handlers/escrow.go
+?? backend/internal/handlers/finance.go
+?? backend/internal/integration/accounting_fixture_test.go
+?? backend/internal/integration/escrow_accounting_test.go
+?? backend/internal/integration/finance_migrations_test.go
+?? backend/internal/integration/treasury_provider_test.go
+?? backend/internal/integration/wallet_safety_test.go
+?? backend/internal/integration/wallet_virtual_accounts_test.go
+?? backend/internal/models/escrow.go
+?? backend/internal/models/finance.go
+?? backend/internal/models/wallet_fees.go
+?? backend/internal/money/money.go
+?? backend/internal/money/money_test.go
+?? backend/internal/repository/accounting.go
+?? backend/internal/repository/escrow.go
+?? backend/internal/repository/escrow_disputes.go
+?? backend/internal/repository/finance_controls.go
+?? backend/internal/repository/finance_reports.go
+?? backend/internal/repository/finance_repository.go
+?? backend/internal/repository/finance_settlements.go
+?? backend/internal/repository/finance_workflows_test.go
+?? backend/internal/repository/financial_reversals.go
+?? backend/internal/repository/transaction_pin.go
+?? backend/internal/repository/wallet_allocation.go
+?? backend/internal/repository/wallet_fees.go
+?? backend/internal/repository/wallet_funding_intents.go
+?? backend/internal/repository/wallet_funding_recovery.go
+?? backend/internal/repository/wallet_request_safety.go
+?? backend/internal/services/finance_service.go
+?? backend/internal/services/flutterwave_virtual_accounts_test.go
+?? backend/internal/services/transaction_pin.go
+?? backend/internal/services/transaction_pin_test.go
+?? backend/internal/services/wallet_fee_provider_test.go
+?? backend/internal/services/wallet_fees.go
+?? backend/internal/services/wallet_funding_recovery.go
+?? backend/migrations/067_transaction_pins.sql
+?? backend/migrations/068_payment_request_safety.sql
+?? backend/migrations/069_wallet_fees.sql
+?? backend/migrations/070_purchase_escrow.sql
+?? backend/migrations/071_double_entry_accounting.sql
+?? backend/migrations/072_finance_controls.sql
+?? backend/migrations/073_accounting_integrity.sql
+?? backend/migrations/074_company_settlement_evidence.sql
+?? backend/migrations/075_financial_reversals.sql
+?? backend/migrations/076_funding_allocation.sql
+?? backend/migrations/077_outbound_settlement.sql
+?? backend/migrations/078_finance_authentication.sql
+?? backend/tools/finance-preview/main.go
+?? docs/financial-operations.md
+?? docs/financial-verification.md
+?? docs/verification/2026-11-02/backend-full.log
+?? docs/verification/2026-11-02/backend-race.log
+?? docs/verification/2026-11-02/changed-files.txt
+?? docs/verification/2026-11-02/enrollment-390.png
+?? docs/verification/2026-11-02/escrow-390.png
+?? docs/verification/2026-11-02/financial-workflows.log
+?? docs/verification/2026-11-02/funding-390.png
+?? docs/verification/2026-11-02/migration-preservation.log
+?? docs/verification/2026-11-02/mobile-checks.log
+?? docs/verification/2026-11-02/revenue-1440.png
+?? docs/verification/2026-11-02/revenue-390.png
+?? docs/verification/2026-11-02/treasury-provider.log
+?? docs/verification/2026-11-02/withdrawal-390.png
+?? docs/wallet-funding.md
+?? frontend/css/finance.css
+?? frontend/js/finance.js
+?? frontend/pages/platform_revenue.html
+?? frontend/pages/purchase_protection.html
+?? scripts/check-finance-mobile.mjs

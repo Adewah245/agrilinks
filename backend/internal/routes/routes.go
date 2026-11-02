@@ -128,6 +128,7 @@ func NewHandler(container *app.Container) http.Handler {
 	)
 
 	mux.HandleFunc("/register/phone-code", middleware.OnlyPath("/register/phone-code", registerHandler.PhoneCodeHandler))
+	mux.HandleFunc("/register/phone-verify", middleware.OnlyPath("/register/phone-verify", registerHandler.PhoneVerifyHandler))
 
 	loginHandler := handlers.NewLoginHandler(
 		container.Auth, container.Sessions,
@@ -409,6 +410,7 @@ func NewHandler(container *app.Container) http.Handler {
 		container.Order,
 		container.Review,
 		container.UserRepo,
+		container.Notification,
 	)
 
 	mux.HandleFunc(
@@ -600,6 +602,8 @@ func NewHandler(container *app.Container) http.Handler {
 	// ========================================================
 
 	orderHandler := handlers.NewOrderHandler(container.Order)
+	escrowHandler := handlers.NewEscrowHandler(container.Escrow)
+	mux.HandleFunc("/orders/protection", middleware.RequireAuth(container.Sessions, container.UserRepo, escrowHandler.Handler))
 	mux.HandleFunc(
 		"/orders",
 		middleware.OnlyPath(
@@ -983,9 +987,12 @@ func NewHandler(container *app.Container) http.Handler {
 			),
 		),
 	)
+	financeHandler := handlers.NewFinanceHandler(container.Finance)
+	mux.HandleFunc("/admin/revenue", middleware.OnlyPath("/admin/revenue", middleware.RequireAuth(container.Sessions, container.UserRepo, financeHandler.Handler)))
 	walletHandler := handlers.NewWalletHandler(container.Wallet)
 	mux.HandleFunc("/wallet", middleware.OnlyPath("/wallet", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Handler)))
 	mux.HandleFunc("GET /wallet/banks", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Banks))
+	mux.HandleFunc("GET /wallet/status", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Status))
 	mux.HandleFunc("GET /wallet/admin", middleware.OnlyPath("/wallet/admin", middleware.RequireAuth(container.Sessions, container.UserRepo, func(w http.ResponseWriter, r *http.Request) {
 		user, _ := middleware.UserFromContext(r)
 		if !user.CanAdmin("finance") {

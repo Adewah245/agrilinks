@@ -17,6 +17,12 @@ Customer Care, and Operations Manager roles. See [Admin workspace setup and
 permissions](docs/admin-workspace.md) for first-account setup, section access,
 management workflows, and validation.
 
+For permanent NGN funding accounts, wallet recovery and finance checks, see
+[Wallet funding accounts](docs/wallet-funding.md).
+
+For approved AgriLinks fees, double-entry accounting, escrow, company treasury,
+settlements and verification, see [Financial operations](docs/financial-operations.md).
+
 ---
 
 ## 1. Project Overview

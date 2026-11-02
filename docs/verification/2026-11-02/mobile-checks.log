@@ -1,0 +1,21 @@
+{"state":"funding","width":320,"scroll":320,"passed":true}
+{"state":"funding","width":390,"scroll":390,"passed":true}
+{"state":"funding","width":768,"scroll":753,"passed":true}
+{"state":"funding","width":1440,"scroll":1425,"passed":true}
+{"state":"withdrawal","width":320,"scroll":320,"passed":true}
+{"state":"withdrawal","width":390,"scroll":390,"passed":true}
+{"state":"withdrawal","width":768,"scroll":753,"passed":true}
+{"state":"withdrawal","width":1440,"scroll":1425,"passed":true}
+{"state":"enrollment","width":320,"scroll":320,"passed":true}
+{"state":"enrollment","width":390,"scroll":390,"passed":true}
+{"state":"enrollment","width":768,"scroll":753,"passed":true}
+{"state":"enrollment","width":1440,"scroll":1425,"passed":true}
+{"state":"revenue","width":320,"scroll":320,"passed":true}
+{"state":"revenue","width":390,"scroll":390,"passed":true}
+{"state":"revenue","width":768,"scroll":753,"passed":true}
+{"state":"revenue","width":1440,"scroll":1425,"passed":true}
+{"state":"escrow","width":320,"scroll":320,"passed":true}
+{"state":"escrow","width":390,"scroll":390,"passed":true}
+{"state":"escrow","width":768,"scroll":753,"passed":true}
+{"state":"escrow","width":1440,"scroll":1425,"passed":true}
+PASS: 20 responsive cases; fee breakdowns, PIN enrollment, treasury OTP control and no JavaScript exceptions.

@@ -85,19 +85,22 @@ func mapUserUniqueViolation(err error) error {
 // receives its permanent wallet number from the wallets trigger in migration
 // 040. Creating one here as well would duplicate that ownership rule.
 func (r *UserRepository) Create(user *models.User) (int, error) {
-	return r.create(user, nil)
+	return r.create(user, nil, "")
 }
 
 // CreateWithVerifiedPhone consumes a checked signup code and creates the
 // account together. A failed insert leaves the code usable for a retry.
-func (r *UserRepository) CreateWithVerifiedPhone(user *models.User, proof *models.RegistrationPhoneCode) (int, error) {
+func (r *UserRepository) CreateWithVerifiedPhone(user *models.User, proof *models.RegistrationPhoneCode, pinHash string) (int, error) {
 	if proof == nil {
 		return 0, ErrRegistrationOTPInvalid
 	}
-	return r.create(user, proof)
+	if pinHash == "" {
+		return 0, ErrTransactionPINRequired
+	}
+	return r.create(user, proof, pinHash)
 }
 
-func (r *UserRepository) create(user *models.User, proof *models.RegistrationPhoneCode) (int, error) {
+func (r *UserRepository) create(user *models.User, proof *models.RegistrationPhoneCode, pinHash string) (int, error) {
 	if user == nil {
 		return 0, fmt.Errorf("user cannot be nil")
 	}
@@ -162,6 +165,9 @@ func (r *UserRepository) create(user *models.User, proof *models.RegistrationPho
 	}
 	if proof != nil {
 		if err := tx.QueryRow(`UPDATE users SET phone_verified_at=CURRENT_TIMESTAMP WHERE id=$1 RETURNING phone_verified_at`, user.ID).Scan(&user.PhoneVerifiedAt); err != nil {
+			return 0, err
+		}
+		if _, err := tx.Exec(`INSERT INTO user_transaction_pins(user_id,pin_hash) VALUES($1,$2)`, user.ID, pinHash); err != nil {
 			return 0, err
 		}
 	}

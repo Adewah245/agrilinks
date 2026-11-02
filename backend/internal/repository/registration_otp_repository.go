@@ -32,7 +32,7 @@ func (r *RegistrationOTPRepository) Create(ctx context.Context, code *models.Reg
 		ON CONFLICT(phone) DO UPDATE SET
 		    token_hash=EXCLUDED.token_hash, code_hash=EXCLUDED.code_hash,
 		    attempts=0, created_at=CURRENT_TIMESTAMP,
-		    expires_at=EXCLUDED.expires_at, consumed_at=NULL
+		    expires_at=EXCLUDED.expires_at, consumed_at=NULL, verified_at=NULL
 		WHERE registration_phone_codes.created_at <= CURRENT_TIMESTAMP - $5 * INTERVAL '1 second'
 		RETURNING expires_at`, code.Phone, code.TokenHash, code.CodeHash, ttl.Seconds(), cooldown.Seconds()).Scan(&code.ExpiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -61,6 +61,32 @@ func (r *RegistrationOTPRepository) Delete(ctx context.Context, tokenHash string
 	return err
 }
 
+func (r *RegistrationOTPRepository) MarkVerified(ctx context.Context, proof *models.RegistrationPhoneCode) error {
+	result, err := r.db.ExecContext(ctx, `UPDATE registration_phone_codes SET verified_at=COALESCE(verified_at,CURRENT_TIMESTAMP)
+		WHERE token_hash=$1 AND phone=$2 AND code_hash=$3 AND consumed_at IS NULL AND expires_at>CURRENT_TIMESTAMP`, proof.TokenHash, proof.Phone, proof.CodeHash)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return ErrRegistrationOTPInvalid
+	}
+	return nil
+}
+
+func (r *RegistrationOTPRepository) Verified(ctx context.Context, tokenHash, phone string) (*models.RegistrationPhoneCode, error) {
+	proof := &models.RegistrationPhoneCode{TokenHash: tokenHash, Phone: phone}
+	err := r.db.QueryRowContext(ctx, `SELECT code_hash,attempts,expires_at FROM registration_phone_codes
+		WHERE token_hash=$1 AND phone=$2 AND verified_at IS NOT NULL AND consumed_at IS NULL AND expires_at>CURRENT_TIMESTAMP`, tokenHash, phone).Scan(&proof.CodeHash, &proof.Attempts, &proof.ExpiresAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrRegistrationOTPInvalid
+	}
+	return proof, err
+}
+
 // Code consumption and account creation commit together. Resends, expiry,
 // replay, or a changed phone invalidate a previously checked challenge.
 func consumeRegistrationPhone(tx *sql.Tx, phone string, proof *models.RegistrationPhoneCode) error {
@@ -69,7 +95,7 @@ func consumeRegistrationPhone(tx *sql.Tx, phone string, proof *models.Registrati
 	}
 	result, err := tx.Exec(`UPDATE registration_phone_codes SET consumed_at=CURRENT_TIMESTAMP
 		WHERE phone=$1 AND token_hash=$2 AND code_hash=$3 AND consumed_at IS NULL
-		AND expires_at > CURRENT_TIMESTAMP`, phone, proof.TokenHash, proof.CodeHash)
+		AND expires_at > CURRENT_TIMESTAMP AND verified_at IS NOT NULL`, phone, proof.TokenHash, proof.CodeHash)
 	if err != nil {
 		return err
 	}

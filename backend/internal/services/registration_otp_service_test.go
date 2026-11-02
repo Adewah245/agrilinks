@@ -16,6 +16,7 @@ type registrationStoreStub struct {
 	record    *models.RegistrationPhoneCode
 	createErr error
 	deleted   bool
+	verified  bool
 }
 
 func (s *registrationStoreStub) Create(_ context.Context, code *models.RegistrationPhoneCode, ttl, _ time.Duration) error {
@@ -24,6 +25,7 @@ func (s *registrationStoreStub) Create(_ context.Context, code *models.Registrat
 	}
 	code.ExpiresAt = time.Now().Add(ttl)
 	s.record = code
+	s.verified = false
 	return nil
 }
 func (s *registrationStoreStub) Attempt(_ context.Context, tokenHash, phone string, maxAttempts int) (*models.RegistrationPhoneCode, error) {
@@ -39,6 +41,17 @@ func (s *registrationStoreStub) Delete(_ context.Context, tokenHash string) erro
 	}
 	s.deleted = true
 	return nil
+}
+
+func (s *registrationStoreStub) MarkVerified(_ context.Context, proof *models.RegistrationPhoneCode) error {
+	s.verified = true
+	return nil
+}
+func (s *registrationStoreStub) Verified(_ context.Context, token, phone string) (*models.RegistrationPhoneCode, error) {
+	if !s.verified || s.record == nil || s.record.TokenHash != token || s.record.Phone != phone || !time.Now().Before(s.record.ExpiresAt) {
+		return nil, repository.ErrRegistrationOTPInvalid
+	}
+	return s.record, nil
 }
 
 func TestRegistrationCodeBindsPhoneAndBrowser(t *testing.T) {
