@@ -162,7 +162,7 @@ This workflow applies to future Agrilinks Nigeria database/schema work.
 ```text
                          ┌─────────────────────┐
                          │      Frontend       │
-                         │ HTML / CSS / JS     │
+                         │ React / HTML / CSS  │
                          └──────────┬──────────┘
                                     │
                                     │ HTTP
@@ -211,13 +211,31 @@ The project should not introduce a web framework such as Gin unless the architec
 
 ## Frontend
 
-Current direction:
+The frontend is being migrated to React one page at a time, starting with the index page.
 
-- HTML
-- CSS
-- JavaScript
+- React and Vite for the index page
+- Shared CSS and existing image assets
+- HTML and JavaScript for pages awaiting migration
+- Go continues serving the pages and static files
 
-The frontend is not being rebuilt around React at this stage.
+Install frontend dependencies once from the repository root:
+
+```bash
+npm run setup
+```
+
+Configure `backend/.env` from `backend/.env.example`, then start the frontend and backend together:
+
+```bash
+npm start
+```
+
+This builds React and starts the Go server, which serves both the page and backend routes.
+Open `http://localhost:9000/` with the example configuration, or use your configured `PORT`
+(default `8080`). Press Ctrl+C to stop. Run `npm run build` separately before backend
+static-asset tests or when preparing deployment assets.
+
+See [frontend development](frontend/README.md) for configuration details, component locations, and the optional watch command.
 
 ## Database
 
@@ -282,7 +300,7 @@ Schema commands run from `backend/`:
 # Apply pending migrations to a fresh or already-upgraded database.
 go run ./cmd/migrate
 
-# Start the application server.
+# Start only the backend (use npm start from the repository root to build React too).
 go run ./cmd/server
 ```
 
