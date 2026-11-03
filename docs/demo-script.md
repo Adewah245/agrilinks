@@ -6,7 +6,7 @@ Open Home Page
 
 Explain:
 
-> Agro-Shield helps reduce post-harvest losses by connecting farmers directly with buyers.
+> Agrilinks Nigeria helps reduce post-harvest losses by connecting farmers directly with buyers.
 
 ---
 

@@ -17,7 +17,7 @@ import (
 // - Counts a user's diagnoses for the current month.
 // - Deletes a diagnosis belonging to a user.
 //
-// CURRENT AGRO-SHIELD ARCHITECTURE:
+// CURRENT AGRILINKS NIGERIA ARCHITECTURE:
 //
 // A diagnosis belongs to a user.
 //

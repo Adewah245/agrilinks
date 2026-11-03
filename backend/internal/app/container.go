@@ -9,7 +9,7 @@ import (
 // ============================================================
 // APPLICATION CONTAINER
 //
-// Container holds the main services used throughout Agro-Shield.
+// Container holds the main services used throughout Agrilinks Nigeria.
 //
 // Dependency flow:
 //

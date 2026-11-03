@@ -7,7 +7,7 @@ import (
 	"backend/internal/render"
 )
 
-// IndexHandler renders the Agro-Shield home page.
+// IndexHandler renders the Agrilinks Nigeria home page.
 func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:

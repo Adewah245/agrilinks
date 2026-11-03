@@ -16,7 +16,7 @@ import (
 	"backend/internal/services"
 )
 
-// Dashboard handles the Agro-Shield user dashboard.
+// Dashboard handles the Agrilinks Nigeria user dashboard.
 //
 // The dashboard provides different information depending on the
 // authenticated user's role. Farmers and other sellers see storage,
@@ -136,7 +136,7 @@ type DashboardPriority struct {
 	Href   string
 }
 
-// DashBoard handles GET requests for the Agro-Shield dashboard.
+// DashBoard handles GET requests for the Agrilinks Nigeria dashboard.
 //
 // The dashboard loads user-specific marketplace, storage, order,
 // negotiation, AI, notification, weather, and market insight data.

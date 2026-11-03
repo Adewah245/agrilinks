@@ -115,7 +115,7 @@ func (c *FlutterwaveClient) InitializePayment(
 	}
 	payload.Customer.Email = req.CustomerEmail
 	payload.Customer.Name = req.CustomerName
-	payload.Customizations.Title = "Agro-Shield"
+	payload.Customizations.Title = "Agrilinks Nigeria"
 	payload.Customizations.Description = req.Description
 
 	body, err := json.Marshal(payload)

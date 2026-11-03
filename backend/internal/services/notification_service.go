@@ -108,7 +108,7 @@ func (s *NotificationService) CreateNotification(
 // ============================================================
 // CREATE NOTIFICATION WITH REFERENCE
 //
-// Creates a notification connected to another Agro-Shield
+// Creates a notification connected to another Agrilinks Nigeria
 // resource.
 //
 // Examples:

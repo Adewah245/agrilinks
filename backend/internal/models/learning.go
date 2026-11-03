@@ -13,7 +13,7 @@ type LearningRoom struct {
 }
 
 // FarmingType represents an agricultural activity
-// supported by Agro-Shield.
+// supported by Agrilinks Nigeria.
 //
 // Examples:
 //   - Crop Farming

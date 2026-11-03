@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// DeliveryPartner represents a logistics provider registered on Agro-Shield.
+// DeliveryPartner represents a logistics provider registered on Agrilinks Nigeria.
 type DeliveryPartner struct {
 	ID                                                  int
 	OrganizationID                                      *int

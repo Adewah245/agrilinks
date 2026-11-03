@@ -1,4 +1,4 @@
-# AgriLinks financial operations
+# Agrilinks Nigeria financial operations
 
 Implemented locally on 2 November 2026. Development and verification use disposable PostgreSQL databases and simulated provider responses. No production financial database was connected to or changed.
 
@@ -25,7 +25,7 @@ All new money arithmetic uses integer kobo. Decimal strings are used only at UI,
 | Protected purchases | `escrow:<order_id>` | Liability |
 | Disputed protected purchases | `disputed-escrow:<order_id>` | Liability |
 | Seller and marketplace refunds pending credit | `seller_payouts_payable`, `marketplace_refunds_payable` | Liability |
-| AgriLinks revenue | `funding_fee_revenue`, `withdrawal_fee_revenue`, `other_platform_revenue`, `marketplace_commission` | Revenue |
+| Agrilinks Nigeria revenue | `funding_fee_revenue`, `withdrawal_fee_revenue`, `other_platform_revenue`, `marketplace_commission` | Revenue |
 | Unsettled provider movements | `provider_clearing` | Asset/clearing |
 | Reconciled cash | `provider_settled_cash`, `company-bank:<approved_account_id>` | Asset |
 | Company transfer reservations | `company_transfer_reserved` | Restricted asset |
@@ -47,14 +47,14 @@ Funding service fee: **₦50 on top**. A requested wallet credit of ₦10,000 re
 |---|---:|---:|
 | Provider clearing | ₦10,190 | — |
 | Customer wallet liability | — | ₦10,000 |
-| AgriLinks funding revenue | — | ₦50 |
+| Agrilinks Nigeria funding revenue | — | ₦50 |
 | Provider cost recovery | — | ₦140 |
 | Provider expense, when verified | ₦140 | — |
 | Provider clearing, actual cost | — | ₦140 |
 
 The two journals balance independently. Net clearing is ₦10,050, covering ₦10,000 owed to the customer and ₦50 company revenue. The example provider fee is illustrative, not a configured rate.
 
-| Requested withdrawal | AgriLinks fee |
+| Requested withdrawal | Agrilinks Nigeria fee |
 |---|---:|
 | ₦1–₦5,000 | ₦50 |
 | ₦5,001–₦9,999 | ₦200 |

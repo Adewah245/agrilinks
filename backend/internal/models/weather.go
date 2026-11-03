@@ -2,10 +2,10 @@ package models
 
 import "time"
 
-// Weather represents current weather information used by Agro-Shield.
+// Weather represents current weather information used by Agrilinks Nigeria.
 //
 // Weather is an external-service/application model. It is not stored
-// directly in the Agro-Shield database.
+// directly in the Agrilinks Nigeria database.
 //
 // Available tells the application whether usable weather information
 // was successfully obtained. When weather is unavailable, the dashboard
@@ -26,11 +26,15 @@ type Weather struct {
 	Humidity    string `json:"humidity"`
 	RainChance  string `json:"rain_chance"`
 	Conditions  string `json:"conditions"`
+	Icon        string `json:"icon"`
+
+	// Approximate means the location was resolved to the user's LGA or state.
+	Approximate bool `json:"approximate"`
 
 	// Farming-oriented guidance generated from the weather conditions.
 	Recommendation string `json:"recommendation"`
 
-	// LastUpdated records when the weather information was obtained.
+	// LastUpdated is the provider's observation time in the forecast timezone.
 	//
 	// A zero value means that no valid weather update has been received.
 	LastUpdated time.Time `json:"last_updated"`
@@ -38,6 +42,10 @@ type Weather struct {
 	// Cached indicates that the displayed weather came from a cached
 	// value rather than a fresh provider request.
 	Cached bool `json:"cached"`
+	Stale  bool `json:"stale"`
+
+	// NeedsLocation distinguishes missing/unrecognized locations from outages.
+	NeedsLocation bool `json:"needs_location"`
 
 	// Error contains a safe, user-facing description when weather
 	// information could not be obtained.
@@ -47,7 +55,7 @@ type Weather struct {
 	Error string `json:"error,omitempty"`
 }
 
-// IsUsable reports whether Agro-Shield has weather information that
+// IsUsable reports whether Agrilinks Nigeria has weather information that
 // can safely be displayed to the user.
 func (w *Weather) IsUsable() bool {
 	return w != nil && w.Available

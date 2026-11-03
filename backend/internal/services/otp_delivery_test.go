@@ -14,7 +14,7 @@ func TestBrevoOTPDeliverySendsExpectedMessage(t *testing.T) {
 		"login",
 		"key",
 		"noreply@example.com",
-		"Agro-Shield",
+		"Agrilinks Nigeria",
 	)
 	if err != nil {
 		t.Fatal(err)

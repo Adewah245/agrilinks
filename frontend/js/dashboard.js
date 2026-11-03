@@ -1,5 +1,5 @@
 /**
- * Agro-Shield Dashboard Interactivity
+ * Agrilinks Nigeria Dashboard Interactivity
  * Handles real-time clock, dynamic greeting, smooth counter animations,
  * and health progress bar expansions using modern Web APIs.
  */

@@ -20,7 +20,7 @@ import (
 //
 // The storage feature is designed to support different agricultural
 // activities, including crops, livestock, poultry, fisheries, beekeeping,
-// and other product categories supported by Agro-Shield.
+// and other product categories supported by Agrilinks Nigeria.
 //
 // Weather-based storage monitoring and agricultural alerts can be added
 // later without changing the core product CRUD operations.

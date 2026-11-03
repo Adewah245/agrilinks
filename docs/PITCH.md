@@ -12,7 +12,7 @@ Farmers lose income because they lack:
 
 ## Solution
 
-Agro-Shield provides:
+Agrilinks Nigeria provides:
 
 - Digital marketplace
 - Produce management

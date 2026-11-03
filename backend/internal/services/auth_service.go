@@ -98,7 +98,7 @@ func NewAuthService(repo *repository.UserRepository) *AuthService {
 // ============================================================
 // REGISTER
 //
-// Creates a new Agro-Shield user account.
+// Creates a new Agrilinks Nigeria user account.
 //
 // Important architecture:
 //

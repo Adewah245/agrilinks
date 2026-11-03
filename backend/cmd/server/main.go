@@ -55,7 +55,7 @@ func run() error {
 	}
 	failures := make(chan error, 1)
 	go func() { failures <- server.ListenAndServe() }()
-	log.Printf("Agro-Shield listening on port %s", cfg.Port)
+	log.Printf("Agrilinks Nigeria listening on port %s", cfg.Port)
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 	sessions := repository.NewSessionRepository(db)

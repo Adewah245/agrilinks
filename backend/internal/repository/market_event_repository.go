@@ -1590,7 +1590,7 @@ func (r *MarketEventRepository) RecordPrice(
 	source = strings.TrimSpace(source)
 
 	if source == "" {
-		source = "Agro-Shield"
+		source = "Agrilinks Nigeria"
 	}
 
 	_, err := r.db.Exec(`

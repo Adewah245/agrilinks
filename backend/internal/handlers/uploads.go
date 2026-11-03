@@ -89,7 +89,7 @@ func saveUploadedFiles(
 // the supported image MIME types: JPEG, PNG, or WEBP.
 //
 // The returned path is relative to the web server's static directory
-// and can therefore be stored as the image URL used by Agro-Shield.
+// and can therefore be stored as the image URL used by Agrilinks Nigeria.
 func saveOneUploadedFile(
 	file multipart.File,
 	header *multipart.FileHeader,

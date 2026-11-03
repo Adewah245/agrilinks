@@ -164,7 +164,7 @@ func (c *FlutterwaveClient) CreateWalletTransfer(ctx context.Context, reference,
 			ID json.Number `json:"id"`
 		} `json:"data"`
 	}
-	payload := map[string]any{"account_bank": bank, "account_number": number, "beneficiary_name": name, "amount": json.Number(amount), "currency": currency, "reference": reference, "narration": "Agro-Shield wallet withdrawal"}
+	payload := map[string]any{"account_bank": bank, "account_number": number, "beneficiary_name": name, "amount": json.Number(amount), "currency": currency, "reference": reference, "narration": "Agrilinks Nigeria wallet withdrawal"}
 	if err := c.walletRequest(ctx, "POST", "/transfers", payload, &response); err != nil {
 		return "", err
 	}

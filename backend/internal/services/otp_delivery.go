@@ -97,7 +97,7 @@ func otpDeliveryText(message OTPMessage) string {
 	}
 
 	return fmt.Sprintf(
-		"Agro-Shield: %s is your verification code. It expires in %d minutes. Never share this code.",
+		"Agrilinks Nigeria: %s is your verification code. It expires in %d minutes. Never share this code.",
 		message.Code,
 		minutes,
 	)
@@ -117,7 +117,7 @@ func brevoOTPMessage(
 	return []byte(strings.Join([]string{
 		"From: " + from,
 		"To: " + to,
-		"Subject: Agro-Shield verification code",
+		"Subject: Agrilinks Nigeria verification code",
 		"MIME-Version: 1.0",
 		"Content-Type: text/plain; charset=UTF-8",
 		"",

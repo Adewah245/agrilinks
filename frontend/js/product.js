@@ -1,5 +1,5 @@
 // ============================================================
-// AGRO-SHIELD PRODUCT PAGE
+// AGRILINKS NIGERIA PRODUCT PAGE
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -137,7 +137,7 @@ function initBackButton() {
 
     backButton.addEventListener("click", event => {
         /*
-         * If the user came from another page inside Agro-Shield,
+         * If the user came from another page inside Agrilinks Nigeria,
          * browser history gives them a more natural way back.
          *
          * Otherwise, the normal href on the button is used.

@@ -18,7 +18,7 @@ import (
 // CHAT HANDLER
 //
 // Responsibility:
-// - Handles Agro-Shield general chat.
+// - Handles Agrilinks Nigeria general chat.
 // - Displays the user's conversations.
 // - Opens private/group conversations.
 // - Sends messages.
@@ -43,7 +43,7 @@ import (
 //     Normal communication
 // ============================================================
 
-// ChatHandler handles general Agro-Shield chat functionality.
+// ChatHandler handles general Agrilinks Nigeria chat functionality.
 type ChatHandler struct {
 	service *services.ChatService
 	users   *repository.UserRepository

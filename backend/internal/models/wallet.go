@@ -12,7 +12,7 @@ type Wallet struct {
 	Balance   string
 	Currency  string
 
-	// WalletNumber is the permanent Agro-Shield identifier used by the
+	// WalletNumber is the permanent Agrilinks Nigeria identifier used by the
 	// wallet-to-wallet transfer flow.
 	WalletNumber string
 

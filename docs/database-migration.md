@@ -1,8 +1,8 @@
-# 🗄️ Agro-Shield Database Migration
+# 🗄️ Agrilinks Nigeria Database Migration
 
 ## Overview
 
-Agro-Shield initially used SQLite during the MVP development phase. SQLite allowed the team to quickly prototype the application, test database operations, and develop the initial farmer registration and authentication features with minimal infrastructure.
+Agrilinks Nigeria initially used SQLite during the MVP development phase. SQLite allowed the team to quickly prototype the application, test database operations, and develop the initial farmer registration and authentication features with minimal infrastructure.
 
 As the project moves toward real-world deployment, the database architecture is being migrated from SQLite to PostgreSQL.
 
@@ -10,7 +10,7 @@ As the project moves toward real-world deployment, the database architecture is 
 
 ## Why We Are Migrating
 
-PostgreSQL provides a stronger foundation for Agro-Shield as the platform grows.
+PostgreSQL provides a stronger foundation for Agrilinks Nigeria as the platform grows.
 
 The migration is intended to provide:
 

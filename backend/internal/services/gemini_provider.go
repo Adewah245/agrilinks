@@ -12,11 +12,11 @@ import (
 	"google.golang.org/genai"
 )
 
-// GeminiProvider connects Agro-Shield to Google's Gemini AI service.
+// GeminiProvider connects Agrilinks Nigeria to Google's Gemini AI service.
 //
 // It implements the AIProvider interface and is responsible for
 // sending agricultural diagnosis requests to Gemini and converting
-// Gemini's response into an Agro-Shield diagnosis result.
+// Gemini's response into an Agrilinks Nigeria diagnosis result.
 type GeminiProvider struct {
 	client *genai.Client
 	model  string
@@ -50,11 +50,11 @@ func NewGeminiProvider(apiKey string, modelName ...string) (*GeminiProvider, err
 		return nil, err
 	}
 
-	// Return the Gemini provider Agro-Shield will use.
+	// Return the Gemini provider Agrilinks Nigeria will use.
 	return &GeminiProvider{
 		client: client,
 
-		// The Gemini model Agro-Shield is currently configured to use.
+		// The Gemini model Agrilinks Nigeria is currently configured to use.
 		model: strings.TrimSpace(modelName[0]),
 	}, nil
 }
@@ -102,11 +102,11 @@ func (p *GeminiProvider) Analyze(
 	}
 
 	// ========================================================
-	// AGRO-SHIELD AI INSTRUCTIONS
-	// This tells Gemini how Agro-Shield should communicate.
+	// AGRILINKS NIGERIA AI INSTRUCTIONS
+	// This tells Gemini how Agrilinks Nigeria should communicate.
 	// ========================================================
 
-	prompt := `You are Agro-Shield AI, a friendly farming assistant for everyday farmers in Nigeria.
+	prompt := `You are Agrilinks Nigeria AI, a friendly farming assistant for everyday farmers in Nigeria.
 
 Talk to the farmer the same simple way a good mentor would talk to a friend.
 
@@ -259,7 +259,7 @@ Keep the complete answer below 250 words.`
 	// ========================================================
 	// BUILD GENERATION CONFIGURATION
 	//
-	// Thinking is disabled by default because Agro-Shield's
+	// Thinking is disabled by default because Agrilinks Nigeria's
 	// diagnosis response should be reasonably fast.
 	//
 	// When Thinking is explicitly requested, we allow a

@@ -91,7 +91,7 @@ func (s *WalletService) SetupVirtualAccount(ctx context.Context, user *models.Us
 	if len(names) > 1 {
 		last = strings.Join(names[1:], " ")
 	}
-	details, err := s.provider.CreatePermanentVirtualAccount(ctx, CreateVirtualAccountRequest{Email: email, TxRef: a.TxRef, Phone: user.Phone, FirstName: names[0], LastName: last, Narration: "AgroShield-" + name, IdentityKind: kind, IdentityNumber: number})
+	details, err := s.provider.CreatePermanentVirtualAccount(ctx, CreateVirtualAccountRequest{Email: email, TxRef: a.TxRef, Phone: user.Phone, FirstName: names[0], LastName: last, Narration: "Agrilinks Nigeria-" + name, IdentityKind: kind, IdentityNumber: number})
 	if err != nil {
 		if errors.Is(err, ErrProviderAccessDenied) {
 			if saveErr := s.repo.FailVirtualAccount(ctx, user.ID, "Provider did not permit account creation"); saveErr != nil {
@@ -150,7 +150,7 @@ func (s *WalletService) saveVirtualAccountDetails(ctx context.Context, a *models
 		a.AccountName = strings.TrimSpace(details.AccountName)
 	}
 	if a.AccountName == "" && name != "" {
-		a.AccountName = "AgroShield-" + name
+		a.AccountName = "Agrilinks Nigeria-" + name
 	}
 	a.Currency, a.Status, a.FailureReason = currency, models.VirtualAccountPending, ""
 	status := strings.ToLower(strings.TrimSpace(details.AccountStatus))

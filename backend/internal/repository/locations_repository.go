@@ -39,7 +39,7 @@ type LGA struct {
 // states
 // lgas
 //
-// These locations are used across Agro-Shield for:
+// These locations are used across Agrilinks Nigeria for:
 //
 // - User profiles
 // - Product listings

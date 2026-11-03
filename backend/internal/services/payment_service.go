@@ -47,7 +47,7 @@ type paymentNotifier interface {
 }
 
 // PaymentService owns payment initiation, provider verification, and the
-// mapping from provider state to Agro-Shield transaction and order state.
+// mapping from provider state to Agrilinks Nigeria transaction and order state.
 type PaymentService struct {
 	repo       paymentStore
 	orders     paymentOrderStore

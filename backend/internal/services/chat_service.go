@@ -8,7 +8,7 @@ import (
 	"backend/internal/repository"
 )
 
-// ChatService controls the business rules for Agro-Shield chat.
+// ChatService controls the business rules for Agrilinks Nigeria chat.
 //
 // The service sits between HTTP handlers and repositories:
 //

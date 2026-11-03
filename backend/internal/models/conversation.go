@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-// Conversation represents a general Agro-Shield chat conversation.
+// Conversation represents a general Agrilinks Nigeria chat conversation.
 //
 // A conversation can be:
 //   - private: one user communicating with another user

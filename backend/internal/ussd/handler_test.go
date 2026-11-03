@@ -74,7 +74,7 @@ func TestMainMenuContinuesSession(t *testing.T) {
 		"",
 	)
 
-	if !strings.HasPrefix(got, "CON Agro-Shield") {
+	if !strings.HasPrefix(got, "CON Agrilinks Nigeria") {
 		t.Fatalf("got %q", got)
 	}
 }

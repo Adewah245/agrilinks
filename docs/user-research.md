@@ -1,10 +1,10 @@
-# 🌾 Agro-Shield User Research & Market Validation
+# 🌾 Agrilinks Nigeria User Research & Market Validation
 
 ## Overview
 
-As part of the development and validation of Agro-Shield, our team conducted field visits and interviews with farmers, agricultural businesses, government agricultural representatives, and potential consumers.
+As part of the development and validation of Agrilinks Nigeria, our team conducted field visits and interviews with farmers, agricultural businesses, government agricultural representatives, and potential consumers.
 
-The purpose of this research was to understand the real challenges faced by people involved in agricultural production, distribution, storage, and purchasing, and to validate whether Agro-Shield addresses genuine market needs.
+The purpose of this research was to understand the real challenges faced by people involved in agricultural production, distribution, storage, and purchasing, and to validate whether Agrilinks Nigeria addresses genuine market needs.
 
 ## Field Research Findings
 
@@ -27,9 +27,9 @@ They also identified water availability as one of the challenges affecting their
 - Difficulty accessing reliable agricultural produce suppliers
 - Water-related operational challenges
 
-**Potential Agro-Shield opportunity:**
+**Potential Agrilinks Nigeria opportunity:**
 
-Agro-Shield could provide a digital marketplace where agricultural businesses can post what produce they need and connect directly with farmers who can supply them.
+Agrilinks Nigeria could provide a digital marketplace where agricultural businesses can post what produce they need and connect directly with farmers who can supply them.
 
 ---
 
@@ -49,7 +49,7 @@ He expressed strong interest in a platform similar to an e-commerce marketplace 
 - Make payments
 - Arrange collection or delivery
 
-The owner indicated that he would be interested in registering on Agro-Shield if these capabilities were available.
+The owner indicated that he would be interested in registering on Agrilinks Nigeria if these capabilities were available.
 
 **Key challenges identified:**
 
@@ -58,9 +58,9 @@ The owner indicated that he would be interested in registering on Agro-Shield if
 - Incomplete payments from some customers
 - Difficulty locating the farm
 
-**Potential Agro-Shield opportunity:**
+**Potential Agrilinks Nigeria opportunity:**
 
-Agro-Shield can help agricultural businesses become more discoverable while providing a structured ordering and payment system.
+Agrilinks Nigeria can help agricultural businesses become more discoverable while providing a structured ordering and payment system.
 
 ---
 
@@ -74,7 +74,7 @@ However, one of their major challenges is reaching genuine farmers in different 
 
 They are also interested in conducting seminars and agricultural education programmes across communities but face challenges with reaching and communicating with farmers effectively.
 
-The representative expressed interest in partnering with Agro-Shield as a potential digital channel for reaching farmers and communicating agricultural opportunities, programmes, and educational information.
+The representative expressed interest in partnering with Agrilinks Nigeria as a potential digital channel for reaching farmers and communicating agricultural opportunities, programmes, and educational information.
 
 **Key challenges identified:**
 
@@ -83,9 +83,9 @@ The representative expressed interest in partnering with Agro-Shield as a potent
 - Challenges organizing outreach across different communities
 - Need for better channels for agricultural education and seminars
 
-**Potential Agro-Shield opportunity:**
+**Potential Agrilinks Nigeria opportunity:**
 
-Agro-Shield could provide a digital communication and outreach channel through which government agricultural agencies can connect with verified farmers and share:
+Agrilinks Nigeria could provide a digital communication and outreach channel through which government agricultural agencies can connect with verified farmers and share:
 
 - Agricultural programmes
 - Improved seeds
@@ -128,9 +128,9 @@ Low prices offered by some market buyers
 Lack of direct access to larger markets
 Risk of produce spoiling while waiting for buyers
 
-### Potential Agro-Shield opportunity:
+### Potential Agrilinks Nigeria opportunity:
 
-Agro-Shield can enable farmers to list upcoming or available produce so that verified buyers can discover the produce and potentially place orders before or around harvest.
+Agrilinks Nigeria can enable farmers to list upcoming or available produce so that verified buyers can discover the produce and potentially place orders before or around harvest.
 
 This could help farmers reduce the time between harvesting and selling.
 
@@ -147,6 +147,6 @@ Difficulty finding specific agricultural products
 Need to physically visit markets
 Lack of convenient digital ordering options
 
-### Potential Agro-Shield opportunity:
+### Potential Agrilinks Nigeria opportunity:
 
-Agro-Shield could provide consumers with an online marketplace where they can discover agricultural products, place orders, and eventually arrange payment and delivery.
+Agrilinks Nigeria could provide consumers with an online marketplace where they can discover agricultural products, place orders, and eventually arrange payment and delivery.

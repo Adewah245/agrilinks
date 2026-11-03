@@ -662,7 +662,7 @@ func NewHandler(container *app.Container) http.Handler {
 	)
 
 	// The provider redirect and webhook are deliberately unauthenticated:
-	// Flutterwave cannot hold an Agro-Shield session. Both are authenticated
+	// Flutterwave cannot hold an Agrilinks Nigeria session. Both are authenticated
 	// by provider verification, and the webhook additionally uses verif-hash.
 	mux.HandleFunc(
 		"/payments/callback",
@@ -788,7 +788,7 @@ func NewHandler(container *app.Container) http.Handler {
 	// CHAT
 	// ========================================================
 	//
-	// General Agro-Shield communication.
+	// General Agrilinks Nigeria communication.
 	//
 	// Chat is different from negotiation.
 	//

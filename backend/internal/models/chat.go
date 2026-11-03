@@ -6,7 +6,7 @@ import "time"
 //
 // Chat messages are separate from NegotiationMessage.
 // NegotiationMessage is specifically for buyer/seller negotiations,
-// while ChatMessage is for normal Agro-Shield communication.
+// while ChatMessage is for normal Agrilinks Nigeria communication.
 type ChatMessage struct {
 	ID int `json:"id"`
 

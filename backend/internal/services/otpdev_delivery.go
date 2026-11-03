@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// OTPDevDelivery sends Agro-Shield's generated codes through OTP.dev. Local
+// OTPDevDelivery sends Agrilinks Nigeria's generated codes through OTP.dev. Local
 // verification retains the user/purpose binding, expiry, and single-use rules.
 type OTPDevDelivery struct {
 	apiKey, sender, templateID, baseURL string

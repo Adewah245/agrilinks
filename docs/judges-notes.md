@@ -20,4 +20,4 @@ Features under active development:
 - Smart Price Prediction
 - Produce Storage Management
 
-These planned features are documented in the roadmap and represent the long-term vision of Agro-Shield.
+These planned features are documented in the roadmap and represent the long-term vision of Agrilinks Nigeria.

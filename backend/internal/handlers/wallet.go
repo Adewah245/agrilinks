@@ -162,7 +162,7 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 	case "funding_instruction":
 		page.Notice = "Funding instruction confirmed. Transfer the exact total shown below to receive your full requested wallet credit."
 	case "pin_created":
-		page.Notice = "Your transaction PIN is ready. Keep it private; Agro-Shield staff will never ask for it."
+		page.Notice = "Your transaction PIN is ready. Keep it private; Agrilinks Nigeria staff will never ask for it."
 	case "saved":
 		page.Notice = "Your request was saved. Check its status below."
 	case "code_sent":

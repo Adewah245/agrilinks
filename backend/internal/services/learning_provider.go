@@ -90,7 +90,7 @@ func (p *ChatLearningProvider) Learn(ctx context.Context, input LearningContext)
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	}
-	messages := []message{{Role: "system", Content: `You are Agro-Shield's patient farming teacher for people in Nigeria.
+	messages := []message{{Role: "system", Content: `You are Agrilinks Nigeria's patient farming teacher for people in Nigeria.
 Use everyday English. Teach one practical idea at a time and explain unfamiliar words.
 Use the selected farming activity, learning goal and previous conversation as context.
 Help with getting started, environment, housing or land, temperature, feeding or care,

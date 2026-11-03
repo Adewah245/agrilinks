@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -62,100 +64,93 @@ func NewWeatherService() *WeatherService {
 	}
 }
 
-// Current returns current weather information for a location.
-//
-// The location is first geocoded through Open-Meteo's geocoding
-// service. The resulting coordinates are then used to retrieve
-// current weather conditions.
-//
-// Successfully retrieved weather data is cached for 15 minutes.
-//
-// If a fresh API request fails but previously cached data exists,
-// the cached weather is returned together with the API error so
-// callers know that the information is stale.
-func (s *WeatherService) Current(
-	ctx context.Context,
-	location string,
-) (models.Weather, error) {
-	location = strings.TrimSpace(location)
+const (
+	weatherCacheTTL       = 15 * time.Minute
+	weatherMaxAge         = time.Hour
+	weatherRequestTimeout = 8 * time.Second
+)
 
-	if location == "" {
-		return models.Weather{}, errors.New(
-			"weather location is required",
-		)
-	}
+var (
+	errWeatherLocationRequired = errors.New("weather location is required")
+	errWeatherLocationNotFound = errors.New("weather location not found")
+)
 
-	cacheKey := normalizeWeatherLocation(location)
-
-	if cached, ok := s.cached(cacheKey); ok {
-		if time.Since(cached.fetchedAt) < 15*time.Minute {
-			weather := cached.weather
-			weather.Cached = true
-
-			return weather, nil
-		}
-	}
-
-	weather, err := s.fetch(ctx, location)
-
-	if err != nil {
-		// A stale cached response is still useful as a fallback,
-		// but Cached is marked true so the caller knows it is not
-		// freshly retrieved.
-		if cached, ok := s.cached(cacheKey); ok {
-			fallback := cached.weather
-			fallback.Cached = true
-
-			return fallback, err
-		}
-
-		return models.Weather{}, err
-	}
-
-	s.mu.Lock()
-
-	s.cache[cacheKey] = cachedWeather{
-		weather:   weather,
-		fetchedAt: weather.LastUpdated,
-	}
-
-	s.mu.Unlock()
-
-	return weather, nil
+// Current retrieves weather for a Nigerian place name. Structured profile
+// locations should use CurrentForLocation to disambiguate towns with the same name.
+func (s *WeatherService) Current(ctx context.Context, location string) (models.Weather, error) {
+	return s.CurrentForLocation(ctx, location, "", "", "Nigeria")
 }
 
-// CurrentForLocation retrieves weather using the most specific known
-// geographic value first, then falls back to the user's LGA and state.
-// Community names are often not indexed by third-party geocoders, while the
-// structured Nigerian location fields provide a useful, less precise fallback.
-func (s *WeatherService) CurrentForLocation(
-	ctx context.Context,
-	location string,
-	lga string,
-	state string,
-	country string,
-) (models.Weather, error) {
-	var lastErr error
+// CurrentForLocation checks the country, state and LGA of geocoding results.
+// A single deadline covers every lookup and the forecast request, so an outage
+// cannot hold the dashboard open for a separate timeout per candidate.
+func (s *WeatherService) CurrentForLocation(ctx context.Context, location, lga, state, country string) (models.Weather, error) {
+	location, lga = strings.TrimSpace(location), strings.TrimSpace(lga)
+	state, country = strings.TrimSpace(state), strings.TrimSpace(country)
+	if country == "" {
+		country = "Nigeria"
+	}
+	candidates := weatherLocationCandidates(location, lga, state, country)
+	if len(candidates) == 0 {
+		return weatherUnavailable(errWeatherLocationRequired), errWeatherLocationRequired
+	}
+	cacheKey := normalizeWeatherLocation(strings.Join([]string{location, lga, state, country}, "|"))
+	cached, hasCache := s.cached(cacheKey)
+	if hasCache && time.Since(cached.fetchedAt) < weatherCacheTTL && time.Since(cached.weather.LastUpdated) < weatherMaxAge {
+		weather := cached.weather
+		weather.Cached = true
+		return weather, nil
+	}
 
-	for _, candidate := range weatherLocationCandidates(
-		location,
-		lga,
-		state,
-		country,
-	) {
-		weather, err := s.Current(ctx, candidate)
+	ctx, cancel := context.WithTimeout(ctx, weatherRequestTimeout)
+	defer cancel()
+	var lastErr error
+	for _, candidate := range candidates {
+		if err := ctx.Err(); err != nil {
+			lastErr = err
+			break
+		}
+		candidateLGA := lga
+		// A state-level fallback cannot be required to belong to a single LGA.
+		stateQuery := weatherStateQuery(state, country)
+		if candidate == stateQuery {
+			candidateLGA = ""
+		}
+		weather, err := s.fetch(ctx, candidate, candidateLGA, state, country)
 		if err == nil {
+			weather.Approximate = candidate != location && candidate != joinWeatherLocation(location, lga, state, country)
+			s.mu.Lock()
+			s.cache[cacheKey] = cachedWeather{weather: weather, fetchedAt: time.Now()}
+			s.mu.Unlock()
 			return weather, nil
 		}
-
 		lastErr = err
+		// Try broader areas only when the provider could not resolve the place.
+		// Repeating requests after an outage or rate limit cannot help.
+		if !errors.Is(err, errWeatherLocationNotFound) {
+			break
+		}
 	}
-
-	if lastErr != nil {
-		return models.Weather{}, lastErr
+	if hasCache && time.Since(cached.weather.LastUpdated) < weatherMaxAge {
+		weather := cached.weather
+		weather.Cached, weather.Stale = true, true
+		weather.Error = "Live weather could not be refreshed. Showing the last available update."
+		return weather, lastErr
 	}
+	return weatherUnavailable(lastErr), lastErr
+}
 
-	return models.Weather{}, errors.New("weather location is required")
+func weatherUnavailable(err error) models.Weather {
+	weather := models.Weather{Error: "Weather is temporarily unavailable. Please try again shortly."}
+	switch {
+	case errors.Is(err, errWeatherLocationRequired):
+		weather.NeedsLocation = true
+		weather.Error = "Add your town, LGA and state to your profile to receive local weather."
+	case errors.Is(err, errWeatherLocationNotFound):
+		weather.NeedsLocation = true
+		weather.Error = "Weather could not be found for your saved location. Check your town, LGA and state."
+	}
+	return weather
 }
 
 // weatherLocationCandidates returns unique, increasingly broader queries for
@@ -176,44 +171,53 @@ func weatherLocationCandidates(
 		country = "Nigeria"
 	}
 
-	parts := [][]string{
-		{location},
-		{location, lga, state, country},
-		{lga, state, country},
-		{state, country},
+	if location == "" && lga == "" && state == "" {
+		return nil
 	}
-
-	seen := make(map[string]struct{})
+	parts := []string{location}
+	if location != "" {
+		parts = append(parts, joinWeatherLocation(location, lga, state, country))
+	}
+	if lga != "" {
+		parts = append(parts, joinWeatherLocation(lga, state, country))
+	}
+	if state != "" {
+		parts = append(parts, weatherStateQuery(state, country))
+	}
+	seen := make(map[string]bool)
 	candidates := make([]string, 0, len(parts))
-
-	for _, fields := range parts {
-		filtered := make([]string, 0, len(fields))
-		fieldSeen := make(map[string]struct{})
-		for _, field := range fields {
-			if field = strings.TrimSpace(field); field != "" {
-				fieldKey := normalizeWeatherLocation(field)
-				if _, exists := fieldSeen[fieldKey]; exists {
-					continue
-				}
-				fieldSeen[fieldKey] = struct{}{}
-				filtered = append(filtered, field)
-			}
-		}
-
-		candidate := strings.Join(filtered, ", ")
+	for _, candidate := range parts {
 		key := normalizeWeatherLocation(candidate)
-		if candidate == "" || key == "" {
-			continue
+		if key != "" && !seen[key] {
+			seen[key] = true
+			candidates = append(candidates, candidate)
 		}
-		if _, exists := seen[key]; exists {
-			continue
-		}
-
-		seen[key] = struct{}{}
-		candidates = append(candidates, candidate)
 	}
-
 	return candidates
+}
+
+func joinWeatherLocation(fields ...string) string {
+	seen := make(map[string]bool)
+	var parts []string
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		key := normalizeWeatherLocation(field)
+		if key != "" && !seen[key] {
+			parts = append(parts, field)
+			seen[key] = true
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+func weatherStateQuery(state, country string) string {
+	if normalizeWeatherRegion(state) == "fct" {
+		return joinWeatherLocation("Federal Capital Territory", country)
+	}
+	if state != "" && !strings.HasSuffix(strings.ToLower(state), " state") {
+		state += " State"
+	}
+	return joinWeatherLocation(state, country)
 }
 
 // cached retrieves weather data from the in-memory cache.
@@ -231,212 +235,162 @@ func (s *WeatherService) cached(
 	return weather, ok
 }
 
-// fetch retrieves weather data from Open-Meteo.
-//
-// The location is first converted to coordinates using the
-// Open-Meteo geocoding endpoint. Those coordinates are then
-// supplied to the forecast endpoint.
-func (s *WeatherService) fetch(
-	ctx context.Context,
-	location string,
-) (models.Weather, error) {
-	latitude, longitude, err := s.geocode(
-		ctx,
-		location,
-	)
+// fetch resolves a place and validates the provider's current observation.
+func (s *WeatherService) fetch(ctx context.Context, location, lga, state, country string) (models.Weather, error) {
+	place, err := s.geocode(ctx, location, lga, state, country)
 	if err != nil {
 		return models.Weather{}, err
 	}
-
-	// Current conditions are returned directly from Open-Meteo.
-	//
-	// Hourly precipitation probability is also requested because
-	// it provides a useful short-term precipitation probability
-	// for the farming recommendation and dashboard.
-	wq := url.Values{}
-
-	wq.Set(
-		"latitude",
-		strconv.FormatFloat(
-			latitude,
-			'f',
-			4,
-			64,
-		),
-	)
-
-	wq.Set(
-		"longitude",
-		strconv.FormatFloat(
-			longitude,
-			'f',
-			4,
-			64,
-		),
-	)
-
-	wq.Set(
-		"current",
-		"temperature_2m,relative_humidity_2m,weather_code",
-	)
-
-	wq.Set(
-		"hourly",
-		"precipitation_probability",
-	)
-
-	wq.Set(
-		"forecast_days",
-		"1",
-	)
-
-	// Open-Meteo returns times using the requested local timezone.
-	wq.Set("timezone", "auto")
-
+	query := url.Values{
+		"latitude":      {strconv.FormatFloat(place.Latitude, 'f', 4, 64)},
+		"longitude":     {strconv.FormatFloat(place.Longitude, 'f', 4, 64)},
+		"current":       {"temperature_2m,relative_humidity_2m,weather_code"},
+		"hourly":        {"precipitation_probability"},
+		"forecast_days": {"1"},
+		"timezone":      {"Africa/Lagos"},
+		"timeformat":    {"unixtime"},
+	}
 	var raw struct {
 		Current struct {
-			Temperature float64 `json:"temperature_2m"`
-			Humidity    float64 `json:"relative_humidity_2m"`
-			Code        int     `json:"weather_code"`
+			Time        *int64   `json:"time"`
+			Temperature *float64 `json:"temperature_2m"`
+			Humidity    *float64 `json:"relative_humidity_2m"`
+			Code        *int     `json:"weather_code"`
 		} `json:"current"`
-
 		Hourly struct {
-			Time []string  `json:"time"`
-			Rain []float64 `json:"precipitation_probability"`
+			Time []int64    `json:"time"`
+			Rain []*float64 `json:"precipitation_probability"`
 		} `json:"hourly"`
 	}
-
-	endpoint :=
-		"https://api.open-meteo.com/v1/forecast?" +
-			wq.Encode()
-
-	if err := s.getJSON(
-		ctx,
-		endpoint,
-		&raw,
-	); err != nil {
+	if err := s.getJSON(ctx, "https://api.open-meteo.com/v1/forecast?"+query.Encode(), &raw); err != nil {
 		return models.Weather{}, err
 	}
-
-	rainChance := currentPrecipitationProbability(
-		raw.Hourly.Time,
-		raw.Hourly.Rain,
-	)
-
-	summary := weatherSummary(
-		raw.Current.Code,
-	)
-
+	current := raw.Current
+	if current.Time == nil || current.Temperature == nil || current.Humidity == nil || current.Code == nil ||
+		math.IsNaN(*current.Temperature) || math.IsInf(*current.Temperature, 0) ||
+		*current.Humidity < 0 || *current.Humidity > 100 {
+		return models.Weather{}, errors.New("weather API returned incomplete current conditions")
+	}
+	observed := time.Unix(*current.Time, 0).In(time.FixedZone("WAT", 60*60))
+	if age := time.Since(observed); age > weatherMaxAge || age < -15*time.Minute {
+		return models.Weather{}, errors.New("weather API returned an outdated observation")
+	}
+	rainChance := "—"
+	if rain, ok := currentPrecipitationProbability(raw.Hourly.Time, raw.Hourly.Rain, observed); ok {
+		rainChance = fmt.Sprintf("%.0f%%", rain)
+	}
+	summary := weatherSummary(*current.Code)
 	return models.Weather{
 		Available:      true,
-		Location:       location,
+		Location:       joinWeatherLocation(place.Name, place.Admin1, "Nigeria"),
 		Source:         "Open-Meteo",
-		Temperature:    fmt.Sprintf("%.0f°C", raw.Current.Temperature),
+		Temperature:    fmt.Sprintf("%.0f°C", *current.Temperature),
 		Summary:        summary,
-		Humidity:       fmt.Sprintf("%.0f%%", raw.Current.Humidity),
-		RainChance:     fmt.Sprintf("%.0f%%", rainChance),
+		Humidity:       fmt.Sprintf("%.0f%%", *current.Humidity),
+		RainChance:     rainChance,
 		Conditions:     summary,
-		Recommendation: weatherRecommendation(raw.Current.Code),
-		LastUpdated:    time.Now(),
-		Cached:         false,
+		Icon:           weatherIcon(*current.Code),
+		Recommendation: weatherRecommendation(*current.Code),
+		LastUpdated:    observed,
 	}, nil
 }
 
-// geocode converts a human-readable location into latitude and
-// longitude using the Open-Meteo geocoding API.
-func (s *WeatherService) geocode(
-	ctx context.Context,
-	location string,
-) (float64, float64, error) {
-	q := url.Values{}
-
-	q.Set("name", location)
-	q.Set("count", "1")
-	q.Set("language", "en")
-	q.Set("format", "json")
-
-	endpoint :=
-		"https://geocoding-api.open-meteo.com/v1/search?" +
-			q.Encode()
-
-	var geo struct {
-		Results []struct {
-			Latitude  float64 `json:"latitude"`
-			Longitude float64 `json:"longitude"`
-		} `json:"results"`
-	}
-
-	if err := s.getJSON(
-		ctx,
-		endpoint,
-		&geo,
-	); err != nil {
-		return 0, 0, err
-	}
-
-	if len(geo.Results) == 0 {
-		return 0, 0, fmt.Errorf(
-			"location %q not found",
-			location,
-		)
-	}
-
-	return geo.Results[0].Latitude,
-		geo.Results[0].Longitude,
-		nil
+type weatherPlace struct {
+	Name        string  `json:"name"`
+	CountryCode string  `json:"country_code"`
+	Admin1      string  `json:"admin1"`
+	Admin2      string  `json:"admin2"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
 }
 
-// currentPrecipitationProbability selects the precipitation
-// probability corresponding to the current local hour.
-//
-// Open-Meteo's hourly response contains both timestamps and
-// precipitation probabilities. Matching the current hour to
-// the returned timestamp is safer than assuming that the first
-// array element represents the current hour.
-func currentPrecipitationProbability(
-	times []string,
-	probabilities []float64,
-) float64 {
-	if len(times) == 0 ||
-		len(probabilities) == 0 {
-		return 0
+func (s *WeatherService) geocode(ctx context.Context, location, lga, state, country string) (weatherPlace, error) {
+	if !strings.EqualFold(country, "Nigeria") && !strings.EqualFold(country, "NG") {
+		return weatherPlace{}, errWeatherLocationNotFound
 	}
-
-	count := len(times)
-
-	if len(probabilities) < count {
-		count = len(probabilities)
+	query := url.Values{"name": {location}, "count": {"20"}, "language": {"en"}, "format": {"json"}, "countryCode": {"NG"}}
+	var geo struct {
+		Results []weatherPlace `json:"results"`
 	}
-
-	now := time.Now()
-
-	for i := 0; i < count; i++ {
-		t, err := time.Parse(
-			"2006-01-02T15:04",
-			times[i],
-		)
-
-		if err != nil {
+	if err := s.getJSON(ctx, "https://geocoding-api.open-meteo.com/v1/search?"+query.Encode(), &geo); err != nil {
+		return weatherPlace{}, err
+	}
+	var best *weatherPlace
+	bestScore := -1
+	for _, place := range geo.Results {
+		if !strings.EqualFold(place.CountryCode, "NG") {
 			continue
 		}
-
-		// Match the same local year, month, day and hour.
-		if t.Year() == now.Year() &&
-			t.Month() == now.Month() &&
-			t.Day() == now.Day() &&
-			t.Hour() == now.Hour() {
-			return clampPercentage(
-				probabilities[i],
-			)
+		if state != "" && normalizeWeatherRegion(place.Admin1) != normalizeWeatherRegion(state) {
+			continue
+		}
+		if lga != "" && place.Admin2 != "" && normalizeWeatherRegion(place.Admin2) != normalizeWeatherRegion(lga) {
+			continue
+		}
+		if math.IsNaN(place.Latitude) || math.IsNaN(place.Longitude) || math.Abs(place.Latitude) > 90 || math.Abs(place.Longitude) > 180 {
+			continue
+		}
+		score := 0
+		if lga != "" && normalizeWeatherRegion(place.Admin2) == normalizeWeatherRegion(lga) {
+			score++
+		}
+		if score > bestScore {
+			candidate := place
+			best, bestScore = &candidate, score
 		}
 	}
+	if best == nil {
+		return weatherPlace{}, fmt.Errorf("%w: %q", errWeatherLocationNotFound, location)
+	}
+	return *best, nil
+}
 
-	// If an exact local-hour match cannot be found, use the
-	// first returned value rather than failing the whole weather
-	// request.
-	return clampPercentage(
-		probabilities[0],
-	)
+func normalizeWeatherRegion(region string) string {
+	region = strings.TrimSuffix(normalizeWeatherLocation(region), " state")
+	switch region {
+	case "fct", "abuja", "federal capital territory", "abuja federal capital territory":
+		return "fct"
+	}
+	return region
+}
+
+// Unix timestamps keep the selected rain probability independent of the
+// server's timezone. Missing or unmatched values must not become a false 0%.
+func currentPrecipitationProbability(times []int64, probabilities []*float64, observed time.Time) (float64, bool) {
+	for i, timestamp := range times {
+		if i >= len(probabilities) {
+			break
+		}
+		if observed.Unix() >= timestamp && observed.Unix() < timestamp+3600 {
+			value := probabilities[i]
+			if value == nil || math.IsNaN(*value) || math.IsInf(*value, 0) {
+				return 0, false
+			}
+			return clampPercentage(*value), true
+		}
+	}
+	return 0, false
+}
+
+func weatherIcon(code int) string {
+	switch code {
+	case 0, 1:
+		return "☀"
+	case 2:
+		return "⛅"
+	case 3:
+		return "☁"
+	case 45, 48:
+		return "🌫"
+	case 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82:
+		return "🌧"
+	case 71, 73, 75, 77, 85, 86:
+		return "🌨"
+	case 95, 96, 99:
+		return "⛈"
+	default:
+		return "—"
+	}
 }
 
 // getJSON performs a GET request and decodes the JSON response.
@@ -480,7 +434,7 @@ func (s *WeatherService) getJSON(
 	}
 
 	if err := json.NewDecoder(
-		resp.Body,
+		io.LimitReader(resp.Body, 1024*1024),
 	).Decode(dst); err != nil {
 		return fmt.Errorf(
 			"failed to decode weather API response: %w",

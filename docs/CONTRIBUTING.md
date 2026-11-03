@@ -1,6 +1,6 @@
-# Contributing to Agro-Shield
+# Contributing to Agrilinks Nigeria
 
-First, thank you for your interest in contributing to **Agro-Shield**! 🌾
+First, thank you for your interest in contributing to **Agrilinks Nigeria**! 🌾
 
 Our mission is to build technology that helps farmers reduce post-harvest losses, improve market access, and increase productivity.
 
@@ -160,7 +160,7 @@ When reporting a bug, please include:
 
 ## Team
 
-Built by **Team Agro-Shield**
+Built by **Team Agrilinks Nigeria**
 
 For the **Idoma Centenary Plus Hackathon 2026**
 

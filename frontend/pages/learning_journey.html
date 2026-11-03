@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Your learning journey | Agro-Shield</title>
+  <title>Your learning journey | Agrilinks Nigeria</title>
   <link rel="stylesheet" href="/static/css/style.css"><link rel="stylesheet" href="/static/css/learning.css">
   <script src="/static/js/learning.js" defer></script>
     <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
@@ -14,7 +14,7 @@
     <p id="learning-error" class="learning-error" role="alert" hidden></p>
     <div class="learning-columns learning-workspace">
       <section class="learning-card"><h2>Your farming guide</h2><p>Ask about getting started, caring for your farm, or your next step.</p>
-        <div class="learning-messages" aria-live="polite">{{range .Messages}}<article class="learning-message {{.SenderType}}"><strong>{{if eq .SenderType "ai"}}Agro-Shield guide{{else if eq .SenderType "user"}}You{{else}}Learning note{{end}}</strong><p>{{.Content}}</p></article>{{else}}<p>Start with a question about what you want to learn.</p>{{end}}</div>
+        <div class="learning-messages" aria-live="polite">{{range .Messages}}<article class="learning-message {{.SenderType}}"><strong>{{if eq .SenderType "ai"}}Agrilinks Nigeria guide{{else if eq .SenderType "user"}}You{{else}}Learning note{{end}}</strong><p>{{.Content}}</p></article>{{else}}<p>Start with a question about what you want to learn.</p>{{end}}</div>
         {{if eq .Journey.Status "active"}}{{if .AIAvailable}}<form method="post" action="/learn/message" data-learning-form><input type="hidden" name="journey_id" value="{{.Journey.ID}}"><label for="learning-question">Your question</label><textarea id="learning-question" name="content" rows="3" maxlength="10000" required></textarea><button type="submit">Ask your guide</button><p class="form-status" role="status"></p></form>{{else}}<p>The guide is unavailable at the moment. You can still work on your checklist.</p>{{end}}{{else}}<p>Resume this journey to ask your guide another question.</p>{{end}}
       </section>
       <section class="learning-card"><h2>Your next steps</h2><p>Add steps from what you learn. Update each one as you make progress.</p>

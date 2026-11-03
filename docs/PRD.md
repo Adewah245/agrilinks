@@ -1,11 +1,11 @@
-# Agro-Shield
+# Agrilinks Nigeria
 
 ## Executive Summary:
-Agro-Shield is an intelligent agricultural platform designed to help smallholder farmers reduce post-harvest losses and improve market access.
+Agrilinks Nigeria is an intelligent agricultural platform designed to help smallholder farmers reduce post-harvest losses and improve market access.
 
 The platform provides farmers with tools to monitor storage conditions, access market price information, connect directly with buyers, and receive AI-powered farming guidance.
 
-By combining technology with practical agricultural needs, Agro-Shield empowers farmers to make informed decisions, protect their harvests, and increase their income while supporting sustainable agricultural development in Idoma communities.
+By combining technology with practical agricultural needs, Agrilinks Nigeria empowers farmers to make informed decisions, protect their harvests, and increase their income while supporting sustainable agricultural development in Idoma communities.
 
 ## Problem Statement:
 Smallholder farmers in Idoma communities experience significant post-harvest losses due to inadequate storage monitoring, limited access to market information, and dependence on middlemen.
@@ -16,7 +16,7 @@ These challenges reduce farmer income, contribute to food waste, and weaken loca
 
 ## Proposed Solution:
 
-Agro-Shield is a digital platform that helps farmers manage their post-harvest activities through storage monitoring, market intelligence, buyer connections, and AI-powered farming assistance.
+Agrilinks Nigeria is a digital platform that helps farmers manage their post-harvest activities through storage monitoring, market intelligence, buyer connections, and AI-powered farming assistance.
 
 The platform is designed to be simple, accessible, and scalable, enabling farmers to make better decisions while improving productivity and profitability.
 

@@ -1,7 +1,7 @@
-# Agro-Shield — Structured Project Documentation
+# Agrilinks Nigeria — Structured Project Documentation
 
 **Document status:** Living architecture document  
-**Project:** Agro-Shield  
+**Project:** Agrilinks Nigeria  
 **Primary backend:** Go  
 **Frontend:** HTML, CSS, JavaScript  
 **Database:** PostgreSQL  
@@ -20,14 +20,14 @@ management workflows, and validation.
 For permanent NGN funding accounts, wallet recovery and finance checks, see
 [Wallet funding accounts](docs/wallet-funding.md).
 
-For approved AgriLinks fees, double-entry accounting, escrow, company treasury,
+For approved Agrilinks Nigeria fees, double-entry accounting, escrow, company treasury,
 settlements and verification, see [Financial operations](docs/financial-operations.md).
 
 ---
 
 ## 1. Project Overview
 
-Agro-Shield is an agricultural technology platform designed to connect people with agriculture through three major user intents:
+Agrilinks Nigeria is an agricultural technology platform designed to connect people with agriculture through three major user intents:
 
 1. **I want to buy**
 2. **I want to sell**
@@ -108,7 +108,7 @@ The AI learning experience should guide the learner continuously, including topi
 
 # 3. Architectural Principles
 
-The new Agro-Shield structure follows these principles:
+The new Agrilinks Nigeria structure follows these principles:
 
 ### 3.1 Generalize agriculture
 
@@ -153,7 +153,7 @@ Before changing a migration/schema beyond straightforward extraction:
 6. Implement the migration.
 7. Verify the migration and dependent code.
 
-This workflow applies to future Agro-Shield database/schema work.
+This workflow applies to future Agrilinks Nigeria database/schema work.
 
 ---
 
@@ -407,7 +407,7 @@ NIN-related verification was discussed as a possible trust mechanism, but verifi
 
 # 11. Nigerian Geographic Structure
 
-Agro-Shield is designed around Nigeria and therefore requires a reusable geographic hierarchy.
+Agrilinks Nigeria is designed around Nigeria and therefore requires a reusable geographic hierarchy.
 
 The planned structure is:
 
@@ -437,7 +437,7 @@ This structure should be reused instead of storing every location as unstructure
 
 # 12. Organizations
 
-Agro-Shield supports agricultural organizations.
+Agrilinks Nigeria supports agricultural organizations.
 
 Core concepts:
 
@@ -619,7 +619,7 @@ Buyer follows status and location updates
 ```
 
 Delivery partner businesses are separate records. User accounts operate them
-through membership records, so an owner and drivers can use normal Agro-Shield
+through membership records, so an owner and drivers can use normal Agrilinks Nigeria
 logins without adding logistics-specific credentials to `delivery_partners`.
 
 Partner approval, assignment, status transitions, and tracking are enforced in
@@ -688,7 +688,7 @@ This keeps negotiation-specific price discussions separate from ordinary chat.
 
 # 21. Communication System
 
-Agro-Shield has a broader communication domain independent of negotiations.
+Agrilinks Nigeria has a broader communication domain independent of negotiations.
 
 Core concepts include:
 
@@ -733,7 +733,7 @@ Notifications should remain a separate domain so individual services do not need
 
 # 23. Transactions and Payments
 
-Agro-Shield separates transactions from orders.
+Agrilinks Nigeria separates transactions from orders.
 
 An order represents the commercial order.
 
@@ -857,7 +857,7 @@ Database/backend support should follow after the learning experience and data re
 
 # 27. AI Assistant
 
-Agro-Shield's AI capability is not limited to a generic chatbot.
+Agrilinks Nigeria's AI capability is not limited to a generic chatbot.
 
 For learning, the AI assistant should act as an agricultural learning guide.
 
@@ -898,7 +898,7 @@ The AI system should eventually be able to use the learner's selected farming ty
 
 # 28. Dashboard Model
 
-Agro-Shield should not have one giant dashboard attempting to serve every type of user.
+Agrilinks Nigeria should not have one giant dashboard attempting to serve every type of user.
 
 The dashboard should be intent/domain aware.
 
@@ -1167,7 +1167,7 @@ OTP delivery for password resets, wallet withdrawals, and transfers supports
 OTP.dev. See [OTP verification setup](docs/otp-verification.md) for configuration
 and how codes are generated, delivered, and verified.
 
-Agro-Shield should prioritize trust because the platform involves:
+Agrilinks Nigeria should prioritize trust because the platform involves:
 
 - Farmers
 - Buyers
@@ -1517,7 +1517,7 @@ A completed schema change should have:
 
 # 46. Project Mental Model
 
-The most important mental model for the new Agro-Shield architecture is:
+The most important mental model for the new Agrilinks Nigeria architecture is:
 
 ```text
                     AGRICULTURE
@@ -1564,7 +1564,7 @@ Security
 
 # 47. Current Architectural Goal
 
-The goal is to make Agro-Shield a **general agricultural platform**, not merely a crop marketplace.
+The goal is to make Agrilinks Nigeria a **general agricultural platform**, not merely a crop marketplace.
 
 The new architecture should allow the platform to grow from:
 
@@ -1620,4 +1620,4 @@ The database schema remains subject to the architecture-first review process bef
 
 ---
 
-## End of Agro-Shield Structured Architecture Documentation
+## End of Agrilinks Nigeria Structured Architecture Documentation

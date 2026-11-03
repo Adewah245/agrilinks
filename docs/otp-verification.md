@@ -11,18 +11,20 @@ OTPDEV_API_KEY=your-api-key
 Set the key in the server environment or an untracked `backend/.env` file when
 starting the server from `backend/`. Keep the API key on the backend.
 
-The sender `OTP Dev` and approved Agro-Shield template UUID
+The sender `OTP Dev` and approved legacy Agro-Shield template UUID
 `a724614a-3a7c-4625-930e-2a8b45141474` are built into
 `backend/internal/config/config.go`. `OTPDEV_SENDER` and `OTPDEV_TEMPLATE_ID`
 are no longer read from the environment. The API key must belong to the account
 that owns this template. Edit the SMS message in the OTP.dev dashboard and retain
-the `{code}` placeholder; message text is not a template ID.
+the `{code}` placeholder; message text is not a template ID. Update the hosted
+message to use **Agrilinks Nigeria** when deploying the renamed application;
+the API sends the template UUID and code, not the message text.
 
 `OTPDEV_BASE_URL` defaults to `https://api.otp.dev/v1`. An override is available
 for testing. Startup rejects a missing API key when using the default
 provider or setting `SMS_PROVIDER=otpdev` explicitly.
 
-Agro-Shield generates a six-digit code and stores its bcrypt hash, account ID,
+Agrilinks Nigeria generates a six-digit code and stores its bcrypt hash, account ID,
 purpose, and expiry. It sends the same code to `POST /v1/verifications` with
 `X-OTP-Key` authentication and a `data` object containing `channel`, `sender`,
 `phone`, `template`, and `code`. Nigerian phone numbers are normalized to the
@@ -30,7 +32,7 @@ international digits-only format, such as `2348012345678`.
 
 The request deliberately supplies `code` without `code_length`, as required by
 the [OTP.dev SMS API](https://otp.dev/en/docs/sms-otp/). Verification happens
-inside Agro-Shield against the stored hash and purpose; it does not use
+inside Agrilinks Nigeria against the stored hash and purpose; it does not use
 OTP.dev's status lookup. This preserves the application's expiry, failed-attempt
 limit, and atomic single-use checks. Codes cannot authorize a different purpose.
 
@@ -38,11 +40,11 @@ Optional settings:
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `OTP_TTL` | `10m` | How long Agro-Shield accepts a code |
+| `OTP_TTL` | `10m` | How long Agrilinks Nigeria accepts a code |
 | `OTP_MAX_ATTEMPTS` | `5` | Failed verification attempts allowed per code |
 | `OTP_RESEND_INTERVAL` | `1m` | Minimum delay before issuing another code for the same account and purpose |
 
-Avoid putting a different validity period in the SMS template. Agro-Shield's
+Avoid putting a different validity period in the SMS template. Agrilinks Nigeria's
 `OTP_TTL` controls acceptance even if OTP.dev reports a later expiration.
 Resending invalidates the previous code. Failed delivery removes the newly
 created code, and provider response bodies are not exposed in errors.

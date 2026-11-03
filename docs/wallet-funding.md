@@ -1,6 +1,6 @@
 # Wallet funding accounts
 
-Agrilinks adapts the permanent NGN account workflow from
+Agrilinks Nigeria adapts the permanent NGN account workflow from
 [Agro-Shield](https://github.com/etoosammy01/Agro-Shield/tree/de67bc3bd405),
 using the upgraded `users`, `wallets`, ledger and staff permission model.
 

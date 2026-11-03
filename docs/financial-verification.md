@@ -69,7 +69,7 @@ env GOCACHE=/tmp/agrilinks-go-build GOMODCACHE=/tmp/agrilinks-go-mod \
 
 ### Fee boundaries and financial coverage
 
-| Requested payout | Verified AgriLinks fee | Debit before any provider charge |
+| Requested payout | Verified Agrilinks Nigeria fee | Debit before any provider charge |
 |---|---:|---:|
 | ₦1 | ₦50 | ₦51 |
 | ₦5,000 | ₦50 | ₦5,050 |
@@ -125,7 +125,7 @@ A different authorized administrator approves the request. Execution is a separa
 ## External limitations and remaining operational work
 
 - Flutterwave's official [transfer-fee](https://developer.flutterwave.com/reference/get-transfer-fee), [transaction-fee](https://developer.flutterwave.com/reference/get-transaction-fee) and [pricing](https://flutterwave.com/ng/pricing) documentation was reviewed. The code requests and validates provider fee quotes; it does not hardcode public rates as merchant-specific charges. **Actual company merchant fees, VAT/stamp-duty treatment, fee bearer settings and enabled payment features still require provider credentials and account verification.**
-- No approved AgriLinks business bank destination or real bank statement/feed was available. Company transfer tests use synthetic accounts and simulated provider responses. Live settlement and ownership evidence must be supplied through the implemented approval workflow.
+- No approved Agrilinks Nigeria business bank destination or real bank statement/feed was available. Company transfer tests use synthetic accounts and simulated provider responses. Live settlement and ownership evidence must be supplied through the implemented approval workflow.
 - Automatic live provider/bank statement retrieval is not enabled. Audited normalized imports with independent reconciliation are implemented.
 - Unmatched deposits that cannot cover an accepted funding allocation remain held liabilities. Automatic external refund initiation to the originating account is not implemented in that allocation path; provider-verified refund/reversal events are accounted for.
 - Production deployment and migration execution remain outside this local delivery. No production funds were moved or modified.

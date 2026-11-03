@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{{.Section.Title}} | Agro-Shield Admin</title>
+  <title>{{.Section.Title}} | Agrilinks Nigeria Admin</title>
   <meta name="theme-color" content="#24251f">
   <link rel="stylesheet" href="/static/css/admin.css?v=20261030">
   <script defer src="/static/js/admin.js?v=20261030"></script>
@@ -36,7 +36,7 @@
 </svg>
 <div class="admin-shell">
   <aside class="admin-sidebar" aria-label="Staff navigation">
-    <a class="admin-brand" href="/admin"><span class="brand-mark" aria-hidden="true"><svg class="a-icon"><use href="#a-shield"/></svg></span><span>Agro-Shield<small>THE ADMIN WORKSPACE</small></span></a>
+    <a class="admin-brand" href="/admin"><span class="brand-mark" aria-hidden="true"><svg class="a-icon"><use href="#a-shield"/></svg></span><span>Agrilinks Nigeria<small>THE ADMIN WORKSPACE</small></span></a>
     <button type="button" class="admin-menu-toggle" aria-controls="admin-navigation" aria-expanded="false" aria-label="Open navigation"><span></span><span></span></button>
     <nav id="admin-navigation" aria-label="Admin sections">
       <p class="nav-caption">PLATFORM MANAGEMENT</p>
@@ -48,7 +48,7 @@
   <div class="admin-main">
     <header class="admin-topbar"><span class="admin-breadcrumb">Workspace <span aria-hidden="true">/</span> <strong>{{template "admin_nav_label" .Section.Key}}</strong></span><button type="button" class="workspace-finder-trigger admin-js-control" aria-haspopup="dialog"><svg class="a-icon" aria-hidden="true"><use href="#a-search"/></svg><span>Find a workspace</span><kbd data-shortcut-label>Ctrl K</kbd></button><div class="admin-topbar-actions"><time id="admin-date"></time><span class="staff-pill"><svg class="a-icon" aria-hidden="true"><use href="#a-shield"/></svg>{{humanStatus .User.AdminRole}}</span><a class="admin-avatar" href="/profile" aria-label="Your profile" data-admin-initials>AS</a></div></header>
     <main id="admin-content">
-      <div class="page-heading {{if eq .Section.Key "overview"}}overview-heading{{end}}"><div><p class="eyebrow"><span></span>{{if eq .Section.Key "overview"}}YOUR PLATFORM. A WORLD OF POSSIBILITY.{{else}}YOUR OPERATIONS, IN FOCUS{{end}}</p><h1>{{if eq .Section.Key "overview"}}A clearer view.<br class="heading-mobile-break"> <em>A stronger platform.</em>{{else}}{{.Section.Title}}{{end}}</h1><p>{{if eq .Section.Key "overview"}}<span id="admin-greeting">Welcome back</span>, <strong id="admin-owner-name">{{.User.FullName}}</strong>. Here's what is happening across Agro-Shield.{{else}}{{.Section.Description}}{{end}}</p></div><a class="button secondary" href="{{.Section.Path}}"><svg class="a-icon" aria-hidden="true"><use href="#a-refresh"/></svg>Refresh records</a></div>
+      <div class="page-heading {{if eq .Section.Key "overview"}}overview-heading{{end}}"><div><p class="eyebrow"><span></span>{{if eq .Section.Key "overview"}}YOUR PLATFORM. A WORLD OF POSSIBILITY.{{else}}YOUR OPERATIONS, IN FOCUS{{end}}</p><h1>{{if eq .Section.Key "overview"}}A clearer view.<br class="heading-mobile-break"> <em>A stronger platform.</em>{{else}}{{.Section.Title}}{{end}}</h1><p>{{if eq .Section.Key "overview"}}<span id="admin-greeting">Welcome back</span>, <strong id="admin-owner-name">{{.User.FullName}}</strong>. Here's what is happening across Agrilinks Nigeria.{{else}}{{.Section.Description}}{{end}}</p></div><a class="button secondary" href="{{.Section.Path}}"><svg class="a-icon" aria-hidden="true"><use href="#a-refresh"/></svg>Refresh records</a></div>
       {{if .Notice}}<p class="notice" role="status"><svg class="a-icon" aria-hidden="true"><use href="#a-check"/></svg>{{.Notice}}</p>{{end}}
       {{if .Error}}<p class="error" role="alert"><svg class="a-icon" aria-hidden="true"><use href="#a-bell"/></svg>{{.Error}}</p>{{end}}
       {{if .Policies}}<section class="panel policy-panel" aria-label="Operational policies"><details><summary><svg class="a-icon" aria-hidden="true"><use href="#a-shield"/></svg>Workspace policies<span>View guidance</span><svg class="a-icon" aria-hidden="true"><use href="#a-chevron"/></svg></summary><div>{{range .Policies}}<p><strong>{{.Label}}:</strong> {{.Value}}</p>{{end}}</div></details></section>{{end}}
@@ -110,7 +110,7 @@
       {{end}}
       {{if .Tables}}<nav class="pagination" aria-label="Record pages">{{if gt .Page 1}}<a class="button secondary" href="{{.Section.Path}}?q={{.Search}}&amp;page={{.PreviousPage}}">← Previous</a>{{end}}<span>Page {{.Page}} · up to 25 records per table</span>{{if .HasNext}}<a class="button secondary" href="{{.Section.Path}}?q={{.Search}}&amp;page={{.NextPage}}">Next →</a>{{end}}</nav>{{end}}
       {{if eq .Section.Key "overview"}}<details class="workspace-directory"><summary><svg class="a-icon" aria-hidden="true"><use href="#a-overview"/></svg>Explore your workspaces<span>{{len .Navigation}} areas available to your role</span><svg class="a-icon" aria-hidden="true"><use href="#a-chevron"/></svg></summary><section class="section-directory" aria-label="Management areas">{{range .Navigation}}{{if ne .Key "overview"}}<a class="directory-card" href="{{.Path}}"><span class="directory-icon"><svg class="a-icon" aria-hidden="true"><use href="#a-{{.Key}}"/></svg></span><h2>{{template "admin_nav_label" .Key}}</h2><p>{{.Description}}</p><svg class="a-icon directory-arrow" aria-hidden="true"><use href="#a-up-right"/></svg></a>{{end}}{{end}}</section></details>{{end}}
-      <footer class="workspace-footer"><span><svg class="a-icon" aria-hidden="true"><use href="#a-shield"/></svg>Agro-Shield. Growing with good stewardship.</span><span>Record times are shown in UTC</span></footer>
+      <footer class="workspace-footer"><span><svg class="a-icon" aria-hidden="true"><use href="#a-shield"/></svg>Agrilinks Nigeria. Growing with good stewardship.</span><span>Record times are shown in UTC</span></footer>
     </main>
   </div>
 </div>

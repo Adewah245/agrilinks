@@ -17,7 +17,7 @@ const (
 	defaultNegotiationWindow    = 24 * time.Hour
 	defaultPaymentCurrency      = "NGN"
 	defaultOTPDevSender         = "OTP Dev"
-	defaultOTPDevTemplateID     = "a724614a-3a7c-4625-930e-2a8b45141474" // "Agro-Shield" template
+	defaultOTPDevTemplateID     = "a724614a-3a7c-4625-930e-2a8b45141474" // Legacy "Agro-Shield" template; update its text in OTP.dev
 )
 
 // Config holds all application settings in one place.

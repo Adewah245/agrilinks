@@ -190,7 +190,7 @@ func (r *ProductRepository) Create(product *models.Product) error {
 		product.ID,
 		product.Price,
 		product.Unit,
-		"Agro-Shield",
+		"Agrilinks Nigeria",
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -819,7 +819,7 @@ func (r *ProductRepository) Update(product *models.Product) error {
 			product.ID,
 			product.Price,
 			product.Unit,
-			"Agro-Shield",
+			"Agrilinks Nigeria",
 		)
 
 		if err != nil {

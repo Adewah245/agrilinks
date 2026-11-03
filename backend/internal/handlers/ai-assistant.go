@@ -14,7 +14,7 @@ import (
 	"backend/internal/services"
 )
 
-// AIAssistant handles HTTP requests for the Agro-Shield AI Assistant.
+// AIAssistant handles HTTP requests for the Agrilinks Nigeria AI Assistant.
 type AIAssistant struct {
 	ai *services.AIService
 }
@@ -40,7 +40,7 @@ const (
 )
 
 // validAICategories contains the agricultural categories supported
-// by the Agro-Shield AI Assistant.
+// by the Agrilinks Nigeria AI Assistant.
 var validAICategories = map[string]bool{
 	"Crops":                     true,
 	"Livestock":                 true,
@@ -348,7 +348,7 @@ func (h *AIAssistant) Handler(
 			greeting +
 				", " +
 				user.FullName +
-				". I’m Agro-Shield AI, and I’m ready to help you.\n\n" +
+				". I’m Agrilinks Nigeria AI, and I’m ready to help you.\n\n" +
 				diagnosisText(diagnosis.Result)
 
 		h.render(

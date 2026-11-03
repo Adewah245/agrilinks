@@ -25,7 +25,7 @@ type productLister interface {
 
 // weatherGetter defines the weather operation required by the USSD handler.
 //
-// Weather remains available as a dependency because Agro-Shield's USSD
+// Weather remains available as a dependency because Agrilinks Nigeria's USSD
 // experience can later provide weather-aware storage and farming alerts.
 type weatherGetter interface {
 	Current(context.Context, string) (models.Weather, error)
@@ -37,7 +37,7 @@ type weatherGetter interface {
 // Africa's Talking and similar USSD gateways.
 //
 // The user's registered phone number is used to identify the
-// Agro-Shield account.
+// Agrilinks Nigeria account.
 type Handler struct {
 	users         userFinder
 	products      productLister
@@ -124,14 +124,14 @@ func first(values ...string) string {
 //
 // USSD is treated as an authenticated access channel. Registration
 // and profile management happen online, while the registered phone
-// number identifies the user's Agro-Shield account.
+// number identifies the user's Agrilinks Nigeria account.
 func (h *Handler) respond(
 	ctx context.Context,
 	phone string,
 	text string,
 ) string {
 	if strings.TrimSpace(phone) == "" {
-		return "END Unable to identify your Agro-Shield account."
+		return "END Unable to identify your Agrilinks Nigeria account."
 	}
 
 	// USSD is an authenticated access channel:
@@ -139,11 +139,11 @@ func (h *Handler) respond(
 	// and the gateway phone number identifies the account.
 	user, err := h.users.GetByPhone(phone)
 	if err != nil {
-		return "END Agro-Shield is temporarily unavailable. Please try again later."
+		return "END Agrilinks Nigeria is temporarily unavailable. Please try again later."
 	}
 
 	if user == nil {
-		return "END This number is not registered. Register online at Agro-Shield, then dial again."
+		return "END This number is not registered. Register online at Agrilinks Nigeria, then dial again."
 	}
 
 	parts := []string{}
@@ -303,9 +303,9 @@ func (h *Handler) respond(
 	}
 }
 
-// mainMenu returns the initial Agro-Shield USSD menu.
+// mainMenu returns the initial Agrilinks Nigeria USSD menu.
 func mainMenu() string {
-	return "CON Agro-Shield\n" +
+	return "CON Agrilinks Nigeria\n" +
 		"1. Storage\n" +
 		"2. Marketplace\n" +
 		"3. Sales\n" +

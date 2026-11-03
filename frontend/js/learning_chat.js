@@ -16,7 +16,7 @@
         const message = document.createElement("article");
         message.className = `public-learning-message ${role}${error ? " error" : ""}`;
         const label = document.createElement("span");
-        label.textContent = role === "user" ? "You" : "Agro-Shield guide";
+        label.textContent = role === "user" ? "You" : "Agrilinks Nigeria guide";
         const content = document.createElement("p");
         String(text).split(/(\*\*[^*]+\*\*)/g).forEach(part => {
             if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
