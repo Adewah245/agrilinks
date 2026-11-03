@@ -29,7 +29,7 @@ type Dashboard struct {
 	cart         *services.CartService
 	ai           *services.AIService
 	negotiation  *services.NegotiationService
-	weather      *services.WeatherService
+	weather      coordinateWeatherService
 	notification *services.NotificationService
 	events       *repository.MarketEventRepository
 }
@@ -46,13 +46,17 @@ func NewDashboardHandler(
 	notification *services.NotificationService,
 	events *repository.MarketEventRepository,
 ) *Dashboard {
+	var weatherSource coordinateWeatherService
+	if weather != nil {
+		weatherSource = weather
+	}
 	return &Dashboard{
 		product:      product,
 		order:        order,
 		cart:         cart,
 		ai:           ai,
 		negotiation:  negotiation,
-		weather:      weather,
+		weather:      weatherSource,
 		notification: notification,
 		events:       events,
 	}
@@ -179,36 +183,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 			data.PhotoURL = user.PhotoURL
 			data.FarmingTypes = user.FarmingTypes
 
-			// -------------------------------------------------
-			// WEATHER
-			// -------------------------------------------------
-			if h.weather != nil {
-				var err error
-
-				data.Weather, err = h.weather.CurrentForLocation(
-					r.Context(),
-					user.Location,
-					user.LGA,
-					user.State,
-					user.Country,
-				)
-
-				if err != nil {
-					if data.Weather.Available {
-						log.Printf(
-							"dashboard live weather refresh failed for %q; using cached conditions: %v",
-							user.Location,
-							err,
-						)
-					} else {
-						log.Printf(
-							"dashboard weather unavailable for %q: %v",
-							user.Location,
-							err,
-						)
-					}
-				}
-			}
+			// Weather loads in the browser after the user grants device location access.
 
 			// -------------------------------------------------
 			// BUYER DASHBOARD

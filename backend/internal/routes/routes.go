@@ -178,6 +178,7 @@ func NewHandler(container *app.Container) http.Handler {
 		container.Notification,
 		container.MarketEvents,
 	)
+	mux.HandleFunc("POST /api/weather/current", middleware.RequireAuth(container.Sessions, container.UserRepo, dashboardHandler.CurrentWeather))
 
 	mux.HandleFunc(
 		"/dashboard",

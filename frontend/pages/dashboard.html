@@ -24,7 +24,7 @@
 
 <link
     rel="stylesheet"
-    href="/static/css/dashboard.css?v=20260904"
+    href="/static/css/dashboard.css?v=20261103-location"
 >
 
     <link rel="stylesheet" href="/static/css/responsive.css?v=20261027">
@@ -362,38 +362,7 @@
      WEATHER
 ====================================================== -->
 
-<section class="panel dashboard-weather" aria-labelledby="dashboard-weather-title">
-    <div class="section-heading">
-        <div>
-            <p class="eyebrow">Conditions</p>
-            <h2 id="dashboard-weather-title">Today's weather</h2>
-            {{if .Weather.Available}}
-            <span class="weather-source">{{.Weather.Location}} · Source: {{.Weather.Source}}</span>
-            <span class="weather-updated">{{if .Weather.Cached}}Cached conditions{{else}}Live conditions{{end}} · Updated {{.Weather.LastUpdated.Format "3:04 PM"}}</span>
-            {{else}}
-            <span class="weather-source">Live weather unavailable</span>
-            {{end}}
-        </div>
-    </div>
-
-    <div class="dashboard-weather-summary">
-        <div>
-            <span class="weather-icon" aria-hidden="true">{{if .Weather.Available}}☀{{else}}—{{end}}</span>
-            <strong>{{if .Weather.Available}}{{.Weather.Temperature}}{{else}}Unavailable{{end}}</strong>
-            <span>{{if .Weather.Available}}{{.Weather.Summary}}{{else}}Weather unavailable{{end}}</span>
-        </div>
-        <div class="dashboard-weather-details">
-            <span>Humidity <strong>{{if .Weather.Available}}{{.Weather.Humidity}}{{else}}—{{end}}</strong></span>
-            <span>Rain chance <strong>{{if .Weather.Available}}{{.Weather.RainChance}}{{else}}—{{end}}</strong></span>
-            <span>Conditions <strong>{{if .Weather.Available}}{{.Weather.Conditions}}{{else}}Unavailable{{end}}</strong></span>
-        </div>
-    </div>
-
-    <div class="weather-recommendation">
-        <strong>Farm recommendation</strong>
-        <p>{{if .Weather.Available}}{{.Weather.Recommendation}}{{else}}Add your location to your profile to receive live weather conditions. <a href="/profile#edit-modal">Update location</a>{{end}}</p>
-    </div>
-</section>
+{{template "dashboard_weather" .}}
 
 
 <!-- =====================================================
@@ -917,7 +886,7 @@
 
 
 <!-- =====================================================
-     FARM HEALTH + WEATHER
+     FARM HEALTH
 ====================================================== -->
 
 {{if not .IsBuyer}}
@@ -1100,242 +1069,6 @@
 
 
 
-        <!-- =================================================
-             WEATHER
-        ================================================== -->
-
-        <section
-            class="panel weather-card"
-            aria-labelledby="weather-title"
-            hidden
-        >
-
-
-            <div class="section-heading">
-
-
-                <div>
-
-                    <p class="eyebrow">
-                        Conditions
-                    </p>
-
-
-                    <h2 id="weather-title">
-                        Today's weather
-                    </h2>
-
-
-                    {{if .Weather.Available}}
-
-                        <span class="weather-source">
-
-                            <img
-                                class="weather-location-icon"
-                                src="/static/assets/icon/location-image.avif"
-                                width="14"
-                                height="14"
-                                alt=""
-                            >
-
-                            <span>
-                                {{.Weather.Location}}
-                                · Source: {{.Weather.Source}}
-                            </span>
-
-                        </span>
-
-
-                        <span class="weather-updated">
-
-                            {{if .Weather.Cached}}
-                                Cached conditions
-                            {{else}}
-                                Live conditions
-                            {{end}}
-
-                            · Updated
-                            {{.Weather.LastUpdated.Format "3:04 PM"}}
-
-                        </span>
-
-
-                    {{else}}
-
-                        <span class="weather-source">
-                            Live weather unavailable
-                        </span>
-
-                    {{end}}
-
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="weather-main">
-
-
-                <div
-                    class="weather-icon"
-                    aria-hidden="true"
-                >
-
-                    {{if .Weather.Available}}
-                        ☀
-                    {{else}}
-                        —
-                    {{end}}
-
-                </div>
-
-
-                <div>
-
-
-                    <strong class="temperature">
-
-                        {{if .Weather.Available}}
-                            {{.Weather.Temperature}}
-                        {{else}}
-                            Unavailable
-                        {{end}}
-
-                    </strong>
-
-
-                    <span>
-
-                        {{if .Weather.Available}}
-                            {{.Weather.Summary}}
-                        {{else}}
-                            Weather unavailable
-                        {{end}}
-
-                    </span>
-
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="weather-details">
-
-
-                <div>
-
-                    <span>
-                        Humidity
-                    </span>
-
-
-                    <strong>
-
-                        {{if .Weather.Available}}
-                            {{.Weather.Humidity}}
-                        {{else}}
-                            —
-                        {{end}}
-
-                    </strong>
-
-                </div>
-
-
-
-                <div>
-
-                    <span>
-                        Rain chance
-                    </span>
-
-
-                    <strong>
-
-                        {{if .Weather.Available}}
-                            {{.Weather.RainChance}}
-                        {{else}}
-                            —
-                        {{end}}
-
-                    </strong>
-
-                </div>
-
-
-
-                <div>
-
-                    <span>
-                        Conditions
-                    </span>
-
-
-                    <strong>
-
-                        {{if .Weather.Available}}
-                            {{.Weather.Conditions}}
-                        {{else}}
-                            Unavailable
-                        {{end}}
-
-                    </strong>
-
-                </div>
-
-
-            </div>
-
-
-
-            <div class="weather-recommendation">
-
-
-                <strong>
-                    Farm recommendation
-                </strong>
-
-
-                {{if .Weather.Available}}
-
-                    <span class="weather-recommendation-source">
-                        Based on current conditions
-                    </span>
-
-                {{end}}
-
-
-                <p>
-
-                    {{if .Weather.Available}}
-
-                        {{.Weather.Recommendation}}
-
-                    {{else}}
-
-                        Add your location to your profile
-                        to receive live weather conditions
-                        from Open-Meteo.
-
-                        <a href="/profile#edit-modal">
-                            Update location
-                        </a>
-
-                    {{end}}
-
-                </p>
-
-
-            </div>
-
-
-        </section>
 
 
     </section>
@@ -3279,6 +3012,39 @@
     src="/static/js/navigation.js?v=20261027"
 ></script>
 
+<script src="/static/js/weather.js?v=20261103-place" defer></script>
+
 </body>
 
 </html>
+
+{{define "dashboard_weather"}}
+<section class="panel {{if .IsBuyer}}dashboard-weather{{else}}weather-card{{end}} device-weather" data-device-weather aria-labelledby="device-weather-title" data-weather-state="waiting">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">Where you are</p>
+            <h2 id="device-weather-title">Today's weather</h2>
+            <span class="weather-source" data-weather-location>Your device location</span>
+            <span class="weather-updated" data-weather-place-status hidden role="status"></span>
+            <span class="weather-updated" data-weather-location-credit hidden>Place names by <a href="https://www.bigdatacloud.com/free-api/free-reverse-geocode-to-city-api" target="_blank" rel="noopener noreferrer">BigDataCloud</a></span>
+            <span class="weather-updated" data-weather-updated hidden></span>
+        </div>
+    </div>
+    <p class="weather-location-status" data-weather-status role="status" aria-live="polite">Allow location access when your browser asks to see weather where you are.</p>
+    <div data-weather-values hidden>
+        <div class="weather-main">
+            <span class="weather-icon" data-weather-icon aria-hidden="true"></span>
+            <div><strong class="temperature" data-weather-temperature></strong><span data-weather-summary></span></div>
+        </div>
+        <div class="weather-details">
+            <div><span>Humidity</span><strong data-weather-humidity></strong></div>
+            <div><span>Rain chance this hour</span><strong data-weather-rain></strong></div>
+            <div><span>Conditions</span><strong data-weather-conditions></strong></div>
+        </div>
+        <div class="weather-recommendation"><strong>Farm recommendation</strong><p data-weather-recommendation></p></div>
+        <p class="weather-location-accuracy" data-weather-accuracy></p>
+    </div>
+    <button type="button" class="weather-location-button" data-weather-refresh>Use my location</button>
+    <noscript><p>Enable JavaScript and allow location access to see your local weather.</p></noscript>
+</section>
+{{end}}

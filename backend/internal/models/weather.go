@@ -29,7 +29,8 @@ type Weather struct {
 	Icon        string `json:"icon"`
 
 	// Approximate means the location was resolved to the user's LGA or state.
-	Approximate bool `json:"approximate"`
+	Approximate  bool   `json:"approximate"`
+	LocationNote string `json:"location_note,omitempty"`
 
 	// Farming-oriented guidance generated from the weather conditions.
 	Recommendation string `json:"recommendation"`

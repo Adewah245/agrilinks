@@ -1,12 +1,26 @@
 package routes
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"backend/internal/app"
 )
+
+func TestDeviceWeatherRequiresLogin(t *testing.T) {
+	handler := NewHandler(&app.Container{})
+	request := httptest.NewRequest(http.MethodPost, "/api/weather/current", strings.NewReader(`{"latitude":7.7322,"longitude":8.5391,"accuracy":25}`))
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/login" {
+		t.Fatalf("unauthenticated weather request: %d %s", response.Code, response.Body.String())
+	}
+}
 
 func TestDashboardLinksHaveRegisteredRoutes(t *testing.T) {
 	content, err := os.ReadFile("../../../frontend/pages/dashboard.html")

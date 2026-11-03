@@ -81,6 +81,39 @@ func (s *WeatherService) Current(ctx context.Context, location string) (models.W
 	return s.CurrentForLocation(ctx, location, "", "", "Nigeria")
 }
 
+// CurrentAtCoordinates uses only the device's coordinates. Its cache is scoped
+// to that point, so moving to another area cannot reuse the previous area's
+// conditions or fall back to the account's saved state or LGA.
+func (s *WeatherService) CurrentAtCoordinates(ctx context.Context, latitude, longitude float64) (models.Weather, error) {
+	if math.IsNaN(latitude) || math.IsInf(latitude, 0) || math.Abs(latitude) > 90 ||
+		math.IsNaN(longitude) || math.IsInf(longitude, 0) || math.Abs(longitude) > 180 {
+		return models.Weather{}, errors.New("valid device coordinates are required")
+	}
+	key := fmt.Sprintf("coordinates:%.4f,%.4f", latitude, longitude)
+	cached, hasCache := s.cached(key)
+	if hasCache && time.Since(cached.fetchedAt) < weatherCacheTTL && time.Since(cached.weather.LastUpdated) < weatherMaxAge {
+		weather := cached.weather
+		weather.Cached = true
+		return weather, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, weatherRequestTimeout)
+	defer cancel()
+	weather, err := s.fetchCoordinates(ctx, latitude, longitude, "Your current location")
+	if err != nil {
+		if hasCache && time.Since(cached.weather.LastUpdated) < weatherMaxAge {
+			weather = cached.weather
+			weather.Cached, weather.Stale = true, true
+			weather.Error = "Live weather could not be refreshed. Showing the last update for this location."
+			return weather, err
+		}
+		return weatherUnavailable(err), err
+	}
+	s.mu.Lock()
+	s.cache[key] = cachedWeather{weather: weather, fetchedAt: time.Now()}
+	s.mu.Unlock()
+	return weather, nil
+}
+
 // CurrentForLocation checks the country, state and LGA of geocoding results.
 // A single deadline covers every lookup and the forecast request, so an outage
 // cannot hold the dashboard open for a separate timeout per candidate.
@@ -119,6 +152,12 @@ func (s *WeatherService) CurrentForLocation(ctx context.Context, location, lga, 
 		weather, err := s.fetch(ctx, candidate, candidateLGA, state, country)
 		if err == nil {
 			weather.Approximate = candidate != location && candidate != joinWeatherLocation(location, lga, state, country)
+			if candidate == stateQuery {
+				weather.Approximate = true
+				weather.LocationNote = "Weather for the state capital"
+			} else if weather.Approximate {
+				weather.LocationNote = "Weather for your LGA"
+			}
 			s.mu.Lock()
 			s.cache[cacheKey] = cachedWeather{weather: weather, fetchedAt: time.Now()}
 			s.mu.Unlock()
@@ -211,8 +250,8 @@ func joinWeatherLocation(fields ...string) string {
 }
 
 func weatherStateQuery(state, country string) string {
-	if normalizeWeatherRegion(state) == "fct" {
-		return joinWeatherLocation("Federal Capital Territory", country)
+	if capital := weatherStateCapitals[normalizeWeatherRegion(state)]; capital != "" {
+		return joinWeatherLocation(capital, state, country)
 	}
 	if state != "" && !strings.HasSuffix(strings.ToLower(state), " state") {
 		state += " State"
@@ -241,21 +280,28 @@ func (s *WeatherService) fetch(ctx context.Context, location, lga, state, countr
 	if err != nil {
 		return models.Weather{}, err
 	}
+	return s.fetchCoordinates(ctx, place.Latitude, place.Longitude, joinWeatherLocation(place.Name, place.Admin1, "Nigeria"))
+}
+
+func (s *WeatherService) fetchCoordinates(ctx context.Context, latitude, longitude float64, location string) (models.Weather, error) {
 	query := url.Values{
-		"latitude":      {strconv.FormatFloat(place.Latitude, 'f', 4, 64)},
-		"longitude":     {strconv.FormatFloat(place.Longitude, 'f', 4, 64)},
-		"current":       {"temperature_2m,relative_humidity_2m,weather_code"},
+		"latitude":      {strconv.FormatFloat(latitude, 'f', 4, 64)},
+		"longitude":     {strconv.FormatFloat(longitude, 'f', 4, 64)},
+		"current":       {"temperature_2m,relative_humidity_2m,weather_code,is_day"},
 		"hourly":        {"precipitation_probability"},
 		"forecast_days": {"1"},
-		"timezone":      {"Africa/Lagos"},
+		"timezone":      {"auto"},
 		"timeformat":    {"unixtime"},
 	}
 	var raw struct {
-		Current struct {
+		UTCOffset            int    `json:"utc_offset_seconds"`
+		TimezoneAbbreviation string `json:"timezone_abbreviation"`
+		Current              struct {
 			Time        *int64   `json:"time"`
 			Temperature *float64 `json:"temperature_2m"`
 			Humidity    *float64 `json:"relative_humidity_2m"`
 			Code        *int     `json:"weather_code"`
+			IsDay       *int     `json:"is_day"`
 		} `json:"current"`
 		Hourly struct {
 			Time []int64    `json:"time"`
@@ -271,7 +317,7 @@ func (s *WeatherService) fetch(ctx context.Context, location, lga, state, countr
 		*current.Humidity < 0 || *current.Humidity > 100 {
 		return models.Weather{}, errors.New("weather API returned incomplete current conditions")
 	}
-	observed := time.Unix(*current.Time, 0).In(time.FixedZone("WAT", 60*60))
+	observed := time.Unix(*current.Time, 0).In(time.FixedZone(raw.TimezoneAbbreviation, raw.UTCOffset))
 	if age := time.Since(observed); age > weatherMaxAge || age < -15*time.Minute {
 		return models.Weather{}, errors.New("weather API returned an outdated observation")
 	}
@@ -280,16 +326,20 @@ func (s *WeatherService) fetch(ctx context.Context, location, lga, state, countr
 		rainChance = fmt.Sprintf("%.0f%%", rain)
 	}
 	summary := weatherSummary(*current.Code)
+	icon := weatherIcon(*current.Code)
+	if current.IsDay != nil && *current.IsDay == 0 && (*current.Code == 0 || *current.Code == 1) {
+		icon = "☾"
+	}
 	return models.Weather{
 		Available:      true,
-		Location:       joinWeatherLocation(place.Name, place.Admin1, "Nigeria"),
+		Location:       location,
 		Source:         "Open-Meteo",
 		Temperature:    fmt.Sprintf("%.0f°C", *current.Temperature),
 		Summary:        summary,
 		Humidity:       fmt.Sprintf("%.0f%%", *current.Humidity),
 		RainChance:     rainChance,
 		Conditions:     summary,
-		Icon:           weatherIcon(*current.Code),
+		Icon:           icon,
 		Recommendation: weatherRecommendation(*current.Code),
 		LastUpdated:    observed,
 	}, nil
@@ -324,14 +374,14 @@ func (s *WeatherService) geocode(ctx context.Context, location, lga, state, coun
 		if state != "" && normalizeWeatherRegion(place.Admin1) != normalizeWeatherRegion(state) {
 			continue
 		}
-		if lga != "" && place.Admin2 != "" && normalizeWeatherRegion(place.Admin2) != normalizeWeatherRegion(lga) {
+		if lga != "" && place.Admin2 != "" && normalizeWeatherLGA(place.Admin2) != normalizeWeatherLGA(lga) {
 			continue
 		}
 		if math.IsNaN(place.Latitude) || math.IsNaN(place.Longitude) || math.Abs(place.Latitude) > 90 || math.Abs(place.Longitude) > 180 {
 			continue
 		}
 		score := 0
-		if lga != "" && normalizeWeatherRegion(place.Admin2) == normalizeWeatherRegion(lga) {
+		if lga != "" && normalizeWeatherLGA(place.Admin2) == normalizeWeatherLGA(lga) {
 			score++
 		}
 		if score > bestScore {
