@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1b5e20">
+    {{if .Description}}<meta name="description" content="{{.Description}}">{{end}}
+    <title>{{.Title}}</title>
+    {{range .Styles}}<link rel="stylesheet" href="{{.}}">{{end}}
+    <link rel="stylesheet" href="/static/dist/index.css">
+</head>
+<body class="{{.BodyClass}}">
+    <div id="root"></div>
+    <noscript><p>Please enable JavaScript to use Agrilinks Nigeria.</p></noscript>
+    <script id="page-data" type="application/json">{{.Bootstrap}}</script>
+    <script type="module" src="/static/dist/index.js"></script>
+</body>
+</html>

@@ -157,7 +157,7 @@ func (h *PaymentHandler) render(
 		Error:    errorText,
 		Notice:   notice,
 	}
-	if err := render.RenderTemplates(w, "payments.html", data); err != nil {
+	if err := render.RenderPage(w, "payments.html", data); err != nil {
 		log.Printf("payment page render error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}

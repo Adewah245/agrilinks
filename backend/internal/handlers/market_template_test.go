@@ -7,6 +7,7 @@ import (
 
 	"backend/internal/models"
 	"backend/internal/render"
+	"backend/internal/testui"
 )
 
 // TestMarketplaceTemplateRendersProductModel keeps the marketplace template
@@ -39,11 +40,11 @@ func TestMarketplaceTemplateRendersProductModel(t *testing.T) {
 		},
 	}
 
-	if err := render.RenderTemplates(response, "marketplace.html", data); err != nil {
+	if err := render.RenderPage(response, "marketplace.html", data); err != nil {
 		t.Fatalf("marketplace template should render: %v", err)
 	}
 
-	body := response.Body.String()
+	body := testui.HTML(t, response.Body.String())
 
 	for _, expected := range []string{
 		"Maize",

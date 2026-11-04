@@ -23,7 +23,7 @@ func TestDeviceWeatherRequiresLogin(t *testing.T) {
 }
 
 func TestDashboardLinksHaveRegisteredRoutes(t *testing.T) {
-	content, err := os.ReadFile("../../../frontend/pages/dashboard.html")
+	content, err := os.ReadFile("../../../frontend/src/pages/DashboardPage.jsx")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,12 +38,16 @@ func TestDashboardLinksHaveRegisteredRoutes(t *testing.T) {
 // TestPageStaticAssetsExist catches broken CSS, JavaScript, image, and upload
 // links before a browser reaches a page that references them.
 func TestPageStaticAssetsExist(t *testing.T) {
-	pages, err := filepath.Glob("../../../frontend/pages/*.html")
+	pages, err := filepath.Glob("../../../frontend/src/pages/*.jsx")
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(pages) != 33 {
+		t.Fatalf("expected all 33 React pages, found %d", len(pages))
+	}
+	pages = append(pages, "../render/pages.json", "../render/shell.html")
 
-	staticURL := regexp.MustCompile(`/(?:static)/[^"'\s?]+`)
+	staticURL := regexp.MustCompile("/(?:static)/[^\"'`\\s?]+")
 
 	for _, page := range pages {
 		content, err := os.ReadFile(page)
@@ -52,6 +56,9 @@ func TestPageStaticAssetsExist(t *testing.T) {
 		}
 
 		for _, url := range staticURL.FindAllString(string(content), -1) {
+			if strings.Contains(url, "${") {
+				continue
+			} // Generated image sequences are exercised in browser checks.
 			asset := filepath.Join("../../..", "frontend", strings.TrimPrefix(url, "/static/"))
 			if _, err := os.Stat(asset); err != nil {
 				t.Errorf("%s references missing static asset %s", page, url)

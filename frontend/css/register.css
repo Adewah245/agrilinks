@@ -60,15 +60,7 @@ body {
 
     min-width: 0;
 
-    background:
-        linear-gradient(
-            rgba(0, 100, 0, 0.82),
-            rgba(0, 100, 0, 0.82)
-        ),
-        url("/static/assets/images/login-image6.jpeg");
-
-    background-size: cover;
-    background-position: center;
+    background: #14532d;
 
     color: #ffffff;
 
@@ -80,8 +72,6 @@ body {
 
     overflow: hidden;
 
-    transition:
-        background-image 0.8s ease-in-out;
 }
 
 .auth-left h1 {

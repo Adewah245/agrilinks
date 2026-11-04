@@ -295,7 +295,7 @@ func (h *Cart) render(
 	// 3. RENDER CART HTML
 	// ========================================================
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"cart.html",
 		data,

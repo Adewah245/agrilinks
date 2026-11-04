@@ -406,7 +406,7 @@ func (h *AIAssistant) render(
 		Error:   errMsg,
 	}
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"ai-assistant.html",
 		data,

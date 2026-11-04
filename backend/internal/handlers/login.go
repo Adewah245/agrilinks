@@ -37,7 +37,7 @@ func (h *Login) LoginHandler(
 	case http.MethodGet:
 		log.Println("User visited login page")
 
-		if err := render.RenderTemplates(
+		if err := render.RenderPage(
 			w,
 			"login.html",
 			LoginPageData{},
@@ -54,7 +54,7 @@ func (h *Login) LoginHandler(
 		if err != nil {
 			log.Println("login failed:", err)
 
-			if renderErr := render.RenderTemplates(
+			if renderErr := render.RenderPage(
 				w,
 				"login.html",
 				LoginPageData{

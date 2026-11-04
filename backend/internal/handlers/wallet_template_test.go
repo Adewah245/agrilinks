@@ -9,6 +9,7 @@ import (
 	"backend/internal/models"
 	"backend/internal/render"
 	"backend/internal/services"
+	"backend/internal/testui"
 )
 
 func TestWalletTemplateRendersAccountStates(t *testing.T) {
@@ -45,10 +46,10 @@ func TestWalletTemplateRendersAccountStates(t *testing.T) {
 				ProviderAvailable:   test.provider,
 				FundingProfileReady: test.profileReady,
 			}
-			if err := render.RenderTemplates(response, "wallet.html", page); err != nil {
+			if err := render.RenderPage(response, "wallet.html", page); err != nil {
 				t.Fatalf("wallet account state should render: %v", err)
 			}
-			body := response.Body.String()
+			body := testui.HTML(t, response.Body.String())
 			if !strings.Contains(body, test.want) {
 				t.Fatalf("missing account state %q", test.want)
 			}
@@ -79,10 +80,10 @@ func TestWalletTemplatePreservesMoneyActionForms(t *testing.T) {
 			{ID: 202, Status: "paid", Currency: "NGN", Amount: "100.00", AccountNumber: "0123456789", CreatedAt: now},
 		},
 	}
-	if err := render.RenderTemplates(response, "wallet.html", page); err != nil {
+	if err := render.RenderPage(response, "wallet.html", page); err != nil {
 		t.Fatalf("populated wallet should render: %v", err)
 	}
-	body := response.Body.String()
+	body := testui.HTML(t, response.Body.String())
 	for _, action := range []string{"quote_deposit", "save_bank", "send_code", "quote_withdrawal", "transfer", "cancel_transfer", "cancel_withdrawal"} {
 		if !strings.Contains(body, `name="action" value="`+action+`"`) {
 			t.Errorf("missing existing money action %s", action)

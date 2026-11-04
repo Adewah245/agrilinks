@@ -24,6 +24,7 @@ import (
 	"backend/internal/repository"
 	"backend/internal/routes"
 	"backend/internal/services"
+	"backend/internal/testui"
 	"backend/internal/testutil"
 )
 
@@ -345,7 +346,7 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 	requireStatus(t, login, http.StatusSeeOther)
 	profile := request(handler, "GET", "/profile", nil, login.Result().Cookies()[0])
 	requireStatus(t, profile, http.StatusOK)
-	if !strings.Contains(profile.Body.String(), `src="`+u.PhotoURL+`"`) {
+	if !strings.Contains(testui.HTML(t, profile.Body.String()), `src="`+u.PhotoURL+`"`) {
 		t.Fatal("profile does not show the captured selfie after login")
 	}
 	for _, cookie := range success.Result().Cookies() {

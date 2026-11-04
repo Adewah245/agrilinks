@@ -172,7 +172,7 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 	case "funding_pending":
 		page.Notice = "Your funding account is awaiting confirmation. You can check its status below."
 	}
-	if err = render.RenderTemplates(w, "wallet.html", page); err != nil {
+	if err = render.RenderPage(w, "wallet.html", page); err != nil {
 		log.Printf("wallet template: %v", err)
 	}
 }
@@ -248,7 +248,7 @@ func (h *WalletHandler) Admin(w http.ResponseWriter, r *http.Request) {
 		page.Error = err.Error()
 		w.WriteHeader(400)
 	}
-	if err = render.RenderTemplates(w, "wallet_admin.html", page); err != nil {
+	if err = render.RenderPage(w, "wallet_admin.html", page); err != nil {
 		log.Printf("wallet admin template: %v", err)
 	}
 }

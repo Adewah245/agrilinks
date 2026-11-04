@@ -13,7 +13,7 @@ func IndexHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		log.Println("User visited home page")
 
-		if err := render.RenderTemplates(
+		if err := render.RenderPage(
 			w,
 			"index.html",
 			nil,

@@ -3,7 +3,7 @@
 **Document status:** Living architecture document  
 **Project:** Agrilinks Nigeria  
 **Primary backend:** Go  
-**Frontend:** HTML, CSS, JavaScript  
+**Frontend:** React 19, Vite, CSS
 **Database:** PostgreSQL  
 **Payment provider:** Flutterwave (`flutterwave`)
 **Primary deployment database direction:** Neon PostgreSQL  
@@ -211,12 +211,12 @@ The project should not introduce a web framework such as Gin unless the architec
 
 ## Frontend
 
-The frontend is being migrated to React one page at a time, starting with the index page.
+All 33 frontend pages use React, with Go serving authenticated page data and the existing API/form endpoints.
 
-- React and Vite for the index page
+- React 19 and Vite for every application page
 - Shared CSS and existing image assets
-- HTML and JavaScript for pages awaiting migration
-- Go continues serving the pages and static files
+- Shared React navigation and form components, with browser integrations mounted through React effects
+- Go serves one HTML shell, explicitly filtered page data, and static files
 
 Install frontend dependencies once from the repository root:
 
@@ -1352,10 +1352,14 @@ Suggested major areas:
 ```text
 frontend/
 ├── assets/
-├── pages/
-├── components/
-├── js/
-└── ...
+├── css/
+├── src/
+│   ├── pages/
+│   ├── components/
+│   ├── hooks/
+│   ├── behaviors/
+│   └── lib/
+└── dist/
 ```
 
 The exact directory layout can evolve, but pages should be organized around user intent and domain features.
@@ -1457,7 +1461,7 @@ The project should be developed in a controlled order.
 |---|---|
 | Backend language | Go |
 | HTTP approach | `net/http` |
-| Frontend | HTML/CSS/JavaScript |
+| Frontend | React 19 / Vite / CSS |
 | Database | PostgreSQL |
 | Cloud PostgreSQL | Neon direction |
 | Payment provider | Flutterwave |

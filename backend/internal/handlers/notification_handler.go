@@ -88,7 +88,7 @@ func (h *NotificationHandler) NotificationsHandler(
 		UnreadCount:   unreadCount,
 	}
 
-	if err := render.RenderTemplates(w, "notification.html", data); err != nil {
+	if err := render.RenderPage(w, "notification.html", data); err != nil {
 		http.Error(w, "Failed to render notifications page", http.StatusInternalServerError)
 		return
 	}

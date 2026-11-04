@@ -13,6 +13,7 @@ import (
 	"backend/internal/repository"
 	"backend/internal/routes"
 	"backend/internal/services"
+	"backend/internal/testui"
 	"backend/internal/testutil"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -237,7 +238,7 @@ func TestTreasuryProviderExecutionAuthenticationAndRecovery(t *testing.T) {
 	handler := routes.NewHandler(c)
 	response := request(handler, "GET", "/admin/revenue", nil, session(t, c, approver))
 	requireStatus(t, response, 200)
-	if !strings.Contains(response.Body.String(), "Completed company transfers") || !strings.Contains(response.Body.String(), "company-bank:") {
+	if !strings.Contains(testui.HTML(t, response.Body.String()), "Completed company transfers") || !strings.Contains(response.Body.String(), "company-bank:") {
 		t.Fatal("dashboard omitted real ledger records")
 	}
 	requireStatus(t, request(handler, "GET", "/admin/revenue", nil, session(t, c, support)), 403)

@@ -8,6 +8,7 @@ import (
 
 	"backend/internal/models"
 	"backend/internal/render"
+	"backend/internal/testui"
 )
 
 func TestAIDiagnosisHistoryTemplateUsesSymptoms(t *testing.T) {
@@ -28,11 +29,11 @@ func TestAIDiagnosisHistoryTemplateUsesSymptoms(t *testing.T) {
 		},
 	}
 
-	if err := render.RenderTemplates(response, "ai-diagnosis-history.html", data); err != nil {
+	if err := render.RenderPage(response, "ai-diagnosis-history.html", data); err != nil {
 		t.Fatalf("diagnosis history template should render: %v", err)
 	}
 
-	body := response.Body.String()
+	body := testui.HTML(t, response.Body.String())
 	if !strings.Contains(body, symptoms) {
 		t.Fatal("diagnosis history template did not render symptoms")
 	}

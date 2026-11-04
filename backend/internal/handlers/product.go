@@ -186,7 +186,7 @@ func (h *ProductHandler) ProductDetailsHandler(
 	// 7. RENDER PRODUCT PAGE
 	// ========================================================
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"product.html",
 		data,

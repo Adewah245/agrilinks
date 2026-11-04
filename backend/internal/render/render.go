@@ -1,13 +1,7 @@
 package render
 
 import (
-	"bytes"
-	"crypto/rand"
-	"encoding/hex"
-	"html/template"
 	"math"
-	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"unicode"
@@ -155,51 +149,4 @@ func humanBadge(badge string) string {
 	default:
 		return readableStatus(badge)
 	}
-}
-
-func loadTemplates() *template.Template {
-	funcs := template.FuncMap{
-		"money": money,
-		"requestKey": func() (string, error) {
-			b := make([]byte, 16)
-			if _, err := rand.Read(b); err != nil {
-				return "", err
-			}
-			return hex.EncodeToString(b), nil
-		},
-		"money0":                 money0,
-		"comma":                  func(v int) string { return commaNumber(float64(v), 0) },
-		"hasCoordinates":         hasCoordinates,
-		"humanOrderStatus":       humanOrderStatus,
-		"humanPaymentStatus":     humanPaymentStatus,
-		"humanNegotiationStatus": humanNegotiationStatus,
-		"humanOfferStatus":       humanOfferStatus,
-		"humanStatus":            humanStatus,
-		"humanBadge":             humanBadge,
-	}
-	for _, pattern := range []string{"../frontend/pages/*.html", "../../frontend/pages/*.html", "../../../frontend/pages/*.html", "frontend/pages/*.html"} {
-		if matches, err := os.ReadDir("."); err == nil && matches != nil {
-			if templates, parseErr := template.New("base").Funcs(funcs).ParseGlob(pattern); parseErr == nil {
-				return templates
-			}
-		}
-	}
-	return template.Must(template.New("base").Funcs(funcs).ParseGlob("../../../frontend/pages/*.html"))
-}
-
-var TMPL = loadTemplates()
-
-func RenderTemplates(w http.ResponseWriter, name string, data any) error {
-	// Render before writing to the HTTP response. A template error after a
-	// partial write prevents callers from returning a correct error response
-	// and produces a "superfluous response.WriteHeader" server warning.
-	var output bytes.Buffer
-	if err := TMPL.ExecuteTemplate(&output, name, data); err != nil {
-		http.Error(w, "This page could not be loaded. Please try again.", http.StatusInternalServerError)
-		return err
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, err := w.Write(output.Bytes())
-	return err
 }

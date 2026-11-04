@@ -242,7 +242,7 @@ func (h *LearningHandler) fail(w http.ResponseWriter, r *http.Request, err error
 	http.Error(w, message, status)
 }
 func (h *LearningHandler) render(w http.ResponseWriter, name string, data any) {
-	if err := render.RenderTemplates(w, name, data); err != nil {
+	if err := render.RenderPage(w, name, data); err != nil {
 		log.Printf("render learning: %v", err)
 		http.Error(w, "We could not open this page", http.StatusInternalServerError)
 	}

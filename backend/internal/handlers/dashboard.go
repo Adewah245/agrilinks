@@ -512,7 +512,7 @@ func (h *Dashboard) DashBoard(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		if err := render.RenderTemplates(
+		if err := render.RenderPage(
 			w,
 			"dashboard.html",
 			data,
@@ -656,7 +656,7 @@ func (h *Dashboard) MarketInsights(
 		),
 	}
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"market-insights.html",
 		data,

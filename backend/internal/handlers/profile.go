@@ -192,7 +192,7 @@ func (h *Profile) ProfileHandler(
 	// 5. RENDER PROFILE PAGE
 	// ========================================================
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"profile.html",
 		data,

@@ -78,7 +78,7 @@ func (h *Negotiation) ListHandler(
 		UserID:       user.ID,
 	}
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"negotiations.html",
 		data,
@@ -588,7 +588,7 @@ func (h *Negotiation) render(
 		TimeLeft:    timeLeftStr,
 	}
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"negotiation.html",
 		data,

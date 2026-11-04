@@ -83,7 +83,7 @@ func (h *ForgotPassword) Handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *ForgotPassword) render(w http.ResponseWriter, data ForgotPasswordPageData) {
-	if err := render.RenderTemplates(w, "forgot-password.html", data); err != nil {
+	if err := render.RenderPage(w, "forgot-password.html", data); err != nil {
 		log.Printf("render password recovery: %v", err)
 	}
 }

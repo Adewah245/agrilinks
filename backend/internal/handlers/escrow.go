@@ -54,5 +54,5 @@ func (h *EscrowHandler) Handler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("notice") == "saved" {
 		page.Notice = "Your action was saved in the order's audit history."
 	}
-	_ = render.RenderTemplates(w, "purchase_protection.html", page)
+	_ = render.RenderPage(w, "purchase_protection.html", page)
 }

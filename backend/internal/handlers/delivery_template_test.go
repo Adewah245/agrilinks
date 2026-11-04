@@ -8,6 +8,7 @@ import (
 
 	"backend/internal/models"
 	"backend/internal/render"
+	"backend/internal/testui"
 )
 
 func TestDeliveryWorkspaceRendersBuyerSellerAndPartnerViews(t *testing.T) {
@@ -39,11 +40,11 @@ func TestDeliveryWorkspaceRendersBuyerSellerAndPartnerViews(t *testing.T) {
 		SelectedID: 6,
 	}
 
-	if err := render.RenderTemplates(response, "deliveries.html", data); err != nil {
+	if err := render.RenderPage(response, "deliveries.html", data); err != nil {
 		t.Fatalf("deliveries template should render: %v", err)
 	}
 
-	body := response.Body.String()
+	body := testui.HTML(t, response.Body.String())
 	for _, expected := range []string{
 		"Arrange delivery",
 		"Request delivery",
@@ -70,11 +71,11 @@ func TestDeliveryPartnerTemplateRendersRegistrationAndReview(t *testing.T) {
 		},
 	}
 
-	if err := render.RenderTemplates(response, "delivery_partner.html", data); err != nil {
+	if err := render.RenderPage(response, "delivery_partner.html", data); err != nil {
 		t.Fatalf("delivery partner template should render: %v", err)
 	}
 
-	body := response.Body.String()
+	body := testui.HTML(t, response.Body.String())
 	for _, expected := range []string{
 		"Register a delivery business",
 		"Local Government Area",

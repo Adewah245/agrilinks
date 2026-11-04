@@ -1,4 +1,16 @@
-.hero-image {
+.page-load-message {
+  max-width: 40rem;
+  margin: 2rem auto;
+  padding: 1rem;
+}
+
+.hero-photo {
+  width: 100%;
+  max-width: 600px;
+  margin: 0;
+}
+
+.hero-photo-frame {
   position: relative;
 }
 
@@ -19,13 +31,100 @@
   cursor: pointer;
 }
 
+.farming-photo-caption {
+  display: grid;
+  gap: 4px;
+  padding: 14px 4px 0;
+  color: var(--color-brand-dark, #14532d);
+}
+
+.farming-photo-label {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.farming-photo-credit {
+  display: block;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.farming-photo-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.farming-auth-image,
+.farming-auth-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.farming-auth-image {
+  object-fit: cover;
+}
+
+.farming-auth-overlay {
+  background: linear-gradient(
+    160deg,
+    rgba(7, 42, 22, 0.55),
+    rgba(7, 42, 22, 0.85)
+  );
+}
+
+.farming-auth-content,
+.farming-auth-caption {
+  position: relative;
+  z-index: 1;
+}
+
+.farming-auth-caption {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin-top: 32px;
+  color: #fff;
+}
+
+.farming-auth-toggle {
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  background: rgba(7, 42, 22, 0.6);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.farming-auth-toggle:focus-visible,
+.farming-photo-credit a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+
 @keyframes hero-slide-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hero-image img {
     animation: none;
+  }
+
+  .farming-auth-toggle {
+    display: none;
   }
 }

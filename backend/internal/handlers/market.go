@@ -283,7 +283,7 @@ func (h *Marketplace) renderWithSearch(
 		SearchTerm:    searchTerm,
 	}
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"marketplace.html",
 		data,

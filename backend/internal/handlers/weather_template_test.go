@@ -7,20 +7,21 @@ import (
 
 	"backend/internal/models"
 	"backend/internal/render"
+	"backend/internal/testui"
 )
 
 func TestDashboardWeatherWaitsForDeviceLocation(t *testing.T) {
 	for _, buyer := range []bool{false, true} {
 		response := httptest.NewRecorder()
 		data := DashboardData{IsBuyer: buyer, FullName: "Location check", HealthMetrics: make([]HealthMetric, 4), Weather: models.Weather{Available: true, Location: "Kogi State", Temperature: "39°C"}}
-		if err := render.RenderTemplates(response, "dashboard.html", data); err != nil {
+		if err := render.RenderPage(response, "dashboard.html", data); err != nil {
 			t.Fatal(err)
 		}
-		body := response.Body.String()
+		body := testui.HTML(t, response.Body.String())
 		if strings.Count(body, "data-device-weather") != 1 {
 			t.Fatal("dashboard must render one device weather card")
 		}
-		for _, expected := range []string{"Allow location access", "data-weather-refresh", "data-weather-values hidden", "/static/js/weather.js"} {
+		for _, expected := range []string{"Allow location access", "data-weather-refresh", `data-weather-values="" hidden=""`} {
 			if !strings.Contains(body, expected) {
 				t.Errorf("missing device location flow %q", expected)
 			}

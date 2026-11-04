@@ -1029,5 +1029,5 @@ func (h *ChatHandler) renderTemplate(
 	templateName string,
 	data interface{},
 ) error {
-	return render.RenderTemplates(w, templateName, data)
+	return render.RenderPage(w, templateName, data)
 }

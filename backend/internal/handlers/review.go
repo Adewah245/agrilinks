@@ -195,7 +195,7 @@ func (h *ReviewHandler) TrustHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := render.RenderTemplates(w, "trust.html", data); err != nil {
+	if err := render.RenderPage(w, "trust.html", data); err != nil {
 		log.Println("trust page render error:", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}

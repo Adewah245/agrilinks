@@ -24,16 +24,12 @@ func main() {
 	if err := os.MkdirAll(out, 0700); err != nil {
 		log.Fatal(err)
 	}
-	frontend, err := filepath.Abs("../frontend")
-	if err != nil {
-		log.Fatal(err)
-	}
 	save := func(name, template string, data any) {
 		response := httptest.NewRecorder()
-		if err := render.RenderTemplates(response, template, data); err != nil {
+		if err := render.RenderPage(response, template, data); err != nil {
 			log.Fatal(err)
 		}
-		html := strings.ReplaceAll(response.Body.String(), `/static/`, `file://`+frontend+`/`)
+		html := response.Body.String()
 		if err := os.WriteFile(filepath.Join(out, name+".html"), []byte(html), 0600); err != nil {
 			log.Fatal(err)
 		}

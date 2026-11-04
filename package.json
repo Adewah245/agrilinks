@@ -6,7 +6,10 @@
     "setup": "npm --prefix frontend ci",
     "build": "npm --prefix frontend run build",
     "start": "npm run build && npm run backend",
-    "backend": "cd backend && go run ./cmd/server"
+    "backend": "cd backend && go run ./cmd/server",
+    "dev": "npm --prefix frontend run dev",
+    "test": "npm --prefix frontend test && cd backend && go test ./...",
+    "test:browser": "node scripts/check-react.mjs"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

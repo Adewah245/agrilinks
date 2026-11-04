@@ -12,6 +12,7 @@ import (
 	"backend/internal/models"
 	"backend/internal/repository"
 	"backend/internal/routes"
+	"backend/internal/testui"
 	"backend/internal/testutil"
 )
 
@@ -19,7 +20,7 @@ func adminForm(t *testing.T, handler http.Handler, cookie *http.Cookie, path str
 	t.Helper()
 	page := request(handler, "GET", path, nil, cookie)
 	requireStatus(t, page, 200)
-	match := regexp.MustCompile(`name="csrf" value="([a-f0-9]+)"`).FindStringSubmatch(page.Body.String())
+	match := regexp.MustCompile(`name="csrf" value="([a-f0-9]+)"`).FindStringSubmatch(testui.HTML(t, page.Body.String()))
 	if len(match) != 2 {
 		t.Fatal("admin form is missing CSRF protection")
 	}
@@ -204,7 +205,7 @@ func TestAdminWorkspacePermissionsAndWorkflows(t *testing.T) {
 	}
 	page := request(handler, "GET", "/admin/users?q=Pagination+Farmer", nil, rootCookie)
 	requireStatus(t, page, 200)
-	if !strings.Contains(page.Body.String(), "Next →") {
+	if !strings.Contains(testui.HTML(t, page.Body.String()), "Next →") {
 		t.Fatal("pagination did not expose remaining records")
 	}
 	requireStatus(t, request(handler, "GET", "/admin/users?q=Pagination+Farmer&page=2", nil, rootCookie), 200)
@@ -213,7 +214,7 @@ func TestAdminWorkspacePermissionsAndWorkflows(t *testing.T) {
 	}
 	page = request(handler, "GET", "/admin/users?q="+strconv.Itoa(farmer.ID), nil, rootCookie)
 	requireStatus(t, page, 200)
-	if strings.Contains(page.Body.String(), "<script>alert(1)</script>") || !strings.Contains(page.Body.String(), "&lt;script&gt;") {
+	if strings.Contains(testui.HTML(t, page.Body.String()), "<script>alert(1)</script>") || !strings.Contains(testui.HTML(t, page.Body.String()), "&lt;script&gt;") {
 		t.Fatal("member name was not safely escaped")
 	}
 	legacyAdmin := fixtureUser(t, c, 6, "buyer")

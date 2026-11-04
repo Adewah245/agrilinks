@@ -76,7 +76,7 @@ func (h *AdminWorkspaceHandler) Handler(w http.ResponseWriter, r *http.Request) 
 	if r.URL.Query().Get("notice") == "saved" {
 		data.Notice = "The change was saved and recorded in the audit log."
 	}
-	if err := render.RenderTemplates(w, "admin.html", data); err != nil {
+	if err := render.RenderPage(w, "admin.html", data); err != nil {
 		log.Printf("admin template: %v", err)
 	}
 }
@@ -156,7 +156,7 @@ func (h *AdminWorkspaceHandler) Action(w http.ResponseWriter, r *http.Request) {
 					data.CSRF = adminCSRF(r)
 					w.Header().Set("Content-Type", "text/html; charset=utf-8")
 					w.WriteHeader(status)
-					if renderErr := render.RenderTemplates(w, "admin.html", data); renderErr != nil {
+					if renderErr := render.RenderPage(w, "admin.html", data); renderErr != nil {
 						log.Printf("admin action error template: %v", renderErr)
 					}
 					return

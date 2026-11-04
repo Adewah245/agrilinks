@@ -139,7 +139,7 @@ func (h *FinanceHandler) Handler(w http.ResponseWriter, r *http.Request) {
 	} else if r.URL.Query().Get("notice") != "" {
 		page.Notice = "The financial action was recorded. Check the status below; an approval does not confirm a bank transfer."
 	}
-	if err = render.RenderTemplates(w, "platform_revenue.html", page); err != nil {
+	if err = render.RenderPage(w, "platform_revenue.html", page); err != nil {
 		log.Printf("finance template: %v", err)
 	}
 }

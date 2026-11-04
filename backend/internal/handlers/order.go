@@ -62,7 +62,7 @@ func (h *OrderHandler) ListHandler(
 		data.Error = "Could not load orders."
 	}
 
-	if err := render.RenderTemplates(w, "orders.html", data); err != nil {
+	if err := render.RenderPage(w, "orders.html", data); err != nil {
 		log.Println("order page render error:", err)
 	}
 }

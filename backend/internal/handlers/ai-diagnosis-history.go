@@ -171,7 +171,7 @@ func (h *AIDiagnosisHistory) Handler(
 		History: history,
 	}
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"ai-diagnosis-history.html",
 		data,

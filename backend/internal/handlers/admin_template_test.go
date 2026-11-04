@@ -7,6 +7,7 @@ import (
 
 	"backend/internal/models"
 	"backend/internal/render"
+	"backend/internal/testui"
 )
 
 func TestAdminTemplateRendersEveryStaffWorkspace(t *testing.T) {
@@ -39,10 +40,10 @@ func TestAdminTemplateRendersEveryStaffWorkspace(t *testing.T) {
 					}
 				}
 				response := httptest.NewRecorder()
-				if err := render.RenderTemplates(response, "admin.html", page); err != nil {
+				if err := render.RenderPage(response, "admin.html", page); err != nil {
 					t.Fatalf("admin workspace should render: %v", err)
 				}
-				body := response.Body.String()
+				body := testui.HTML(t, response.Body.String())
 				if !strings.Contains(body, "&lt;script&gt;") || strings.Contains(body, "<script>alert(1)</script>") {
 					t.Error("staff names must remain escaped")
 				}
@@ -63,10 +64,10 @@ func TestAdminTemplatePreservesReviewFormsAndTokens(t *testing.T) {
 		page.Tables = append(page.Tables, models.AdminTable{Key: key, Title: key, Columns: []string{"ID", "Status"}, Rows: []models.AdminRow{{ID: "17", Status: "pending", Cells: []string{"17", "pending"}}}})
 	}
 	response := httptest.NewRecorder()
-	if err := render.RenderTemplates(response, "admin.html", page); err != nil {
+	if err := render.RenderPage(response, "admin.html", page); err != nil {
 		t.Fatalf("admin review forms should render: %v", err)
 	}
-	body := response.Body.String()
+	body := testui.HTML(t, response.Body.String())
 	for _, action := range []string{"user_status", "user_verification", "product_status", "report_update", "ticket_create", "ticket_update", "staff_role", "staff_access", "wallet_withdrawal", "wallet_transfer"} {
 		if !strings.Contains(body, `name="action" value="`+action+`"`) {
 			t.Errorf("missing review action %s", action)

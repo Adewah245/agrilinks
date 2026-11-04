@@ -62,7 +62,7 @@ func (h *Register) RegisterHandler(
 
 		log.Println("[registration] page.opened")
 
-		if err := render.RenderTemplates(
+		if err := render.RenderPage(
 			w,
 			"register.html",
 			map[string]any{"FarmingTypes": types},

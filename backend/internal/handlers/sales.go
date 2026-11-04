@@ -118,7 +118,7 @@ func (h *Sales) Handler(
 	// 6. RENDER SALES PAGE
 	// ========================================================
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"sales.html",
 		data,

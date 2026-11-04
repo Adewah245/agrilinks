@@ -28,7 +28,7 @@ func TestDashboardTemplateHasAllRequiredDataFields(t *testing.T) {
 		},
 	}
 
-	if err := render.RenderTemplates(response, "dashboard.html", data); err != nil {
+	if err := render.RenderPage(response, "dashboard.html", data); err != nil {
 		t.Fatalf("dashboard template should render: %v", err)
 	}
 }

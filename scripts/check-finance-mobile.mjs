@@ -1,6 +1,8 @@
+import { startPreviewServer } from './preview-server.mjs';
 import { spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 const directory = process.env.FINANCE_PREVIEW_DIR || '/tmp/agrilinks-finance-preview';
+const { server, baseURL } = await startPreviewServer(directory);
 const chrome = spawn(process.env.CHROME || '/usr/bin/google-chrome', ['--headless', '--no-sandbox', '--disable-gpu', '--disable-background-networking', '--no-first-run', '--allow-file-access-from-files', '--remote-debugging-port=0', '--user-data-dir=/tmp/agrilinks-finance-chrome-' + Date.now(), 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
 let browser;
 const timeout = setTimeout(() => { chrome.kill(); process.exitCode = 1; }, 60000);
@@ -32,8 +34,8 @@ try {
   for (const state of ['funding', 'withdrawal', 'enrollment', 'revenue', 'escrow']) {
     for (const width of [320, 390, 768, 1440]) {
       await call('Emulation.setDeviceMetricsOverride', { width, height: 960, deviceScaleFactor: 1, mobile: width < 500 });
-      await call('Page.navigate', { url: 'file://' + directory + '/' + state + '.html' });
-      for (let i = 0; i < 60; i++) { if (await evaluate('document.readyState') === 'complete') break; await new Promise(resolve => setTimeout(resolve, 50)); }
+      await call('Page.navigate', { url: baseURL + '/' + state + '.html' });
+      for (let i = 0; i < 60; i++) { if (await evaluate("document.readyState === 'complete' && !!document.querySelector('#root h1')")) break; await new Promise(resolve => setTimeout(resolve, 50)); }
       await new Promise(resolve => setTimeout(resolve, 200));
       await evaluate(`document.querySelectorAll('details').forEach(node=>node.open=true)`);
       const layout = await evaluate(`({width:innerWidth,scroll:document.documentElement.scrollWidth,text:document.body.innerText})`);
@@ -58,4 +60,4 @@ try {
   if (exceptions.length) throw new Error(JSON.stringify(exceptions));
   console.log('PASS: 20 responsive cases; fee breakdowns, PIN enrollment, treasury OTP control and no JavaScript exceptions.');
   await send('Browser.close');
-} finally { clearTimeout(timeout); browser?.close(); chrome.kill(); }
+} finally { clearTimeout(timeout); browser?.close(); chrome.kill(); await new Promise(resolve => server.close(resolve)); }

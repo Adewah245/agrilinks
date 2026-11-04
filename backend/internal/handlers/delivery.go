@@ -88,7 +88,7 @@ func (h *DeliveryHandler) Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := render.RenderTemplates(w, "deliveries.html", data); err != nil {
+	if err := render.RenderPage(w, "deliveries.html", data); err != nil {
 		log.Printf("delivery page render: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
@@ -254,7 +254,7 @@ func (h *DeliveryHandler) PartnerPageHandler(w http.ResponseWriter, r *http.Requ
 		data.PartnersForReview, _ = h.service.PartnersForReview(user)
 	}
 
-	if err := render.RenderTemplates(w, "delivery_partner.html", data); err != nil {
+	if err := render.RenderPage(w, "delivery_partner.html", data); err != nil {
 		log.Printf("delivery partner page render: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}

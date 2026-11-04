@@ -803,7 +803,7 @@ func (h *Storage) renderPage(
 		Error:       errMsg,
 	}
 
-	if err := render.RenderTemplates(
+	if err := render.RenderPage(
 		w,
 		"storage.html",
 		data,
