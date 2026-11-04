@@ -7,15 +7,15 @@ This report covers the local security implementation on 4 November 2026. It adds
 | Check | Result |
 | --- | --- |
 | Complete backend suite, `go test ./... -count=1 -timeout 360s` | Passed; integration 158.405s, repository 29.401s |
-| Complete race-detector suite | Pending final result |
+| Complete race-detector suite, `go test -race ./... -count=1 -timeout 360s` | Passed across all packages; no race reports |
 | Frontend production build, React test renderer, and frontend tests | Passed |
-| `go vet ./...` | Passed |
+| `go vet ./...` and `git diff --check` | Passed |
 | Financial/security browser checks | Passed: 28 layouts across 320, 390, 768, and 1440 px, plus security interactions |
 | All-page React browser regression | Passed: 70 layouts (35 pages at mobile/desktop widths), navigation, registration, and existing interactive controls |
 
 The PostgreSQL-backed suites used a temporary local PostgreSQL 16 server on `127.0.0.1:55439`. Each test created and dropped its own uniquely named database; database tests were not skipped. No production database, real identity image, or live payout was used. Flutterwave and phone-code responses were simulated.
 
-Recorded evidence: [backend suite](verification/2026-11-04/backend-full.log), [frontend build/tests](verification/2026-11-04/frontend.log), [financial/security browser checks](verification/2026-11-04/financial-security-browser.log), and [all-page browser checks](verification/2026-11-04/react-browser.log). Mobile screenshots show [MFA setup](verification/2026-11-04/admin-security-390.png), [private review with synthetic placeholders](verification/2026-11-04/withdrawal-review-390.png), and [withdrawal verification](verification/2026-11-04/withdrawal-390.png).
+Recorded evidence: [backend suite](verification/2026-11-04/backend-full.log), [complete race suite](verification/2026-11-04/backend-race.log), [frontend build/tests](verification/2026-11-04/frontend.log), [financial/security browser checks](verification/2026-11-04/financial-security-browser.log), and [all-page browser checks](verification/2026-11-04/react-browser.log). Mobile screenshots show [MFA setup](verification/2026-11-04/admin-security-390.png), [private review with synthetic placeholders](verification/2026-11-04/withdrawal-review-390.png), and [withdrawal verification](verification/2026-11-04/withdrawal-390.png).
 
 ## Coverage
 

@@ -1,0 +1,23 @@
+?   	backend/cmd/admin	[no test files]
+?   	backend/cmd/migrate	[no test files]
+?   	backend/cmd/server	[no test files]
+ok  	backend/internal/app	1.048s
+?   	backend/internal/chat	[no test files]
+ok  	backend/internal/config	1.048s
+ok  	backend/internal/database	1.029s
+?   	backend/internal/dto	[no test files]
+ok  	backend/internal/handlers	24.825s
+ok  	backend/internal/integration	266.145s
+ok  	backend/internal/middleware	1.125s
+ok  	backend/internal/models	1.049s
+ok  	backend/internal/money	1.020s
+ok  	backend/internal/render	1.038s
+ok  	backend/internal/repository	48.340s
+?   	backend/internal/repository/memory	[no test files]
+ok  	backend/internal/routes	1.729s
+ok  	backend/internal/services	8.965s
+?   	backend/internal/testui	[no test files]
+?   	backend/internal/testutil	[no test files]
+ok  	backend/internal/ussd	1.057s
+?   	backend/migrations	[no test files]
+?   	backend/tools/finance-preview	[no test files]
