@@ -1,0 +1,5 @@
+Rendered all 35 React pages at 390px; mobile navigation checked.
+Rendered all 35 React pages at 1440px; mobile navigation checked.
+Login validation, password visibility, selfie capture, phone confirmation, PIN gating, multipart registration and redirect passed.
+Storage editor and GPS denial, marketplace search, profile editing, and wallet controls passed.
+PASS: 70 page layouts and interactive authentication flows.
