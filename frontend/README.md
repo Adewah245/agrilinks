@@ -1,6 +1,6 @@
 # Frontend development
 
-All 33 application pages use React 19 and Vite. This includes authentication,
+All 35 application pages use React 19 and Vite. This includes authentication,
 buyer and seller dashboards, marketplace, storage, chat, learning, AI tools,
 orders, deliveries, wallet, purchase protection, and staff/finance administration.
 Go serves the shared HTML shell, authenticated page data, static assets, and

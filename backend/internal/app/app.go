@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -70,6 +71,14 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	}
 	container.UserRepo.SetConfiguredAdministrators(administratorIDs)
 	container.Config = cfg
+	container.Security, err = services.NewSecurityService(repository.NewSecurityRepository(db), cfg.SecurityEncryptionKey)
+	if err != nil {
+		return nil, err
+	}
+	container.Auth.SetSecurity(container.Security)
+	if err = container.Security.MigrateLegacyPhotos(context.Background(), cfg.FrontendDir); err != nil {
+		return nil, fmt.Errorf("migrate private verification photos: %w", err)
+	}
 	container.Admin = repository.NewAdminRepository(db)
 	container.Escrow = repository.NewEscrowRepository(db)
 	container.Sessions = services.NewSessionService(repository.NewSessionRepository(db), cfg.SessionTTL)
@@ -90,6 +99,7 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	))
 	container.Wallet = services.NewWalletService(repository.NewWalletRepository(db, cfg.PaymentCurrency, commission), repository.NewPaymentRepository(db, commission), walletProvider, container.OTP, cfg.PaymentCurrency)
 	container.Wallet.SetPINService(services.NewTransactionPINService(container.UserRepo))
+	container.Wallet.SetSecurity(container.Security)
 	container.Payment.SetWallet(container.Wallet)
 	var settlementProvider services.SettlementProvider
 	if walletProvider != nil {

@@ -15,15 +15,21 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type AdminWorkspaceHandler struct {
-	repo   *repository.AdminRepository
-	wallet *services.WalletService
+	repo     *repository.AdminRepository
+	wallet   *services.WalletService
+	security *services.SecurityService
 }
 
-func NewAdminWorkspaceHandler(repo *repository.AdminRepository, wallet *services.WalletService) *AdminWorkspaceHandler {
-	return &AdminWorkspaceHandler{repo: repo, wallet: wallet}
+func NewAdminWorkspaceHandler(repo *repository.AdminRepository, wallet *services.WalletService, security ...*services.SecurityService) *AdminWorkspaceHandler {
+	h := &AdminWorkspaceHandler{repo: repo, wallet: wallet}
+	if len(security) > 0 {
+		h.security = security[0]
+	}
+	return h
 }
 func adminCSRF(r *http.Request) string {
 	token, _ := middleware.SessionIDFromRequest(r)
@@ -87,6 +93,12 @@ func (h *AdminWorkspaceHandler) Action(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Please sign in", 401)
 		return
 	}
+	if h.security != nil {
+		if err := h.security.Limit(r.Context(), user.ID, "admin_action", 20, time.Minute); err != nil {
+			sensitiveActionError(w, err)
+			return
+		}
+	}
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Could not read the form", 400)
 		return
@@ -142,7 +154,7 @@ func (h *AdminWorkspaceHandler) Action(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, repository.ErrAdminForbidden) {
 			status = 403
 			message = err.Error()
-		} else if errors.Is(err, repository.ErrAdminInvalid) || errors.Is(err, repository.ErrPhoneExists) || errors.Is(err, repository.ErrEmailExists) {
+		} else if errors.Is(err, repository.ErrAdminInvalid) || errors.Is(err, repository.ErrPhoneExists) || errors.Is(err, repository.ErrEmailExists) || errors.Is(err, repository.ErrPrivateEvidence) || errors.Is(err, repository.ErrMFARequired) {
 			message = err.Error()
 		} else if action == "staff_create" {
 			message = "Check the staff name, phone, email and password (12–72 bytes)."
@@ -223,7 +235,11 @@ func (h *AdminWorkspaceHandler) walletAction(r *http.Request, user *models.User,
 	if kind == "transfer" {
 		err = h.wallet.DecideTransfer(r.Context(), user, id, f["value"])
 	} else {
-		err = h.wallet.DecideWithdrawal(r.Context(), user, id, f["value"])
+		if f["value"] == "approve" && f["evidence_reviewed"] != "yes" {
+			return repository.ErrPrivateEvidence
+		}
+		session, _ := middleware.SessionIDFromRequest(r)
+		err = h.wallet.DecideWithdrawal(r.Context(), user, id, f["value"], session)
 	}
 	after, snapshotErr := h.repo.WalletSnapshot(r.Context(), kind, id)
 	if snapshotErr != nil {

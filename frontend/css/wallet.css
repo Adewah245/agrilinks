@@ -478,3 +478,11 @@
 }
 
 .wallet-fee-breakdown{margin:20px 0;max-width:620px}.wallet-fee-breakdown>div{display:flex;justify-content:space-between;gap:20px;padding:12px 0;border-bottom:1px solid #e2dfd4}.wallet-fee-breakdown dd{font-weight:700;margin:0;white-space:nowrap}#wallet-quote{margin:24px 0;background:#fffdf6;border:1px solid #c4b783}#wallet-quote .wallet-form{max-width:520px}.wallet-transaction-description p{overflow-wrap:anywhere}
+
+.withdrawal-evidence { border: 1px solid #dbe7dc; border-radius: 10px; padding: 18px; margin: 18px 0; min-width: 0; }
+.withdrawal-evidence legend { padding: 0 8px; font-weight: 700; }
+.withdrawal-evidence p { line-height: 1.6; margin-block: 12px; }
+.withdrawal-evidence input[type=checkbox] { width: auto; height: auto; min-height: 0; margin-right: 8px; }
+.evidence-camera { width: 100%; max-width: 420px; max-height: 320px; object-fit: contain; }
+.evidence-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.evidence-actions button { min-height: 44px; padding: 10px 14px; }

@@ -3,7 +3,9 @@ package models
 import "time"
 
 type User struct {
-	ID int
+	// Used only during account creation; never selected for public profiles.
+	VerificationPhoto []byte `json:"-"`
+	ID                int
 
 	// Identity
 	FullName string

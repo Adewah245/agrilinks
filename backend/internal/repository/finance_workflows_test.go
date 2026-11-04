@@ -109,7 +109,43 @@ func (f *financeFixture) balanced() {
 	f.t.Logf("balanced ledger: debit=%d credit=%d kobo; wallet mismatches=0", d, c)
 }
 func (f *financeFixture) request(u *models.User, q *models.FeeQuote, ref string) error {
-	return f.wallet.RequestWithdrawal(f.ctx, u.ID, q.Amount(), ref, &models.UserBankAccount{BankName: q.BankName, BankCode: q.BankCode, AccountName: q.AccountName, AccountNumber: q.AccountNumber}, q)
+	// Accounting fixtures supply private evidence; HTTP capture/authorization
+	// boundaries are exercised separately by the integration security suite.
+	_, err := f.db.Exec(`WITH photo AS (INSERT INTO private_verification_photos(user_id,purpose,encrypted_image) VALUES($1,'withdrawal',$2) RETURNING id) INSERT INTO withdrawal_evidence(token_hash,user_id,session_hash,quote_id,reference,expires_at,photo_id,latitude,longitude,accuracy_m,captured_at,received_at) SELECT $3,$1,$3,$4,$3,CURRENT_TIMESTAMP+interval '10 minutes',id,7.7,8.5,10,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM photo ON CONFLICT(token_hash) DO NOTHING`, u.ID, []byte("test-only-encrypted-photo"), ref, q.ID)
+	if err != nil {
+		return err
+	}
+	return f.wallet.RequestWithdrawal(f.ctx, u.ID, q.Amount(), ref, &models.UserBankAccount{BankName: q.BankName, BankCode: q.BankCode, AccountName: q.AccountName, AccountNumber: q.AccountNumber}, q, models.WithdrawalAuthorization{TokenHash: ref, SessionHash: ref})
+}
+
+func (f *financeFixture) reviewedClaim(id int64) error {
+	admin := f.user("finance_admin")
+	session := f.key() + f.key()
+	security := NewSecurityRepository(f.db)
+	if err := NewSessionRepository(f.db).Create(f.ctx, session, admin.ID, time.Now().Add(time.Hour)); err != nil {
+		return err
+	}
+	if err := security.BeginMFA(f.ctx, admin.ID, session, []byte("test-only-encrypted-secret"), false); err != nil {
+		return err
+	}
+	m, err := security.MFA(f.ctx, admin.ID)
+	if err != nil {
+		return err
+	}
+	if err = security.ConfirmMFA(f.ctx, admin.ID, session, m, 1, nil); err != nil {
+		return err
+	}
+	if err = security.ReviewEvidence(f.ctx, id, admin.ID, session); err != nil {
+		return err
+	}
+	evidence, err := security.Evidence(f.ctx, id)
+	if err != nil {
+		return err
+	}
+	if err = security.MarkPhotoViewed(f.ctx, admin.ID, session, evidence.PhotoID); err != nil {
+		return err
+	}
+	return f.wallet.ClaimWithdrawal(f.ctx, id, admin.ID, session)
 }
 
 func TestFinancialFundingAndWithdrawalAccounting(t *testing.T) {
@@ -149,7 +185,7 @@ func TestFinancialFundingAndWithdrawalAccounting(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = f.wallet.ClaimWithdrawal(f.ctx, x.ID, 0); err != nil {
+			if err = f.reviewedClaim(x.ID); err != nil {
 				t.Fatal(err)
 			}
 			if err = f.wallet.SaveTransferID(f.ctx, x.ID, fmt.Sprint(10000+x.ID)); err != nil {
@@ -179,7 +215,7 @@ func TestFinancialFundingAndWithdrawalAccounting(t *testing.T) {
 			t.Fatal(err)
 		}
 		x, _ := f.wallet.WithdrawalByReference(f.ctx, "failed")
-		if err := f.wallet.ClaimWithdrawal(f.ctx, x.ID, 0); err != nil {
+		if err := f.reviewedClaim(x.ID); err != nil {
 			t.Fatal(err)
 		}
 		actual := int64(250)
@@ -195,7 +231,7 @@ func TestFinancialFundingAndWithdrawalAccounting(t *testing.T) {
 			t.Fatal(err)
 		}
 		x, _ := f.wallet.WithdrawalByReference(f.ctx, "reverse-payout")
-		if err := f.wallet.ClaimWithdrawal(f.ctx, x.ID, 0); err != nil {
+		if err := f.reviewedClaim(x.ID); err != nil {
 			t.Fatal(err)
 		}
 		actual := int64(1000)
@@ -502,7 +538,7 @@ func TestSettlementCorrectionsDeductionsAndFundingAllocation(t *testing.T) {
 		t.Fatal(err)
 	}
 	x, _ := f.wallet.WithdrawalByReference(f.ctx, "settled-payout")
-	if err = f.wallet.ClaimWithdrawal(f.ctx, x.ID, 0); err != nil {
+	if err = f.reviewedClaim(x.ID); err != nil {
 		t.Fatal(err)
 	}
 	actual := int64(700)

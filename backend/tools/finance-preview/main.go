@@ -4,6 +4,10 @@ package main
 
 import (
 	"database/sql"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/jpeg"
 	"log"
 	"net/http/httptest"
 	"os"
@@ -49,5 +53,27 @@ func main() {
 	save("revenue", "platform_revenue.html", finance)
 	escrow := models.EscrowPage{User: user, CanReview: true, CSRF: key, Escrow: &models.Escrow{OrderID: 1001, BuyerName: "Ada Okafor", SellerName: "Benue Farm Cooperative", GrossKobo: 1000000, CommissionKobo: 25000, Currency: "NGN", State: "held", PaymentReference: "ORDER-1001", Products: "Premium maize", DeliveredAt: sql.NullTime{Time: now, Valid: true}, BuyerConfirmedAt: sql.NullTime{Time: now, Valid: true}}, Items: []models.EscrowItem{{Product: "Premium maize", Quantity: "100", UnitPrice: "100.00", Total: "10000.00"}}}
 	save("escrow", "purchase_protection.html", escrow)
+	save("admin-security", "admin-security.html", map[string]any{"Enabled": false, "Verified": false, "Available": true, "CSRF": key, "Destination": "/admin/finance"})
+	save("admin-security-enabled", "admin-security.html", map[string]any{"Enabled": true, "Verified": false, "Available": true, "CSRF": key, "Destination": "/admin/finance"})
+	save("withdrawal-review", "withdrawal-review.html", models.WithdrawalReviewPage{
+		Withdrawal:          &models.Withdrawal{ID: 10, UserID: 2, FullName: "Preview Member", Amount: "10000.00", Currency: "NGN", Status: "pending", BankName: "Test Bank", AccountNumber: "0123456789", AccountName: "Preview Member"},
+		Evidence:            &models.WithdrawalEvidence{WithdrawalID: 10, UserID: 2, PhotoID: 101, Latitude: 7.7, Longitude: 8.5, AccuracyM: 12, CapturedAt: now, ReceivedAt: now},
+		RegistrationPhotoID: 102, CSRF: key,
+	})
+	// A visibly synthetic placeholder tests private image loading without any
+	// real identity photograph or private verification storage.
+	photo := image.NewRGBA(image.Rect(0, 0, 240, 240))
+	draw.Draw(photo, photo.Bounds(), image.NewUniform(color.RGBA{R: 220, G: 240, B: 230, A: 255}), image.Point{}, draw.Src)
+	draw.Draw(photo, image.Rect(70, 40, 170, 140), image.NewUniform(color.RGBA{R: 40, G: 100, B: 80, A: 255}), image.Point{}, draw.Src)
+	f, err := os.Create(filepath.Join(out, "private-photo.jpg"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := jpeg.Encode(f, photo, nil); err != nil {
+		log.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		log.Fatal(err)
+	}
 	log.Print("Synthetic finance previews written to ", out)
 }

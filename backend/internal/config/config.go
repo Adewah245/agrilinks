@@ -22,6 +22,7 @@ const (
 
 // Config holds all application settings in one place.
 type Config struct {
+	SecurityEncryptionKey string
 	// Welcome email — Brevo SMTP
 	BrevoSMTPHost  string
 	BrevoSMTPLogin string
@@ -220,6 +221,7 @@ func Load() (Config, error) {
 	_ = godotenv.Load()
 
 	cfg := Config{
+		SecurityEncryptionKey: strings.TrimSpace(os.Getenv("SECURITY_ENCRYPTION_KEY")),
 		// Welcome email — Brevo SMTP
 		BrevoSMTPHost:  strings.TrimSpace(os.Getenv("BREVO_SMTP_HOST")),
 		BrevoSMTPLogin: strings.TrimSpace(os.Getenv("BREVO_SMTP_LOGIN")),

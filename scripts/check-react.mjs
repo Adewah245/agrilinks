@@ -13,7 +13,7 @@ const cases = (await readdir(directory))
   .sort();
 assert.equal(
   cases.length,
-  33,
+  35,
   "Generate all page fixtures with REACT_PREVIEW_DIR set when running the Go handler tests.",
 );
 const { server, baseURL } = await startPreviewServer(directory, {
@@ -185,7 +185,7 @@ try {
       }
     }
     console.log(
-      `Rendered all 33 React pages at ${width}px; mobile navigation checked.`,
+      `Rendered all 35 React pages at ${width}px; mobile navigation checked.`,
     );
   }
   await navigate("TestReactPages-login-html.html");
@@ -255,7 +255,7 @@ try {
   console.log('Storage editor and GPS denial, marketplace search, profile editing, and wallet controls passed.');
   assert.deepEqual(exceptions, [], "Browser JavaScript exceptions");
   assert.deepEqual(overflows, [], "Pages overflow their viewport");
-  console.log("PASS: 66 page layouts and interactive authentication flows.");
+  console.log("PASS: 70 page layouts and interactive authentication flows.");
   await send("Browser.close");
 } finally {
   clearTimeout(timeout);

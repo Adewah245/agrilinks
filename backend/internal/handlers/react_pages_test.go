@@ -17,23 +17,28 @@ import (
 // misspelled projections, missing presentation methods and invalid React markup.
 func TestReactPages(t *testing.T) {
 	pages := map[string]any{
-		"index.html":           nil,
-		"login.html":           LoginPageData{},
-		"register.html":        struct{ FarmingTypes []models.FarmingType }{},
-		"forgot-password.html": ForgotPasswordPageData{},
-		"dashboard.html":       DashboardData{},
-		"marketplace.html":     MarketplacePageData{},
-		"product.html":         ProductPageData{},
-		"cart.html":            CartPageData{},
-		"orders.html":          OrderPageData{},
-		"payments.html":        PaymentPageData{},
-		"sales.html":           SalesPageData{},
-		"storage.html":         StoragePageData{},
-		"profile.html":         ProfilePageData{},
-		"chat.html":            ChatListPageData{User: &models.User{}},
-		"chat_thread.html":     ChatThreadPageData{User: &models.User{}},
-		"negotiations.html":    NegotiationListPageData{},
-		"negotiation.html":     NegotiationThreadPageData{},
+		"admin-security.html": struct {
+			Enabled, Verified, Available bool
+			CSRF, Destination            string
+		}{Available: true},
+		"withdrawal-review.html": models.WithdrawalReviewPage{},
+		"index.html":             nil,
+		"login.html":             LoginPageData{},
+		"register.html":          struct{ FarmingTypes []models.FarmingType }{},
+		"forgot-password.html":   ForgotPasswordPageData{},
+		"dashboard.html":         DashboardData{},
+		"marketplace.html":       MarketplacePageData{},
+		"product.html":           ProductPageData{},
+		"cart.html":              CartPageData{},
+		"orders.html":            OrderPageData{},
+		"payments.html":          PaymentPageData{},
+		"sales.html":             SalesPageData{},
+		"storage.html":           StoragePageData{},
+		"profile.html":           ProfilePageData{},
+		"chat.html":              ChatListPageData{User: &models.User{}},
+		"chat_thread.html":       ChatThreadPageData{User: &models.User{}},
+		"negotiations.html":      NegotiationListPageData{},
+		"negotiation.html":       NegotiationThreadPageData{},
 		"notification.html": struct {
 			User          *models.User
 			Notifications []models.Notification

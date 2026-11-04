@@ -441,7 +441,7 @@ func (r *WalletRepository) Transfers(ctx context.Context, userID int) ([]models.
 	return items, rows.Err()
 }
 
-func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, amount, reference string, account *models.UserBankAccount, quotes ...*models.FeeQuote) error {
+func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, amount, reference string, account *models.UserBankAccount, quote *models.FeeQuote, auth models.WithdrawalAuthorization) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -472,8 +472,8 @@ func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, am
 		return err
 	}
 	q := &models.FeeQuote{AmountKobo: principal, ServiceKobo: service}
-	if len(quotes) > 0 && quotes[0] != nil {
-		q = quotes[0]
+	if quote != nil {
+		q = quote
 		if q.ID != "" {
 			q, err = scanFeeQuote(tx.QueryRowContext(ctx, `SELECT `+quoteColumns+` FROM wallet_fee_quotes WHERE id=$1 AND user_id=$2 AND kind='withdrawal' AND expires_at>CURRENT_TIMESTAMP`, q.ID, userID))
 			if err != nil {
@@ -497,6 +497,10 @@ func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, am
 	if q.AmountKobo != principal || q.ServiceKobo != service || q.WalletDebitKobo != expectedDebit {
 		return errors.New("withdrawal quote does not match")
 	}
+	var evidence string
+	if err = tx.QueryRowContext(ctx, `SELECT token_hash FROM withdrawal_evidence WHERE token_hash=$1 AND session_hash=$2 AND user_id=$3 AND reference=$4 AND quote_id=$5 AND expires_at>CURRENT_TIMESTAMP AND photo_id IS NOT NULL AND withdrawal_id IS NULL FOR UPDATE`, auth.TokenHash, auth.SessionHash, userID, reference, q.ID).Scan(&evidence); err != nil {
+		return ErrPrivateEvidence
+	}
 	var walletID int64
 	if err = tx.QueryRowContext(ctx, `SELECT id FROM wallets WHERE owner_type='user' AND owner_id=$1 AND currency=$2 FOR UPDATE`, userID, r.currency).Scan(&walletID); err != nil {
 		return err
@@ -515,9 +519,13 @@ func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, am
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO wallet_withdrawals(wallet_id,user_id,reference,amount,currency,bank_name,bank_code,account_name,account_number,name_check_status,name_check_resolved,name_check_at)
-		VALUES($1,$2,$3,$4::numeric,$5,$6,$7,$8,$9,'verified',$8,CURRENT_TIMESTAMP)`, walletID, userID, reference, amount, r.currency, account.BankName, account.BankCode, account.AccountName, account.AccountNumber)
+	var withdrawalID int64
+	err = tx.QueryRowContext(ctx, `INSERT INTO wallet_withdrawals(wallet_id,user_id,reference,amount,currency,bank_name,bank_code,account_name,account_number,name_check_status,name_check_resolved,name_check_at)
+		VALUES($1,$2,$3,$4::numeric,$5,$6,$7,$8,$9,'verified',$8,CURRENT_TIMESTAMP) RETURNING id`, walletID, userID, reference, amount, r.currency, account.BankName, account.BankCode, account.AccountName, account.AccountNumber).Scan(&withdrawalID)
 	if err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE withdrawal_evidence SET withdrawal_id=$2 WHERE token_hash=$1`, evidence, withdrawalID); err != nil {
 		return err
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO wallet_transactions(wallet_id,type,amount,reference) VALUES($1,'withdrawal_reserved',$2::numeric,$3)`, walletID, amount, reference+":reserved")
@@ -563,8 +571,10 @@ func (r *WalletRepository) Withdrawals(ctx context.Context, userID int) ([]model
 	return items, rows.Err()
 }
 
-func (r *WalletRepository) ClaimWithdrawal(ctx context.Context, id int64, adminID int) error {
-	result, err := r.db.ExecContext(ctx, `UPDATE wallet_withdrawals SET status='processing',provider_submission_state='unknown',approved_by=NULLIF($2,0),updated_at=CURRENT_TIMESTAMP WHERE id=$1 AND status='pending' AND provider_submission_state='not_submitted'`, id, adminID)
+func (r *WalletRepository) ClaimWithdrawal(ctx context.Context, id int64, adminID int, sessionHash string) error {
+	result, err := r.db.ExecContext(ctx, `UPDATE wallet_withdrawals w SET status='processing',provider_submission_state='unknown',approved_by=$2,updated_at=CURRENT_TIMESTAMP WHERE w.id=$1 AND w.status='pending' AND w.provider_submission_state='not_submitted' AND $2>0 AND w.user_id<>$2
+      AND EXISTS(SELECT 1 FROM withdrawal_evidence e JOIN withdrawal_evidence_reviews v ON v.withdrawal_id=e.withdrawal_id WHERE e.withdrawal_id=w.id AND e.photo_id IS NOT NULL AND v.reviewer_id=$2 AND v.session_hash=$3 AND v.reviewed_at>CURRENT_TIMESTAMP-interval '15 minutes' AND v.photo_viewed_at>CURRENT_TIMESTAMP-interval '15 minutes')
+      AND EXISTS(SELECT 1 FROM user_sessions s JOIN admin_mfa m ON m.user_id=s.user_id JOIN users u ON u.id=s.user_id WHERE s.user_id=$2 AND s.token_hash=$3 AND s.expires_at>CURRENT_TIMESTAMP AND s.mfa_verified_until>CURRENT_TIMESTAMP AND m.enabled AND u.account_status='active' AND NOT u.staff_disabled AND u.deleted_at IS NULL)`, id, adminID, sessionHash)
 	if err != nil {
 		return err
 	}

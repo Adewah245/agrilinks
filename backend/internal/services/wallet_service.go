@@ -23,7 +23,10 @@ type WalletService struct {
 	otp      *OTPService
 	currency string
 	pins     *TransactionPINService
+	security *SecurityService
 }
+
+func (s *WalletService) SetSecurity(security *SecurityService) { s.security = security }
 
 func NewWalletService(repo *repository.WalletRepository, profiles *repository.PaymentRepository, provider *FlutterwaveClient, otp *OTPService, currency string) *WalletService {
 	return &WalletService{repo: repo, profiles: profiles, provider: provider, otp: otp, currency: currency}
@@ -345,7 +348,7 @@ func (s *WalletService) SaveBank(ctx context.Context, userID int, bankCode, numb
 	return s.profiles.UpsertBankAccount(&models.UserBankAccount{UserID: userID, BankName: name, BankCode: bankCode, AccountName: account.AccountName, AccountNumber: number})
 }
 
-func (s *WalletService) RequestWithdrawal(ctx context.Context, user *models.User, amount, code, pin, key string) error {
+func (s *WalletService) RequestWithdrawal(ctx context.Context, user *models.User, amount, code, pin, key string, proof ...string) error {
 	if user == nil || user.ID <= 0 {
 		return errors.New("please sign in")
 	}
@@ -373,14 +376,10 @@ func (s *WalletService) RequestWithdrawal(ctx context.Context, user *models.User
 	if found, err := s.repo.WithdrawalMatches(ctx, user.ID, q.Amount(), reference, q.BankCode, q.AccountNumber); err != nil {
 		return err
 	} else if found {
-		x, err := s.repo.WithdrawalByReference(ctx, reference)
-		if err != nil {
-			return err
-		}
-		if x.Status == "pending" {
-			return s.submitWithdrawal(ctx, x, 0)
-		}
 		return nil
+	}
+	if len(proof) != 2 || len(proof[0]) != 64 || len(proof[1]) != 64 {
+		return repository.ErrPrivateEvidence
 	}
 	if _, err = s.repo.FeeQuote(ctx, user.ID, key, "withdrawal", false); err != nil {
 		return err
@@ -428,18 +427,20 @@ func (s *WalletService) RequestWithdrawal(ctx context.Context, user *models.User
 		return err
 	}
 	account := &models.UserBankAccount{UserID: user.ID, BankName: q.BankName, BankCode: q.BankCode, AccountName: q.AccountName, AccountNumber: q.AccountNumber}
-	if err = s.repo.RequestWithdrawal(ctx, user.ID, q.Amount(), reference, account, q); err != nil {
+	if err = s.repo.RequestWithdrawal(ctx, user.ID, q.Amount(), reference, account, q, models.WithdrawalAuthorization{TokenHash: SecurityHash(proof[0]), SessionHash: SecurityHash(proof[1])}); err != nil {
 		return err
 	}
-	x, err := s.repo.WithdrawalByReference(ctx, reference)
-	if err != nil {
-		return err
+	if s.security != nil {
+		s.security.Event(ctx, user.ID, "withdrawal_pending_review", "info")
+		if n >= 50000000 {
+			s.security.Event(ctx, user.ID, "large_withdrawal_pending_review", "high")
+		}
 	}
-	return s.submitWithdrawal(ctx, x, 0)
+	return nil
 }
 
-func (s *WalletService) submitWithdrawal(ctx context.Context, x *models.Withdrawal, actorID int) error {
-	if err := s.repo.ClaimWithdrawal(ctx, x.ID, actorID); err != nil {
+func (s *WalletService) submitWithdrawal(ctx context.Context, x *models.Withdrawal, actorID int, sessionHash string) error {
+	if err := s.repo.ClaimWithdrawal(ctx, x.ID, actorID, sessionHash); err != nil {
 		return err
 	}
 	providerID, err := s.provider.CreateWalletTransfer(ctx, x.Reference, x.Amount, x.Currency, x.BankCode, x.AccountNumber, x.AccountName)
@@ -464,7 +465,7 @@ func (s *WalletService) submitWithdrawal(ctx context.Context, x *models.Withdraw
 	return s.checkWithdrawal(ctx, x)
 }
 
-func (s *WalletService) DecideWithdrawal(ctx context.Context, user *models.User, id int64, decision string) error {
+func (s *WalletService) DecideWithdrawal(ctx context.Context, user *models.User, id int64, decision string, session ...string) error {
 	if user == nil || id <= 0 {
 		return errors.New("choose a withdrawal")
 	}
@@ -491,7 +492,14 @@ func (s *WalletService) DecideWithdrawal(ctx context.Context, user *models.User,
 	if !strings.EqualFold(strings.Join(strings.Fields(resolved.AccountName), " "), strings.Join(strings.Fields(x.AccountName), " ")) {
 		return errors.New("the bank account name no longer matches this withdrawal")
 	}
-	return s.submitWithdrawal(ctx, x, user.ID)
+	if len(session) != 1 {
+		return repository.ErrMFARequired
+	}
+	return s.submitWithdrawal(ctx, x, user.ID, SecurityHash(session[0]))
+}
+
+func (s *WalletService) WithdrawalForReview(ctx context.Context, id int64) (*models.Withdrawal, error) {
+	return s.repo.Withdrawal(ctx, id)
 }
 
 func (s *WalletService) checkWithdrawal(ctx context.Context, x *models.Withdrawal) error {

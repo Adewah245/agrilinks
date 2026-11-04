@@ -32,7 +32,7 @@ func testConfig(t *testing.T) config.Config {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return config.Config{Port: "8080", AppEnv: "test", FrontendDir: frontend, SessionTTL: time.Hour,
+	return config.Config{SecurityEncryptionKey: "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=", Port: "8080", AppEnv: "test", FrontendDir: frontend, SessionTTL: time.Hour,
 		RequestTimeout: time.Minute, ShutdownTimeout: time.Second, MaxRequestBytes: 64 << 20,
 		AuthRequestsPerMinute: 1000, AIRequestsPerMinute: 1000, PaymentCurrency: "NGN", SMSProvider: "disabled",
 		OTPTTL: 10 * time.Minute, OTPMaxAttempts: 5, OTPResendInterval: time.Minute,
@@ -71,6 +71,7 @@ func session(t *testing.T, c *app.Container, user *models.User) *http.Cookie {
 	if err != nil {
 		t.Fatal(err)
 	}
+	authorizeFixtureAdmin(t, c, user.ID, token)
 	return &http.Cookie{Name: "agroshield_session", Value: token}
 }
 

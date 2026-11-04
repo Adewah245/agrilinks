@@ -42,8 +42,8 @@ func TestPageStaticAssetsExist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(pages) != 33 {
-		t.Fatalf("expected all 33 React pages, found %d", len(pages))
+	if len(pages) != 35 {
+		t.Fatalf("expected all 35 React pages, found %d", len(pages))
 	}
 	pages = append(pages, "../render/pages.json", "../render/shell.html")
 

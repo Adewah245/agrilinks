@@ -13,11 +13,20 @@ import (
 
 func NewHandler(container *app.Container) http.Handler {
 	mux := http.NewServeMux()
-	adminHandler := handlers.NewAdminWorkspaceHandler(container.Admin, container.Wallet)
+	adminHandler := handlers.NewAdminWorkspaceHandler(container.Admin, container.Wallet, container.Security)
 	for _, section := range models.AdminSections {
-		mux.HandleFunc("GET "+section.Path, middleware.OnlyPath(section.Path, middleware.RequireAuth(container.Sessions, container.UserRepo, adminHandler.Handler)))
+		mux.HandleFunc("GET "+section.Path, middleware.OnlyPath(section.Path, middleware.RequireAuth(container.Sessions, container.UserRepo, handlers.RequireAdminMFA(container.Security, adminHandler.Handler))))
 	}
-	mux.HandleFunc("POST /admin/action", middleware.RequireAuth(container.Sessions, container.UserRepo, adminHandler.Action))
+	mux.HandleFunc("POST /admin/action", middleware.RequireAuth(container.Sessions, container.UserRepo, handlers.RequireAdminMFA(container.Security, adminHandler.Action)))
+
+	securityHandler := handlers.NewSecurityHandler(container.Security, container.Wallet)
+	for _, method := range []string{"GET", "POST"} {
+		mux.HandleFunc(method+" /admin/security", middleware.RequireAuth(container.Sessions, container.UserRepo, securityHandler.MFA))
+	}
+	mux.HandleFunc("POST /wallet/evidence/challenge", middleware.RequireAuth(container.Sessions, container.UserRepo, securityHandler.EvidenceChallenge))
+	mux.HandleFunc("POST /wallet/evidence", middleware.RequireAuth(container.Sessions, container.UserRepo, securityHandler.EvidenceUpload))
+	mux.HandleFunc("GET /private/verification/{id}", middleware.RequireAuth(container.Sessions, container.UserRepo, securityHandler.PrivatePhoto))
+	mux.HandleFunc("GET /admin/withdrawals/{id}/evidence", middleware.RequireAuth(container.Sessions, container.UserRepo, handlers.RequireAdminMFA(container.Security, securityHandler.WithdrawalReview)))
 
 	// ========================================================
 	// USSD
@@ -56,7 +65,7 @@ func NewHandler(container *app.Container) http.Handler {
 		"/static/",
 		http.StripPrefix(
 			"/static/",
-			http.FileServer(http.Dir(frontendDir)),
+			middleware.PublicStaticFiles(frontendDir),
 		),
 	)
 
@@ -131,7 +140,7 @@ func NewHandler(container *app.Container) http.Handler {
 	mux.HandleFunc("/register/phone-verify", middleware.OnlyPath("/register/phone-verify", registerHandler.PhoneVerifyHandler))
 
 	loginHandler := handlers.NewLoginHandler(
-		container.Auth, container.Sessions,
+		container.Auth, container.Sessions, container.Security,
 	)
 
 	mux.HandleFunc(
@@ -989,8 +998,8 @@ func NewHandler(container *app.Container) http.Handler {
 		),
 	)
 	financeHandler := handlers.NewFinanceHandler(container.Finance)
-	mux.HandleFunc("/admin/revenue", middleware.OnlyPath("/admin/revenue", middleware.RequireAuth(container.Sessions, container.UserRepo, financeHandler.Handler)))
-	walletHandler := handlers.NewWalletHandler(container.Wallet)
+	mux.HandleFunc("/admin/revenue", middleware.OnlyPath("/admin/revenue", middleware.RequireAuth(container.Sessions, container.UserRepo, handlers.RequireAdminMFA(container.Security, handlers.LimitFinancialActions(container.Security, financeHandler.Handler)))))
+	walletHandler := handlers.NewWalletHandler(container.Wallet, container.Security)
 	mux.HandleFunc("/wallet", middleware.OnlyPath("/wallet", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Handler)))
 	mux.HandleFunc("GET /wallet/banks", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Banks))
 	mux.HandleFunc("GET /wallet/status", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Status))

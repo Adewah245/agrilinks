@@ -130,20 +130,30 @@ func TestWalletConcurrentRequestsReserveAndRefundOnce(t *testing.T) {
 		return repo.RequestTransfer(ctx, user.ID, target.WalletNumber, "100.00", "repeated-transfer", "Seeds")
 	})
 	account := &models.UserBankAccount{BankName: "Test bank", BankCode: "001", AccountName: user.FullName, AccountNumber: "0123456789"}
-	parallel(func() error { return repo.RequestWithdrawal(ctx, user.ID, "250.00", "repeated-withdrawal", account) })
-	if err = repo.RequestWithdrawal(ctx, user.ID, "250.00", "another-key", account); err == nil {
+	auth := fixtureEvidence(t, db, user.ID, "repeated-withdrawal")
+	parallel(func() error {
+		return repo.RequestWithdrawal(ctx, user.ID, "250.00", "repeated-withdrawal", account, nil, auth)
+	})
+	if err = repo.RequestWithdrawal(ctx, user.ID, "250.00", "another-key", account, nil, auth); err == nil {
 		t.Fatal("second outstanding withdrawal accepted")
 	}
-	if err = repo.RequestWithdrawal(ctx, user.ID, "251.00", "repeated-withdrawal", account); !errors.Is(err, repository.ErrWalletRequestChanged) {
+	if err = repo.RequestWithdrawal(ctx, user.ID, "251.00", "repeated-withdrawal", account, nil, auth); !errors.Is(err, repository.ErrWalletRequestChanged) {
 		t.Fatalf("changed amount accepted: %v", err)
 	}
 	x, err := repo.WithdrawalByReference(ctx, "repeated-withdrawal")
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	admin := fixtureUser(t, c, 9, "buyer")
+	if _, err := db.Exec(`UPDATE users SET is_admin=true WHERE id=$1`, admin.ID); err != nil {
+		t.Fatal(err)
+	}
+	adminCookie := session(t, c, admin)
+	fixtureReviewEvidence(t, c, x.ID, admin.ID, adminCookie.Value)
 	var claims atomic.Int32
 	parallel(func() error {
-		if repo.ClaimWithdrawal(ctx, x.ID, 0) == nil {
+		if repo.ClaimWithdrawal(ctx, x.ID, admin.ID, services.SecurityHash(adminCookie.Value)) == nil {
 			claims.Add(1)
 		}
 		return nil

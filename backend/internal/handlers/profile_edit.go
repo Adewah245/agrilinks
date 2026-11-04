@@ -27,7 +27,7 @@ func (h *ProfileEdit) Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.MultipartForm.RemoveAll()
-	photo, err := saveUploadedFile(r, "passport", "users")
+	photo, err := saveUploadedFile(r, "passport", "profiles")
 	if err != nil {
 		http.Error(w, err.Error(), 400)
 		return

@@ -1,4 +1,6 @@
 export const pages = {
+  "admin-security.html": () => import("./AdminSecurityPage.jsx"),
+  "withdrawal-review.html": () => import("./WithdrawalReviewPage.jsx"),
   "admin.html": () => import("./AdminPage.jsx"),
   "ai-assistant.html": () => import("./AiAssistantPage.jsx"),
   "ai-diagnosis-history.html": () => import("./AiDiagnosisHistoryPage.jsx"),

@@ -1,10 +1,9 @@
 package handlers
 
 import (
+	"io"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"backend/internal/render"
@@ -98,42 +97,19 @@ func (h *Register) RegisterHandler(
 			return
 		}
 
-		// ====================================================
-		// SAVE PROFILE PICTURE
-		// ====================================================
-
-		// Every user must have a profile picture.
-		//
-		// The upload directory is now "users" because the
-		// application no longer stores users as farmers.
-		photoURL, err := saveUploadedFile(
-			r,
-			"profile_picture",
-			"users",
-		)
-
-		if err != nil || photoURL == "" {
-			log.Printf("[registration] selfie.save_failed: missing=%t error=%v", photoURL == "", err)
-			http.Error(
-				w,
-				"Take a selfie before completing registration.",
-				http.StatusBadRequest,
-			)
+		// Verification images are read in memory and stored encrypted in the
+		// same transaction that creates the account. No public file is written.
+		selfieFile, _, err := r.FormFile("profile_picture")
+		if err != nil {
+			http.Error(w, "Take a private verification selfie before completing registration.", 400)
 			return
 		}
-		log.Printf("[registration] selfie.saved: path=%s", photoURL)
-		registered := false
-		defer func() {
-			if !registered {
-				if directory, err := frontendDirectory(); err == nil {
-					if err := os.Remove(filepath.Join(directory, "uploads", "users", filepath.Base(photoURL))); err != nil {
-						log.Printf("[registration] selfie.cleanup_failed: path=%s error=%v", photoURL, err)
-					} else {
-						log.Printf("[registration] selfie.removed_after_failure: path=%s", photoURL)
-					}
-				}
-			}
-		}()
+		defer selfieFile.Close()
+		selfie, err := io.ReadAll(io.LimitReader(selfieFile, (2<<20)+1))
+		if err != nil || len(selfie) > 2<<20 {
+			http.Error(w, "Use a selfie smaller than 2 MB", 400)
+			return
+		}
 
 		// ====================================================
 		// COLLECT REGISTRATION DATA
@@ -354,11 +330,12 @@ func (h *Register) RegisterHandler(
 			user.Country,
 
 			role,
-			photoURL,
+			"",
 
 			user.AccountType,
 			user.OrganisationName,
 			user.FarmingTypes,
+			selfie,
 		)
 
 		if err != nil {
@@ -376,8 +353,7 @@ func (h *Register) RegisterHandler(
 		// REGISTRATION SUCCESS
 		// ====================================================
 
-		log.Printf("[registration] completed: role=%s selfie=%s", role, photoURL)
-		registered = true
+		log.Printf("[registration] completed: role=%s", role)
 		clearRegistrationCookie(w, r)
 
 		http.Redirect(

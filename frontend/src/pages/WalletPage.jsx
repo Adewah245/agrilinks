@@ -1,3 +1,4 @@
+import WithdrawalEvidenceCapture from "../components/WithdrawalEvidenceCapture.jsx";
 import { Select } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import {
@@ -448,6 +449,7 @@ export default function WalletPage({ data }) {
                         name="action"
                         defaultValue="withdraw"
                       />
+                      <WithdrawalEvidenceCapture quote={data.Quote.ID} />
                       <label htmlFor="wallet-withdraw-code">
                         Verification code
                       </label>

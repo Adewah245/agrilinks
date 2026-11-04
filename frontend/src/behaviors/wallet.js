@@ -233,6 +233,7 @@ export default function mount(scope, data) {
     const storedActionKey = "agro-shield-wallet-last-action";
     document.querySelectorAll('form[action="/wallet"]').forEach((form) =>
       form.addEventListener("submit", (event) => {
+        if (event.defaultPrevented) return;
         if (form.dataset.submitting === "true") {
           event.preventDefault();
           return;

@@ -1,0 +1,121 @@
+.security-page {
+  max-width: 740px;
+  margin: 40px auto;
+  padding: 24px;
+  color: #173b26;
+}
+.security-page h1 {
+  margin: 24px 0 16px;
+  font-size: 32px;
+}
+.security-page h2 {
+  margin: 20px 0 12px;
+  font-size: 22px;
+}
+.security-page p {
+  margin: 12px 0;
+  line-height: 1.6;
+}
+.security-page form,
+.security-page section {
+  padding: 24px;
+  border: 1px solid #dbe7dc;
+  border-radius: 12px;
+  background: #fff;
+  margin: 20px 0;
+}
+.security-page label {
+  display: block;
+  margin: 14px 0;
+  line-height: 1.6;
+}
+.security-page input:not([type="checkbox"]),
+.security-page textarea,
+.security-page select {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid #aebdb3;
+  border-radius: 6px;
+  font: inherit;
+}
+.security-page button,
+.security-primary {
+  display: inline-block;
+  min-height: 44px;
+  padding: 10px 16px;
+  margin: 6px 8px 6px 0;
+  background: #207447;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+.security-page button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.security-page .security-error {
+  color: #a31c1c;
+}
+.security-page code {
+  overflow-wrap: anywhere;
+}
+.recovery-codes {
+  padding-left: 20px;
+  line-height: 2;
+}
+.setup-secret {
+  display: block;
+  font-size: 20px;
+  padding: 12px 0;
+}
+.verification-photos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.verification-photos img {
+  width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+}
+.verification-photos figure {
+  margin: 0;
+}
+.security-review dl {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 10px;
+  margin: 20px 0;
+}
+.security-review dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .security-page {
+    margin: 0 auto;
+    padding: 20px;
+  }
+  .security-page form,
+  .security-page section {
+    padding: 16px;
+  }
+  .verification-photos {
+    grid-template-columns: 1fr;
+  }
+  .security-review dl {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .security-review dd {
+    margin-bottom: 10px;
+  }
+}
+.security-page :focus-visible {
+  outline: 3px solid #287844;
+  outline-offset: 3px;
+}

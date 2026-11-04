@@ -211,7 +211,7 @@ The project should not introduce a web framework such as Gin unless the architec
 
 ## Frontend
 
-All 33 frontend pages use React, with Go serving authenticated page data and the existing API/form endpoints.
+All 35 frontend pages use React, with Go serving authenticated page data and the existing API/form endpoints.
 
 - React 19 and Vite for every application page
 - Shared CSS and existing image assets
@@ -236,6 +236,8 @@ Open `http://localhost:9000/` with the example configuration, or use your config
 static-asset tests or when preparing deployment assets.
 
 See [frontend development](frontend/README.md) for configuration details, component locations, and the optional watch command.
+
+Private registration/withdrawal photographs and administrator MFA require `SECURITY_ENCRYPTION_KEY` and migrations 080–082. Withdrawal requests wait for private evidence review before payout submission. Follow [security operations](docs/security-operations.md) for deployment, legacy photo quarantine, authenticator enrollment, monitoring, and retention; see [security verification](docs/security-verification.md) for regression results.
 
 ## Database
 

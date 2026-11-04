@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"mime/multipart"
@@ -68,7 +69,7 @@ func TestRegistrationPhoneConfirmationWithPostgresAndOTPDev(t *testing.T) {
 			return err
 		}
 		return c.Auth.Register(ctx, token, "582491", "582491", "New", "Buyer", targetPhone, email,
-			"signup password", "Makurdi", "Makurdi", "Benue", "Nigeria", "buyer", "/static/assets/images/un.jpeg", "individual", "", nil)
+			"signup password", "Makurdi", "Makurdi", "Benue", "Nigeria", "buyer", "/static/assets/images/un.jpeg", "individual", "", nil, verificationJPEG(t))
 	}
 	noNewAccount := func() {
 		t.Helper()
@@ -224,7 +225,7 @@ func TestRegistrationRequiresPINAfterVerifiedFifthAttempt(t *testing.T) {
 		t.Fatal(err)
 	}
 	register := func(pin, confirmation string) error {
-		return c.Auth.Register(ctx, token, pin, confirmation, "New", "Buyer", phone, "new@example.test", "signup password", "Makurdi", "Makurdi", "Benue", "Nigeria", "buyer", "/static/assets/images/un.jpeg", "individual", "", nil)
+		return c.Auth.Register(ctx, token, pin, confirmation, "New", "Buyer", phone, "new@example.test", "signup password", "Makurdi", "Makurdi", "Benue", "Nigeria", "buyer", "/static/assets/images/un.jpeg", "individual", "", nil, verificationJPEG(t))
 	}
 	if err = register("582491", "582491"); err == nil {
 		t.Fatal("registration bypassed phone verification")
@@ -267,7 +268,6 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 	db, _ := testutil.Database(t, true)
 	cfg := testConfig(t)
 	workspace := t.TempDir()
-	t.Chdir(workspace)
 	if err := os.Mkdir(filepath.Join(workspace, "frontend"), 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -329,25 +329,35 @@ func TestRegistrationHTTPRequiresConfirmation(t *testing.T) {
 	if err != nil || u == nil || u.PhoneVerifiedAt == nil {
 		t.Fatalf("phone was not confirmed: %v", err)
 	}
-	// Only the successful request owns an uploaded file; failures remove theirs.
+	// Verification stays encrypted and is never exposed as a public profile.
 	files, err := os.ReadDir(filepath.Join(workspace, "frontend", "uploads", "users"))
-	if err != nil || len(files) != 1 {
-		t.Fatalf("failed signup left an orphaned photo: %d %v", len(files), err)
+	if err == nil && len(files) > 0 {
+		t.Fatal("registration wrote a public verification photo")
 	}
-	if u.PhotoURL != "/static/uploads/users/"+files[0].Name() {
-		t.Fatalf("captured selfie was not saved as the profile picture: %q", u.PhotoURL)
+	if strings.Contains(u.PhotoURL, "uploads") {
+		t.Fatal("private selfie became a public profile photograph")
 	}
-	photo := request(handler, "GET", u.PhotoURL, nil, nil)
-	requireStatus(t, photo, http.StatusOK)
-	if photo.Header().Get("Content-Type") != "image/jpeg" || !bytes.Equal(photo.Body.Bytes(), selfie.Bytes()) {
-		t.Fatal("saved profile picture does not match the captured selfie")
+	photoID, err := c.Security.Repo.RegistrationPhoto(context.Background(), u.ID)
+	if err != nil || photoID == 0 {
+		t.Fatalf("missing private registration photo: %v", err)
 	}
+	photoPath := fmt.Sprintf("/private/verification/%d", photoID)
+	requireStatus(t, request(handler, "GET", photoPath, nil, nil), 303)
 	login := request(handler, "POST", "/login", url.Values{"phone": {u.Phone}, "password": {"signup password"}}, nil)
-	requireStatus(t, login, http.StatusSeeOther)
+	requireStatus(t, login, 303)
+	photo := request(handler, "GET", photoPath, nil, login.Result().Cookies()[0])
+	requireStatus(t, photo, 200)
+	normalized, err := services.NormalizeVerificationImage(selfie.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(photo.Body.Bytes(), normalized) || !strings.Contains(photo.Header().Get("Cache-Control"), "no-store") {
+		t.Fatal("private photograph response incorrect")
+	}
 	profile := request(handler, "GET", "/profile", nil, login.Result().Cookies()[0])
-	requireStatus(t, profile, http.StatusOK)
-	if !strings.Contains(testui.HTML(t, profile.Body.String()), `src="`+u.PhotoURL+`"`) {
-		t.Fatal("profile does not show the captured selfie after login")
+	requireStatus(t, profile, 200)
+	if strings.Contains(testui.HTML(t, profile.Body.String()), photoPath) {
+		t.Fatal("private photograph leaked into profile")
 	}
 	for _, cookie := range success.Result().Cookies() {
 		if cookie.Name == "agroshield_registration" && cookie.MaxAge < 0 {

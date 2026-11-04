@@ -54,7 +54,7 @@ test("all Go pages have a React entry and page-specific style assets", async () 
     ),
   );
   const { pages } = await import("../src/pages/registry.js");
-  assert.equal(Object.keys(manifest).length, 33);
+  assert.equal(Object.keys(manifest).length, 35);
   assert.deepEqual(Object.keys(pages).sort(), Object.keys(manifest).sort());
   for (const page of Object.values(manifest)) {
     await readFile(

@@ -12,13 +12,13 @@ import (
 
 func TestReactBootstrapEscapesAndProjectsPrivateData(t *testing.T) {
 	response := httptest.NewRecorder()
-	user := &models.User{ID: 7, FullName: `Ada </script><script>alert(1)</script>`, PasswordHash: "secret-password-hash", NIN: "private-identity-number", AccountNumber: "private-bank-number", StaffRole: "super_admin"}
+	user := &models.User{ID: 7, FullName: `Ada </script><script>alert(1)</script>`, PasswordHash: "secret-password-hash", VerificationPhoto: []byte("private-verification-ciphertext"), NIN: "private-identity-number", AccountNumber: "private-bank-number", StaffRole: "super_admin"}
 	err := RenderPage(response, "admin.html", models.AdminPage{User: user, CSRF: "form-token", Section: models.AdminSections[0]})
 	if err != nil {
 		t.Fatal(err)
 	}
 	body := response.Body.String()
-	for _, forbidden := range []string{"secret-password-hash", "private-identity-number", "private-bank-number", "<script>alert(1)</script>"} {
+	for _, forbidden := range []string{"secret-password-hash", "private-verification-ciphertext", "private-identity-number", "private-bank-number", "<script>alert(1)</script>"} {
 		if strings.Contains(body, forbidden) {
 			t.Errorf("bootstrap exposes %q", forbidden)
 		}

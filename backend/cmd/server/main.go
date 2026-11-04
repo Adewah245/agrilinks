@@ -71,6 +71,9 @@ func run() error {
 			if err := sessions.DeleteExpired(cleanup); err != nil {
 				log.Printf("remove expired sessions: %v", err)
 			}
+			if err := container.Security.Repo.Cleanup(cleanup); err != nil {
+				log.Printf("remove expired private evidence: %v", err)
+			}
 			cancel()
 		case <-ctx.Done():
 			shutdown, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)

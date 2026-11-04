@@ -29,6 +29,7 @@ func RequestGuard(next http.Handler, cfg config.Config) http.Handler {
 	protected := crossOrigin.Handler(next)
 	authLimit := newRequestLimiter(cfg.AuthRequestsPerMinute)
 	aiLimit := newRequestLimiter(cfg.AIRequestsPerMinute)
+	financeLimit := newRequestLimiter(60)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		peer, _, _ := net.SplitHostPort(r.RemoteAddr)
 		ip := net.ParseIP(peer)
@@ -81,8 +82,10 @@ func RequestGuard(next http.Handler, cfg config.Config) http.Handler {
 		if r.Method == http.MethodPost {
 			var limiter *requestLimiter
 			switch r.URL.Path {
-			case "/login", "/register", "/register/phone-code", "/forgot-password":
+			case "/login", "/register", "/register/phone-code", "/register/phone-verify", "/forgot-password", "/admin/security":
 				limiter = authLimit
+			case "/wallet", "/wallet/evidence", "/wallet/evidence/challenge", "/admin/action", "/admin/revenue":
+				limiter = financeLimit
 			case "/learn/message", "/learning/chat", "/ai-assistant":
 				limiter = aiLimit
 			}
@@ -127,6 +130,9 @@ func (l *requestLimiter) allow(key string) bool {
 		l.swept = now
 	}
 	window := l.windows[key]
+	if _, exists := l.windows[key]; !exists && len(l.windows) >= 10000 {
+		return false
+	}
 	if now.Sub(window.started) >= time.Minute {
 		window = requestWindow{started: now}
 	}

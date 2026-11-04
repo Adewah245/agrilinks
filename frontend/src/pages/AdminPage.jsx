@@ -2036,6 +2036,17 @@ export default function AdminPage({ data }) {
                                                       ),
                                                   ) ? (
                                                     <>
+                                                      {item9.Key ===
+                                                        "withdrawals" && (
+                                                        <p>
+                                                          <a
+                                                            href={`/admin/withdrawals/${item11.ID}/evidence`}
+                                                          >
+                                                            Review private
+                                                            evidence
+                                                          </a>
+                                                        </p>
+                                                      )}
                                                       <details className="row-action">
                                                         <summary>
                                                           Review request #
@@ -2099,12 +2110,6 @@ export default function AdminPage({ data }) {
                                                                       "pending",
                                                                   ) ? (
                                                                     <>
-                                                                      <option value="approve">
-                                                                        Check
-                                                                        bank and
-                                                                        approve
-                                                                        payment
-                                                                      </option>
                                                                       <option value="rejected">
                                                                         Reject
                                                                         and

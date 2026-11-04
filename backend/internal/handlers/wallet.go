@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"backend/internal/middleware"
 	"backend/internal/models"
@@ -14,10 +15,17 @@ import (
 	"backend/internal/services"
 )
 
-type WalletHandler struct{ service *services.WalletService }
+type WalletHandler struct {
+	service  *services.WalletService
+	security *services.SecurityService
+}
 
-func NewWalletHandler(service *services.WalletService) *WalletHandler {
-	return &WalletHandler{service: service}
+func NewWalletHandler(service *services.WalletService, security ...*services.SecurityService) *WalletHandler {
+	h := &WalletHandler{service: service}
+	if len(security) > 0 {
+		h.security = security[0]
+	}
+	return h
 }
 
 func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +38,12 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	fundingAction := false
 	if r.Method == http.MethodPost {
+		if h.security != nil {
+			if err = h.security.Limit(r.Context(), user.ID, "wallet", 30, time.Minute); err != nil {
+				sensitiveActionError(w, err)
+				return
+			}
+		}
 		if err = r.ParseForm(); err != nil {
 			http.Error(w, "Could not read the form", 400)
 			return
@@ -103,9 +117,14 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 		case "transfer":
 			err = h.service.RequestTransfer(r.Context(), user, r.FormValue("recipient"), r.FormValue("amount"), r.FormValue("note"), r.FormValue("code"), r.PostFormValue("transaction_pin"), r.PostFormValue("request_key"))
 		case "withdraw":
-			err = h.service.RequestWithdrawal(r.Context(), user, r.FormValue("amount"), r.FormValue("code"), r.PostFormValue("transaction_pin"), r.PostFormValue("request_key"))
+			session, _ := middleware.SessionIDFromRequest(r)
+			err = h.service.RequestWithdrawal(r.Context(), user, r.FormValue("amount"), r.FormValue("code"), r.PostFormValue("transaction_pin"), r.PostFormValue("request_key"), r.PostFormValue("evidence_token"), session)
+			notice = "withdrawal_review"
 		case "save_bank":
 			err = h.service.SaveBank(r.Context(), user.ID, r.FormValue("bank_code"), r.FormValue("account_number"), r.PostFormValue("transaction_pin"))
+			if err == nil && h.security != nil {
+				h.security.Event(r.Context(), user.ID, "payout_bank_changed", "warning")
+			}
 		case "cancel_transfer":
 			id, _ := strconv.ParseInt(r.FormValue("id"), 10, 64)
 			err = h.service.DecideTransfer(r.Context(), user, id, "cancelled")
@@ -141,6 +160,9 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
+		if h.security != nil {
+			h.security.Event(r.Context(), user.ID, "wallet_action_failed", "warning")
+		}
 		if action := r.PostFormValue("action"); action == "withdraw" || action == "deposit" {
 			kind := "deposit"
 			if action == "withdraw" {
@@ -159,6 +181,8 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	switch r.URL.Query().Get("notice") {
+	case "withdrawal_review":
+		page.Notice = "Your withdrawal and private evidence are awaiting administrator review. No payout has been submitted."
 	case "funding_instruction":
 		page.Notice = "Funding instruction confirmed. Transfer the exact total shown below to receive your full requested wallet credit."
 	case "pin_created":

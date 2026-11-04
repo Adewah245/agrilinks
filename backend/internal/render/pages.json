@@ -1206,5 +1206,50 @@
       "Withdrawals.*.Reference",
       "Withdrawals.*.Status"
     ]
+  },
+  "admin-security.html": {
+    "styles": [
+      "/static/css/style.css",
+      "/static/css/security.css"
+    ],
+    "bodyClass": "",
+    "component": "AdminSecurityPage",
+    "title": "Administrator security | Agrilinks Nigeria",
+    "fields": [
+      "Enabled",
+      "Verified",
+      "CSRF",
+      "Available",
+      "Destination"
+    ]
+  },
+  "withdrawal-review.html": {
+    "styles": [
+      "/static/css/style.css",
+      "/static/css/security.css"
+    ],
+    "bodyClass": "",
+    "component": "WithdrawalReviewPage",
+    "title": "Private withdrawal review | Agrilinks Nigeria",
+    "fields": [
+      "CSRF",
+      "Error",
+      "RegistrationPhotoID",
+      "Withdrawal.ID",
+      "Withdrawal.UserID",
+      "Withdrawal.FullName",
+      "Withdrawal.Amount",
+      "Withdrawal.Currency",
+      "Withdrawal.BankName",
+      "Withdrawal.AccountName",
+      "Withdrawal.MaskedAccountNumber",
+      "Withdrawal.Status",
+      "Evidence.PhotoID",
+      "Evidence.Latitude",
+      "Evidence.Longitude",
+      "Evidence.AccuracyM",
+      "Evidence.CapturedAt",
+      "Evidence.ReceivedAt"
+    ]
   }
 }

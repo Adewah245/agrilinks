@@ -167,6 +167,12 @@ func (r *UserRepository) create(user *models.User, proof *models.RegistrationPho
 		if err := tx.QueryRow(`UPDATE users SET phone_verified_at=CURRENT_TIMESTAMP WHERE id=$1 RETURNING phone_verified_at`, user.ID).Scan(&user.PhoneVerifiedAt); err != nil {
 			return 0, err
 		}
+		if len(user.VerificationPhoto) == 0 {
+			return 0, errors.New("private verification photo is required")
+		}
+		if _, err = tx.Exec(`INSERT INTO private_verification_photos(user_id,purpose,encrypted_image) VALUES($1,'registration',$2)`, user.ID, user.VerificationPhoto); err != nil {
+			return 0, err
+		}
 		if _, err := tx.Exec(`INSERT INTO user_transaction_pins(user_id,pin_hash) VALUES($1,$2)`, user.ID, pinHash); err != nil {
 			return 0, err
 		}

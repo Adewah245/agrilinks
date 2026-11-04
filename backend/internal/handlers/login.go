@@ -3,6 +3,7 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"backend/internal/middleware"
 	"backend/internal/render"
@@ -18,14 +19,19 @@ type LoginPageData struct {
 type Login struct {
 	service  *services.AuthService
 	sessions *services.SessionService
+	security *services.SecurityService
 }
 
 // NewLoginHandler creates a new Login handler.
-func NewLoginHandler(service *services.AuthService, sessions *services.SessionService) *Login {
-	return &Login{
+func NewLoginHandler(service *services.AuthService, sessions *services.SessionService, security ...*services.SecurityService) *Login {
+	h := &Login{
 		service:  service,
 		sessions: sessions,
 	}
+	if len(security) > 0 {
+		h.security = security[0]
+	}
+	return h
 }
 
 // LoginHandler renders the login page and processes user login requests.
@@ -49,10 +55,25 @@ func (h *Login) LoginHandler(
 	case http.MethodPost:
 		phone := r.FormValue("phone")
 		password := r.FormValue("password")
+		if h.security != nil {
+			allowed, err := h.security.Repo.Allow(r.Context(), services.SecurityHash("login:"+services.NormalizeNigerianPhone(phone)), 10, 15*time.Minute)
+			if err != nil {
+				http.Error(w, "Authentication is unavailable", 503)
+				return
+			}
+			if !allowed {
+				w.Header().Set("Retry-After", "900")
+				http.Error(w, "Too many sign-in attempts. Try again later.", 429)
+				return
+			}
+		}
 
 		user, err := h.service.Login(phone, password)
 		if err != nil {
 			log.Println("login failed:", err)
+			if h.security != nil {
+				h.security.Event(r.Context(), 0, "sign_in_failed", "warning")
+			}
 
 			if renderErr := render.RenderPage(
 				w,
@@ -79,8 +100,8 @@ func (h *Login) LoginHandler(
 		middleware.SetSessionCookie(w, r, sessionID, h.sessions.TTL())
 
 		destination := "/dashboard"
-		if user.CanAdmin("overview") {
-			destination = "/admin"
+		if user.AdminRole() != "" {
+			destination = "/admin/security"
 		}
 		http.Redirect(
 			w,

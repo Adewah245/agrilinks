@@ -189,7 +189,8 @@ func TestWalletMoneyFlowsWithPostgresAndProvider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = c.Wallet.RequestWithdrawal(ctx, sender, "10", capture.message.Code, "582491", q.ID); err != nil {
+	evidence := captureEvidence(t, c, sender, cookie.Value, q.ID)
+	if err = c.Wallet.RequestWithdrawal(ctx, sender, "10", capture.message.Code, "582491", q.ID, evidence, cookie.Value); err != nil {
 		t.Fatal(err)
 	}
 	page, err = c.Wallet.Page(ctx, sender)
@@ -200,13 +201,34 @@ func TestWalletMoneyFlowsWithPostgresAndProvider(t *testing.T) {
 	if err = c.Wallet.DecideWithdrawal(ctx, recipient, withdrawalID, "approve"); err == nil {
 		t.Fatal("outsider approved withdrawal")
 	}
-	if page.Withdrawals[0].Status != "paid" {
-		t.Fatal("own-bank withdrawal was not processed automatically")
+	if page.Withdrawals[0].Status != "pending" {
+		t.Fatal("withdrawal bypassed administrator review")
 	}
+	mu.Lock()
+	beforeReview := transferRequests
+	mu.Unlock()
+	if beforeReview != 0 {
+		t.Fatal("provider contacted before review")
+	}
+	adminCookie := session(t, c, admin)
+	if err = c.Wallet.DecideWithdrawal(ctx, admin, withdrawalID, "approve", adminCookie.Value); err == nil {
+		t.Fatal("approval without evidence review accepted")
+	}
+	requireStatus(t, request(handler, "GET", fmt.Sprintf("/admin/withdrawals/%d/evidence", withdrawalID), nil, adminCookie), 200)
+	if err = c.Wallet.DecideWithdrawal(ctx, admin, withdrawalID, "approve", adminCookie.Value); err == nil {
+		t.Fatal("payout approved before private photograph was read")
+	}
+	privateEvidence, err := c.Security.Repo.Evidence(ctx, withdrawalID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requireStatus(t, request(handler, "GET", fmt.Sprintf("/private/verification/%d", privateEvidence.PhotoID), nil, adminCookie), 200)
+	approval := adminForm(t, handler, adminCookie, "/admin/finance", url.Values{"action": {"wallet_withdrawal"}, "id": {strconv.FormatInt(withdrawalID, 10)}, "value": {"approve"}, "evidence_reviewed": {"yes"}, "reason": {"Matched private evidence and bank account"}})
+	requireStatus(t, request(handler, "POST", "/admin/action", approval, adminCookie), 303)
 	if err = c.Wallet.DecideWithdrawal(ctx, admin, withdrawalID, "check"); err != nil {
 		t.Fatal(err)
 	}
-	if err = c.Wallet.DecideWithdrawal(ctx, admin, withdrawalID, "approve"); err == nil {
+	if err = c.Wallet.DecideWithdrawal(ctx, admin, withdrawalID, "approve", adminCookie.Value); err == nil {
 		t.Fatal("paid withdrawal sent twice")
 	}
 	balance(sender.ID, "830.00")
@@ -225,15 +247,17 @@ func TestWalletMoneyFlowsWithPostgresAndProvider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = c.Wallet.RequestWithdrawal(ctx, sender, "20", capture.message.Code, "582491", q.ID); err == nil {
-		t.Fatal("ambiguous provider submission was not reported")
+	evidence = captureEvidence(t, c, sender, cookie.Value, q.ID)
+	if err = c.Wallet.RequestWithdrawal(ctx, sender, "20", capture.message.Code, "582491", q.ID, evidence, cookie.Value); err != nil {
+		t.Fatal(err)
 	}
 	page, err = c.Wallet.Page(ctx, sender)
 	if err != nil {
 		t.Fatal(err)
 	}
 	withdrawalID = page.Withdrawals[0].ID
-	if err = c.Wallet.DecideWithdrawal(ctx, admin, withdrawalID, "approve"); err == nil {
+	fixtureReviewEvidence(t, c, withdrawalID, admin.ID, adminCookie.Value)
+	if err = c.Wallet.DecideWithdrawal(ctx, admin, withdrawalID, "approve", adminCookie.Value); err == nil {
 		t.Fatal("provider failure claimed success")
 	}
 	if err = c.Wallet.DecideWithdrawal(ctx, sender, withdrawalID, "cancelled"); err == nil {

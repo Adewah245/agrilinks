@@ -16,10 +16,13 @@ import (
 // AuthService handles user registration, authentication,
 // profile updates, and password management.
 type AuthService struct {
+	security        *SecurityService
 	repo            *repository.UserRepository
 	otp             *OTPService
 	registrationOTP *RegistrationOTPService
 }
+
+func (s *AuthService) SetSecurity(security *SecurityService) { s.security = security }
 
 func (s *AuthService) SetOTP(otp *OTPService) { s.otp = otp }
 
@@ -108,7 +111,7 @@ func NewAuthService(repo *repository.UserRepository) *AuthService {
 // - farmingTypes represent farming activities the user
 //   already practices.
 // - Phone confirmation is required before an account is created.
-// - Profile picture IS REQUIRED.
+// - A private verification selfie is required; public profile photos are separate.
 // ============================================================
 
 func (s *AuthService) Register(
@@ -128,6 +131,7 @@ func (s *AuthService) Register(
 	accountType,
 	organisationName string,
 	farmingTypes []string,
+	verificationImage ...[]byte,
 ) error {
 	if !s.registrationOTP.Available() {
 		return ErrRegistrationOTPUnavailable
@@ -184,8 +188,12 @@ func (s *AuthService) Register(
 	// Profile picture is compulsory.
 	// --------------------------------------------------------
 
-	if photoURL == "" {
-		return errors.New("profile picture is required")
+	if len(verificationImage) != 1 {
+		return errors.New("a private verification selfie is required")
+	}
+	privatePhoto, err := s.security.PrivateImage(verificationImage[0])
+	if err != nil {
+		return err
 	}
 
 	// --------------------------------------------------------
@@ -317,7 +325,8 @@ func (s *AuthService) Register(
 
 		OrganisationName: organisationName,
 
-		PhotoURL: photoURL,
+		PhotoURL:          "",
+		VerificationPhoto: privatePhoto,
 
 		FarmingTypes: farmingTypes,
 	}

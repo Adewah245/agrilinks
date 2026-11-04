@@ -159,7 +159,8 @@ func TestAdminWorkspacePermissionsAndWorkflows(t *testing.T) {
 	forbidden = adminForm(t, handler, careCookie, "/admin/support", url.Values{"action": {"wallet_transfer"}, "id": {strconv.Itoa(transferID)}, "value": {"completed"}, "reason": {"Attempt unauthorized payment approval"}})
 	requireStatus(t, request(handler, "POST", "/admin/action", forbidden, careCookie), 403)
 	post(opsCookie, "/admin/finance", url.Values{"action": {"wallet_transfer"}, "id": {strconv.Itoa(transferID)}, "value": {"completed"}, "reason": {"Verified transfer request"}})
-	if err := wallets.RequestWithdrawal(ctx, root.ID, "5.00", "admin-test-withdrawal", &models.UserBankAccount{BankName: "Test bank", BankCode: "044", AccountName: root.FullName, AccountNumber: "1234567890"}); err != nil {
+	withdrawAuth := fixtureEvidence(t, db, root.ID, "admin-test-withdrawal")
+	if err := wallets.RequestWithdrawal(ctx, root.ID, "5.00", "admin-test-withdrawal", &models.UserBankAccount{BankName: "Test bank", BankCode: "044", AccountName: root.FullName, AccountNumber: "1234567890"}, nil, withdrawAuth); err != nil {
 		t.Fatal(err)
 	}
 	var withdrawalID int
@@ -228,8 +229,8 @@ func TestAdminWorkspacePermissionsAndWorkflows(t *testing.T) {
 	}
 	login := request(handler, "POST", "/login", url.Values{"phone": {root.Phone}, "password": {"test password with spaces"}}, nil)
 	requireStatus(t, login, http.StatusSeeOther)
-	if login.Header().Get("Location") != "/admin" {
-		t.Fatal("staff login did not open admin")
+	if login.Header().Get("Location") != "/admin/security" {
+		t.Fatal("staff login did not require MFA")
 	}
 	legacy := request(handler, "GET", "/wallet/admin", nil, rootCookie)
 	requireStatus(t, legacy, http.StatusSeeOther)
