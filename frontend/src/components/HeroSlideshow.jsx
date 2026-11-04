@@ -1,48 +1,22 @@
-import { useEffect, useState } from "react";
-import { farmingPhotos as images } from "../data/farmingPhotos.js";
+import { farmingPhotos } from "../data/farmingPhotos.js";
+import useRotatingImage from "../hooks/useRotatingImage.js";
 import PhotoCredit from "./PhotoCredit.jsx";
+import PhotoControls from "./PhotoControls.jsx";
 
-export default function HeroSlideshow() {
-  const [currentImage, setCurrentImage] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
-
-  useEffect(() => {
-    const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const updatePreference = (event) => setReducedMotion(event.matches);
-    preference.addEventListener("change", updatePreference);
-    return () => preference.removeEventListener("change", updatePreference);
-  }, []);
-
-  useEffect(() => {
-    // Load the next photograph before it is displayed.
-    const nextImage = new Image();
-    nextImage.src = images[(currentImage + 1) % images.length].src;
-  }, [currentImage]);
-
-  useEffect(() => {
-    if (isPaused || reducedMotion) return;
-
-    const interval = window.setInterval(() => {
-      setCurrentImage((current) => (current + 1) % images.length);
-    }, 4000);
-
-    return () => window.clearInterval(interval);
-  }, [isPaused, reducedMotion]);
-
-  const photo = images[currentImage];
+export default function HeroSlideshow({
+  imageId = "hero-slider",
+  initialIndex = 0,
+}) {
+  const slideshow = useRotatingImage(farmingPhotos, initialIndex);
+  const { photo, index } = slideshow;
 
   return (
     <div className="hero-image">
-      <figure className="hero-photo">
+      <figure className="hero-photo" aria-label="Farming and produce photos">
         <div className="hero-photo-frame">
           <img
-            key={currentImage}
-            id="hero-slider"
+            key={index}
+            id={imageId}
             src={photo.src}
             alt={photo.alt}
             style={{ objectPosition: photo.position }}
@@ -50,19 +24,15 @@ export default function HeroSlideshow() {
             width="600"
             height="500"
           />
-          {!reducedMotion && (
-            <button
-              type="button"
-              className="slideshow-toggle"
-              aria-controls="hero-slider"
-              onClick={() => setIsPaused((paused) => !paused)}
-            >
-              {isPaused ? "Play slideshow" : "Pause slideshow"}
-            </button>
-          )}
+          <PhotoControls slideshow={slideshow} imageId={imageId} />
         </div>
         <figcaption className="farming-photo-caption">
-          <span className="farming-photo-label">{photo.label}</span>
+          <div className="farming-photo-heading">
+            <span className="farming-photo-label">{photo.label}</span>
+            <span className="farming-photo-position">
+              {index + 1} / {farmingPhotos.length}
+            </span>
+          </div>
           <PhotoCredit photo={photo} />
         </figcaption>
       </figure>

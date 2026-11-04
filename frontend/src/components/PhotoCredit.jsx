@@ -6,9 +6,13 @@ export default function PhotoCredit({ photo }) {
         {photo.author}
       </a>
       {" · "}
-      <a href={photo.licenseUrl} target="_blank" rel="noreferrer">
-        {photo.license}
-      </a>
+      {photo.licenseUrl ? (
+        <a href={photo.licenseUrl} target="_blank" rel="noreferrer">
+          {photo.license}
+        </a>
+      ) : (
+        <span>{photo.license}</span>
+      )}
       {" · resized"}
     </small>
   );

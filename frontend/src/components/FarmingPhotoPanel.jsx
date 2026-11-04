@@ -1,11 +1,11 @@
-import { useState } from "react";
 import { farmingPhotos } from "../data/farmingPhotos.js";
 import useRotatingImage from "../hooks/useRotatingImage.js";
 import PhotoCredit from "./PhotoCredit.jsx";
+import PhotoControls from "./PhotoControls.jsx";
 
 export default function FarmingPhotoPanel({ children, imageId }) {
-  const [paused, setPaused] = useState(false);
-  const photo = useRotatingImage(farmingPhotos, paused);
+  const slideshow = useRotatingImage(farmingPhotos);
+  const { photo } = slideshow;
 
   return (
     <section className="auth-left farming-auth-panel">
@@ -21,14 +21,7 @@ export default function FarmingPhotoPanel({ children, imageId }) {
       <div className="farming-auth-caption">
         <span className="farming-photo-label">{photo.label}</span>
         <PhotoCredit photo={photo} />
-        <button
-          type="button"
-          className="farming-auth-toggle"
-          aria-controls={imageId}
-          onClick={() => setPaused((value) => !value)}
-        >
-          {paused ? "Play slideshow" : "Pause slideshow"}
-        </button>
+        <PhotoControls slideshow={slideshow} imageId={imageId} overlay />
       </div>
     </section>
   );

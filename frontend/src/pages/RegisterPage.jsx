@@ -3,86 +3,62 @@ import { Fragment } from "react";
 import { truth, items, text } from "../lib/view.js";
 import mountRegister from "../behaviors/register.js";
 import { usePageBehaviors } from "../lib/behaviors.js";
-import FarmingPhotoPanel from "../components/FarmingPhotoPanel.jsx";
+import HeroSlideshow from "../components/HeroSlideshow.jsx";
 export default function RegisterPage({ data }) {
   usePageBehaviors([mountRegister], data);
   return (
     <>
-      <main className="auth-container">
-        <FarmingPhotoPanel imageId="register-background">
-          <h1> Join Agrilinks Nigeria </h1>
-          <p>
-            {" "}
-            Create your Agrilinks Nigeria account and connect with agricultural
-            markets, farmers, buyers, organizations, learning opportunities,
-            services, information, and opportunities across Nigeria.{" "}
-          </p>
-          <div className="auth-benefits">
-            <div className="auth-benefit">
-              <span className="auth-benefit-icon" aria-hidden="true">
-                {" "}
-                🌾{" "}
-              </span>
-              <div>
-                <h2> Connect to Agriculture </h2>
-                <p>
-                  {" "}
-                  Connect with people and opportunities across the agricultural
-                  value chain.{" "}
-                </p>
-              </div>
-            </div>
-            <div className="auth-benefit">
-              <span className="auth-benefit-icon" aria-hidden="true">
-                {" "}
-                🛒{" "}
-              </span>
-              <div>
-                <h2> Buy &amp; Sell </h2>
-                <p>
-                  {" "}
-                  Discover agricultural products and connect with potential
-                  buyers and sellers.{" "}
-                </p>
-              </div>
-            </div>
-            <div className="auth-benefit">
-              <span className="auth-benefit-icon" aria-hidden="true">
-                {" "}
-                📚{" "}
-              </span>
-              <div>
-                <h2> Learn Agriculture </h2>
-                <p>
-                  {" "}
-                  Learn agricultural activities, develop practical knowledge,
-                  and prepare yourself to become a farmer.{" "}
-                </p>
-              </div>
-            </div>
-            <div className="auth-benefit">
-              <span className="auth-benefit-icon" aria-hidden="true">
-                {" "}
-                🤖{" "}
-              </span>
-              <div>
-                <h2> Get Agricultural Support </h2>
-                <p>
-                  {" "}
-                  Access agricultural information, AI assistance, weather
-                  insights, and other useful services.{" "}
-                </p>
-              </div>
-            </div>
+      <header className="register-header">
+        <a href="/" aria-label="Agrilinks Nigeria home">
+          <img
+            src="/static/assets/logo/agrilinks-nigeria-logo.svg"
+            alt="Agrilinks Nigeria"
+          />
+        </a>
+        <a className="register-signin" href="/login">
+          Log in <span aria-hidden="true">→</span>
+        </a>
+      </header>
+      <main className="register-page">
+        <section
+          className="register-intro"
+          aria-labelledby="register-intro-heading"
+        >
+          <div className="register-intro-copy">
+            <p className="register-eyebrow">
+              Your farm. Your harvest. Your next opportunity.
+            </p>
+            <h1 id="register-intro-heading">
+              Grow more.
+              <br />
+              Reach more buyers.
+            </h1>
+            <p className="register-intro-description">
+              Turn your hard work into new opportunities. Connect with buyers,
+              discover fresh produce and livestock, and find practical support
+              for your next harvest.
+            </p>
+            <ul className="register-highlights">
+              <li>Buy and sell farm produce</li>
+              <li>Learn and grow with other farmers</li>
+              <li>Get weather insights and farming support</li>
+            </ul>
+            <a className="register-start" href="#register-form">
+              Create your account <span aria-hidden="true">→</span>
+            </a>
+            <p className="register-invitation">
+              For farmers, buyers, and everyone ready to grow.
+            </p>
           </div>
-        </FarmingPhotoPanel>
-        <section className="auth-right">
+          <div className="register-intro-photo">
+            <HeroSlideshow imageId="register-photo" initialIndex={5} />
+          </div>
+        </section>
+        <section
+          className="auth-right register-form-section"
+          aria-labelledby="register-heading"
+        >
           <div className="auth-form-wrapper">
-            <img
-              className="auth-brand"
-              src="/static/assets/logo/agrilinks-nigeria-logo.svg?v=20260907"
-              alt="Agrilinks Nigeria"
-            />
             <form
               id="register-form"
               action="/register"
