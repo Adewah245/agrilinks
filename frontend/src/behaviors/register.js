@@ -267,7 +267,7 @@ export default function mount(scope, data) {
         registrationLog("selfie.capture.discarded", { request });
         return;
       }
-      if (!blob || blob.size === 0 || blob.size > 10 * 1024 * 1024) {
+      if (!blob || blob.size === 0 || blob.size > 2 * 1024 * 1024) {
         throw new Error("Could not save your selfie. Please take it again.");
       }
       const previewURL = URL.createObjectURL(blob);
@@ -284,7 +284,7 @@ export default function mount(scope, data) {
       stopSelfieCamera("selfie_captured");
       message.textContent = "";
       selfieStatus.textContent =
-        "Selfie captured. This will be your profile picture when registration is complete.";
+        "Selfie captured. This will be your public profile picture. A private original will be kept for withdrawal verification.";
       updateConfirmationControls();
       retakeButton.focus();
     } catch (error) {

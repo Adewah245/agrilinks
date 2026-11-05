@@ -24,6 +24,7 @@ export default function Hero() {
         <div className="hero-buttons">
           <a href="/register" className="primary-btn">Get Started</a>
           <a href="/login" className="secondary-btn">Login</a>
+          <a href="/learning" className="secondary-btn">Learn farming — no account needed</a>
         </div>
       </div>
 

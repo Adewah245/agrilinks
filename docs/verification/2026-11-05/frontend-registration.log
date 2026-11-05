@@ -1,0 +1,119 @@
+
+> agrilinks-frontend@0.1.0 test
+> npm run build && npm run build:test && node --test tests/*.test.mjs
+
+
+> agrilinks-frontend@0.1.0 build
+> vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 94 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.css                                    1.83 kB │ gzip:  0.78 kB
+dist/assets/FormControls-CUw7LZ_D.js              0.62 kB │ gzip:  0.35 kB
+dist/assets/PasswordField-uFlhZUqZ.js             0.68 kB │ gzip:  0.41 kB
+dist/assets/HeroSlideshow-C7asrAma.js             0.86 kB │ gzip:  0.44 kB
+dist/assets/behaviors-DacY-qCm.js                 1.29 kB │ gzip:  0.68 kB
+dist/assets/ForgotPasswordPage-WXw--1Ld.js        1.82 kB │ gzip:  0.77 kB
+dist/assets/Navbar-BaigOGgn.js                    1.94 kB │ gzip:  0.95 kB
+dist/assets/view-CsAqwH0j.js                      2.08 kB │ gzip:  1.08 kB
+dist/assets/WalletAdminPage-COouLf_y.js           2.89 kB │ gzip:  0.88 kB
+dist/assets/LearningRoomsPage-CbR-VyTZ.js         2.94 kB │ gzip:  1.01 kB
+dist/assets/LoginPage-ysv-ZOFD.js                 2.96 kB │ gzip:  1.30 kB
+dist/assets/MarketInsightsPage-cseJKpEV.js        3.16 kB │ gzip:  1.07 kB
+dist/assets/AdminSecurityPage-DyEXy1yQ.js         3.30 kB │ gzip:  1.41 kB
+dist/assets/WithdrawalReviewPage-DcErNvy0.js      3.48 kB │ gzip:  1.34 kB
+dist/assets/LearnPage-tQNzm1QB.js                 3.50 kB │ gzip:  1.25 kB
+dist/assets/OrdersPage-CQa5nPJB.js                3.51 kB │ gzip:  1.17 kB
+dist/assets/NegotiationsPage-BUJNMO9_.js          3.61 kB │ gzip:  1.13 kB
+dist/assets/SalesPage-sAPdtFRw.js                 3.92 kB │ gzip:  1.24 kB
+dist/assets/IndexPage-Ba68GXWl.js                 3.93 kB │ gzip:  1.46 kB
+dist/assets/TrustPage-CcfjoBQI.js                 4.21 kB │ gzip:  1.21 kB
+dist/assets/PaymentsPage-BHqAZeen.js              4.31 kB │ gzip:  1.29 kB
+dist/assets/NotificationPage-6a1rt2jq.js          5.06 kB │ gzip:  1.34 kB
+dist/assets/DeliveryPartnerPage-C6y42gx2.js       5.42 kB │ gzip:  1.74 kB
+dist/assets/CartPage-B0Jcgd8U.js                  5.46 kB │ gzip:  1.50 kB
+dist/assets/ChatThreadPage-CClEL0Hi.js            5.57 kB │ gzip:  1.55 kB
+dist/assets/PurchaseProtectionPage-1sWTe4y5.js    5.70 kB │ gzip:  1.59 kB
+dist/assets/NegotiationPage-BGPhYyVh.js           5.86 kB │ gzip:  1.65 kB
+dist/assets/MarketplacePage-BZfJfuE-.js           6.43 kB │ gzip:  1.92 kB
+dist/assets/PhotoControls-DUsZi7DG.js             7.40 kB │ gzip:  2.15 kB
+dist/assets/LearningJourneyPage-CLHkEQlv.js       7.42 kB │ gzip:  2.38 kB
+dist/assets/LearningPage-BQ_NZkHt.js              8.13 kB │ gzip:  3.04 kB
+dist/assets/ChatPage-C4UdfpV7.js                  8.21 kB │ gzip:  2.37 kB
+dist/assets/DeliveriesPage-YDwJXByD.js            8.88 kB │ gzip:  1.79 kB
+dist/assets/ProductPage-CdHNAyrg.js               8.95 kB │ gzip:  2.47 kB
+dist/assets/AiDiagnosisHistoryPage-alZ5j6jV.js   11.92 kB │ gzip:  3.27 kB
+dist/assets/StoragePage-BuihdbdB.js              12.38 kB │ gzip:  3.52 kB
+dist/assets/ProfilePage-DnYKRRuS.js              12.85 kB │ gzip:  3.33 kB
+dist/assets/AiAssistantPage-mbCgCInM.js          14.57 kB │ gzip:  4.52 kB
+dist/assets/PlatformRevenuePage-Ck6bgz_A.js      24.79 kB │ gzip:  5.09 kB
+dist/assets/RegisterPage-BrUAr1EX.js             25.60 kB │ gzip:  7.26 kB
+dist/assets/DashboardPage-T4gnvM3i.js            48.33 kB │ gzip: 10.24 kB
+dist/assets/AdminPage-DjTDGSbd.js                54.39 kB │ gzip: 11.31 kB
+dist/assets/WalletPage-CfuIss7u.js               65.79 kB │ gzip: 14.44 kB
+dist/index.js                                   228.70 kB │ gzip: 71.52 kB
+✓ built in 4.77s
+
+> agrilinks-frontend@0.1.0 build:test
+> vite build --config vite.test.config.js
+
+vite v7.3.7 building ssr environment for production...
+transforming...
+✓ 68 modules transformed.
+rendering chunks...
+.test-build/assets/FormControls-CUy_pp8X.js              1.17 kB
+.test-build/assets/PasswordField-DQYl9hVQ.js             1.34 kB
+.test-build/assets/HeroSlideshow-CV2NJGix.js             1.54 kB
+.test-build/assets/behaviors-xWXqggl1.js                 2.78 kB
+.test-build/assets/ForgotPasswordPage-CobJlP5c.js        3.07 kB
+.test-build/render.mjs                                   3.13 kB
+.test-build/assets/Navbar-C3HzyBfA.js                    3.41 kB
+.test-build/assets/view-Bf4vewMb.js                      3.55 kB
+.test-build/assets/WalletAdminPage-BKUPolBe.js           5.21 kB
+.test-build/assets/LearningRoomsPage-ClNt0zi4.js         5.38 kB
+.test-build/assets/LoginPage-CXfT_6U4.js                 5.39 kB
+.test-build/assets/MarketInsightsPage-CUJJZNiV.js        5.52 kB
+.test-build/assets/AdminSecurityPage-NA6Ui4VI.js         5.69 kB
+.test-build/assets/LearnPage-BWC3eq0r.js                 5.92 kB
+.test-build/assets/WithdrawalReviewPage-D7RII69N.js      6.16 kB
+.test-build/assets/IndexPage-DZGeFN7o.js                 6.23 kB
+.test-build/assets/NegotiationsPage-Bh-hziQV.js          6.89 kB
+.test-build/assets/OrdersPage-DaFkzjAq.js                7.03 kB
+.test-build/assets/SalesPage-xnrYM0zH.js                 7.15 kB
+.test-build/assets/TrustPage-SGwLvQeY.js                 8.53 kB
+.test-build/assets/PaymentsPage-B7D9Sd0_.js              9.10 kB
+.test-build/assets/PhotoControls-Bm-XpON9.js             9.89 kB
+.test-build/assets/PurchaseProtectionPage-B2ki8t3T.js   10.04 kB
+.test-build/assets/NotificationPage-DWRg49OB.js         10.33 kB
+.test-build/assets/DeliveryPartnerPage-D6kWtwZ4.js      10.41 kB
+.test-build/assets/CartPage-DJDWh-6H.js                 11.04 kB
+.test-build/assets/ChatThreadPage-Dwhnxfo-.js           11.19 kB
+.test-build/assets/NegotiationPage-_ybfl120.js          11.93 kB
+.test-build/assets/MarketplacePage-Cp_5yyxj.js          14.03 kB
+.test-build/assets/LearningPage-BBPexp-5.js             14.34 kB
+.test-build/assets/LearningJourneyPage-CaOwEf_e.js      15.12 kB
+.test-build/assets/ChatPage-Dbs08GFq.js                 15.82 kB
+.test-build/assets/ProductPage-Dd-oS8Eo.js              15.84 kB
+.test-build/assets/DeliveriesPage-BHZ4ELUB.js           17.25 kB
+.test-build/assets/AiDiagnosisHistoryPage-Cu8ElM_1.js   24.93 kB
+.test-build/assets/ProfilePage-CUsjUXk2.js              26.00 kB
+.test-build/assets/StoragePage-BY7CVmf_.js              28.45 kB
+.test-build/assets/AiAssistantPage-BiB1XW6a.js          31.40 kB
+.test-build/assets/PlatformRevenuePage-CGXE96wm.js      47.46 kB
+.test-build/assets/RegisterPage-DfNk7hwp.js             56.28 kB
+.test-build/assets/DashboardPage-DLYf2Ufa.js            96.66 kB
+.test-build/assets/WalletPage-CfFDVehw.js              134.38 kB
+.test-build/assets/AdminPage-CYQ69830.js               137.48 kB
+✓ built in 2.73s
+✔ tests/view.test.mjs (210.014759ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 229.456359

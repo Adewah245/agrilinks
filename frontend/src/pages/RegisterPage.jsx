@@ -325,9 +325,11 @@ export default function RegisterPage({ data }) {
                 </h3>
                 <p className="field-help">
                   {" "}
-                  Take a clear selfie for private account verification. It will
-                  not become your public profile picture. Allow camera access
-                  when your device asks.{" "}
+                  A clear selfie is required and will become your public profile
+                  picture. We keep a private original for administrators to
+                  compare with withdrawal selfies, even if you change your
+                  profile picture later. Allow camera access when your device
+                  asks.{" "}
                 </p>
                 <div className="form-group selfie-camera">
                   <div

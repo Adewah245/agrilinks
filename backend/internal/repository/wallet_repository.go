@@ -14,12 +14,17 @@ var ErrInsufficientBalance = errors.New("your wallet does not have enough money"
 
 type WalletRepository struct {
 	db            *sql.DB
+	users         *UserRepository
 	currency      string
 	commissionBPS int64
 }
 
-func NewWalletRepository(db *sql.DB, currency string, commissionBPS int64) *WalletRepository {
-	return &WalletRepository{db: db, currency: currency, commissionBPS: commissionBPS}
+func NewWalletRepository(db *sql.DB, currency string, commissionBPS int64, users ...*UserRepository) *WalletRepository {
+	r := &WalletRepository{db: db, currency: currency, commissionBPS: commissionBPS}
+	if len(users) > 0 {
+		r.users = users[0]
+	}
+	return r
 }
 
 func (r *WalletRepository) Wallet(ctx context.Context, userID int) (*models.Wallet, error) {
@@ -572,8 +577,20 @@ func (r *WalletRepository) Withdrawals(ctx context.Context, userID int) ([]model
 }
 
 func (r *WalletRepository) ClaimWithdrawal(ctx context.Context, id int64, adminID int, sessionHash string) error {
-	result, err := r.db.ExecContext(ctx, `UPDATE wallet_withdrawals w SET status='processing',provider_submission_state='unknown',approved_by=$2,updated_at=CURRENT_TIMESTAMP WHERE w.id=$1 AND w.status='pending' AND w.provider_submission_state='not_submitted' AND $2>0 AND w.user_id<>$2
-      AND EXISTS(SELECT 1 FROM withdrawal_evidence e JOIN withdrawal_evidence_reviews v ON v.withdrawal_id=e.withdrawal_id WHERE e.withdrawal_id=w.id AND e.photo_id IS NOT NULL AND v.reviewer_id=$2 AND v.session_hash=$3 AND v.reviewed_at>CURRENT_TIMESTAMP-interval '15 minutes' AND v.photo_viewed_at>CURRENT_TIMESTAMP-interval '15 minutes')
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err = financeActor(ctx, tx, adminID, "finance", r.users); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE wallet_withdrawals w SET status='processing',provider_submission_state='unknown',approved_by=$2,updated_at=CURRENT_TIMESTAMP WHERE w.id=$1 AND w.status='pending' AND w.provider_submission_state='not_submitted' AND $2>0 AND w.user_id<>$2
+      AND EXISTS(SELECT 1 FROM withdrawal_evidence e JOIN withdrawal_evidence_reviews v ON v.withdrawal_id=e.withdrawal_id
+        WHERE e.withdrawal_id=w.id AND e.photo_id IS NOT NULL AND v.reviewer_id=$2 AND v.session_hash=$3
+        AND v.reviewed_at>CURRENT_TIMESTAMP-interval '15 minutes' AND v.photo_viewed_at>=v.reviewed_at
+        AND COALESCE(v.registration_photo_id,0)=COALESCE((SELECT p.id FROM private_verification_photos p WHERE p.user_id=w.user_id AND p.purpose IN ('registration','legacy') ORDER BY p.created_at DESC,p.id DESC LIMIT 1),0)
+        AND (v.registration_photo_id IS NULL OR v.registration_photo_viewed_at>=v.reviewed_at))
       AND EXISTS(SELECT 1 FROM user_sessions s JOIN admin_mfa m ON m.user_id=s.user_id JOIN users u ON u.id=s.user_id WHERE s.user_id=$2 AND s.token_hash=$3 AND s.expires_at>CURRENT_TIMESTAMP AND s.mfa_verified_until>CURRENT_TIMESTAMP AND m.enabled AND u.account_status='active' AND NOT u.staff_disabled AND u.deleted_at IS NULL)`, id, adminID, sessionHash)
 	if err != nil {
 		return err
@@ -583,9 +600,9 @@ func (r *WalletRepository) ClaimWithdrawal(ctx context.Context, id int64, adminI
 		return err
 	}
 	if n != 1 {
-		return fmt.Errorf("this withdrawal is already being handled")
+		return errors.New("this withdrawal is no longer pending or its private evidence review needs to be refreshed")
 	}
-	return nil
+	return tx.Commit()
 }
 
 func (r *WalletRepository) SaveTransferID(ctx context.Context, id int64, providerID string) error {

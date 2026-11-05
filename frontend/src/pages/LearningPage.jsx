@@ -1,8 +1,11 @@
+import Navbar from "../components/Navbar.jsx";
+import FarmingLearningHub from "../components/FarmingLearningHub.jsx";
+import VoiceControls from "../components/VoiceControls.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
-import { Fragment } from "react";
-import { truth, items, text } from "../lib/view.js";
+import { items, text, truth } from "../lib/view.js";
 import mountLearningChat from "../behaviors/learning_chat.js";
 import { usePageBehaviors } from "../lib/behaviors.js";
+
 export default function LearningPage({ data }) {
   usePageBehaviors([mountLearningChat], data);
   return (
@@ -10,58 +13,67 @@ export default function LearningPage({ data }) {
       <a className="learning-skip" href="#learning-main">
         Skip to learning
       </a>
-      <header className="public-learning-nav">
-        <a className="learning-brand" href="/">
-          Agrilinks Nigeria<span>Learn. Grow. Connect.</span>
+      <Navbar className="navbar">
+        <a className="logo" href="/" aria-label="Agrilinks Nigeria home">
+          <img
+            src="/static/assets/logo/agrilinks-nigeria-logo.svg"
+            alt="Agrilinks Nigeria"
+          />
         </a>
         <nav aria-label="Main navigation">
           <a href="/">Home</a>
-          <a href="/learning" aria-current="page">
+          <a
+            className="learning-nav-active"
+            href="/learning"
+            aria-current="page"
+          >
             Learn with AI
           </a>
-          <a href="/learn">My journeys</a>
-          <a href="/login">Sign in</a>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/login">Login</a>
+          <a href="/register">Register</a>
         </nav>
-      </header>
-      <main id="learning-main" className="public-learning-main">
-        <header className="public-learning-intro">
-          <p className="learning-eyebrow">YOUR FARMING QUESTIONS, WELCOME</p>
-          <h1>Learn farming, one question at a time.</h1>
+      </Navbar>
+      <main id="learning-main" className="learning-page">
+        <section className="learning-intro" aria-labelledby="learning-title">
+          <p className="learning-eyebrow">Your farming questions welcome</p>
+          <h1 id="learning-title">Learn farming with Agrilinks Nigeria AI</h1>
           <p>
-            Practical guidance for your next step. Explore crops, livestock and
-            starting a farm at your own pace. You can begin without an account.
+            Ask about crops, livestock, poultry, fish farming, soil, or starting
+            a farm. You can learn at your own pace, whether or not you are ready
+            to buy or sell. No account is needed.
           </p>
-        </header>
-        <section
-          className="public-learning-chat"
-          aria-labelledby="learning-chat-title"
-        >
+        </section>
+        <section className="learning-chat" aria-label="Farming learning chat">
           <div className="learning-chat-heading">
             <div>
-              <h2 id="learning-chat-title">Your farming guide</h2>
-              <p>Clear explanations. Practical steps.</p>
+              <h2>Ask a farming question</h2>
+              <p>
+                Agrilinks Nigeria AI will explain things in clear, practical
+                steps.
+              </p>
             </div>
-            <button id="clear-chat" className="learning-reset" type="button">
+            <button className="learning-reset" id="clear-chat" type="button">
               New chat
             </button>
           </div>
-          {truth(!truth(data?.AIAvailable)) ? (
-            <>
-              <p className="learning-availability" role="status">
-                The learning guide is temporarily unavailable. Please try again
-                later. You can still explore the categories below.
-              </p>
-            </>
-          ) : null}
+          {!truth(data?.AIAvailable) && (
+            <p className="learning-availability" role="status">
+              The learning guide is temporarily unavailable. Please try again
+              later. You can still explore the farming guides below.
+            </p>
+          )}
           <div
+            className="learning-messages"
             id="chat-messages"
-            className="public-learning-messages"
             role="log"
             aria-live="polite"
             aria-relevant="additions"
           >
-            <article className="public-learning-message assistant">
-              <span>Agrilinks Nigeria guide</span>
+            <article className="learning-message learning-message-assistant">
+              <span className="learning-message-label">
+                Agrilinks Nigeria learning guide
+              </span>
               <p>Hello! What would you like to learn about farming today?</p>
             </article>
           </div>
@@ -71,36 +83,34 @@ export default function LearningPage({ data }) {
               data-category="Crop farming"
               data-question="How do I start growing vegetables in a small space?"
             >
-              Growing vegetables
+              🌱 Growing vegetables
             </button>
             <button
               type="button"
               data-category="Poultry farming"
               data-question="What should I consider before starting poultry farming?"
             >
-              Starting poultry
+              🐓 Starting poultry
             </button>
             <button
               type="button"
-              data-category="Soil management"
+              data-category="Crop farming"
               data-question="How can I improve the soil on my farm?"
             >
-              Improving my soil
+              🌿 Improving my soil
             </button>
           </div>
-          <form id="learning-chat-form" className="public-learning-form">
+          <form id="learning-chat-form" className="learning-form">
             <label htmlFor="farming-type">
-              What would you like to learn about?
+              Choose what you want to learn about
             </label>
-            <Select id="farming-type" required={true}>
-              <option value="">Choose a farming category</option>
-              {truth(data?.FarmingTypes)
-                ? items(data?.FarmingTypes).map((item1, index1) => (
-                    <Fragment key={index1}>
-                      <option value={text(item1)}>{text(item1)}</option>
-                    </Fragment>
-                  ))
-                : null}
+            <Select id="farming-type" name="farming_type" required={true}>
+              <option value="">Select a farming category</option>
+              {items(data?.FarmingTypes).map((category) => (
+                <option value={text(category)} key={text(category)}>
+                  {text(category)}
+                </option>
+              ))}
               <option value="other">Other</option>
             </Select>
             <label
@@ -113,55 +123,72 @@ export default function LearningPage({ data }) {
             <input
               id="custom-farming-type"
               maxLength="80"
-              placeholder="For example, beekeeping"
+              placeholder="Enter your farming category"
               hidden={true}
               disabled={true}
             />
             <label htmlFor="learning-question">Your question</label>
+            <VoiceControls prefix="learning" />
             <div className="learning-compose">
               <Textarea
                 id="learning-question"
+                name="question"
                 maxLength="1200"
-                rows="3"
-                placeholder="Ask a question about farming…"
+                rows="2"
+                placeholder="Ask anything about farming..."
                 required={true}
-              ></Textarea>
+              />
               <button
                 id="send-question"
                 type="submit"
-                disabled={truth(!truth(data?.AIAvailable))}
+                disabled={!truth(data?.AIAvailable)}
               >
-                Ask your guide
+                Ask AI
               </button>
             </div>
-            <p
-              id="learning-status"
-              className="public-learning-status"
-              role="status"
-            >
-              Choose a category to begin. Your conversation stays in this tab.
+            <p className="learning-note" id="learning-status" role="status">
+              This chat is for learning. For a serious crop or animal problem,
+              ask a local farm adviser or animal doctor for help.
             </p>
           </form>
         </section>
-        <div className="learning-next">
-          <div>
-            <h2>Build on what you learn.</h2>
+        <div className="learning-signup">
+          <FarmingLearningHub className="learning-guides-button">
+            Explore farming topics
+          </FarmingLearningHub>
+          <p>
+            Want to buy or sell later?{" "}
+            <a href="/register">Create an Agrilinks Nigeria account</a> whenever
+            you are ready.
+          </p>
+        </div>
+      </main>
+      <footer className="footer">
+        <div className="footer-container">
+          <div className="footer-brand">
+            <img
+              className="footer-brand-logo"
+              src="/static/assets/logo/agrilinks-nigeria-logo.svg"
+              alt="Agrilinks Nigeria"
+            />
             <p>
-              Save a learning journey, make a checklist and learn with other
-              people.
+              Empowering farmers through technology, learning, and digital
+              agricultural commerce.
             </p>
           </div>
-          <a href="/learn">Open my learning space →</a>
+          <div className="footer-links">
+            <h3>Quick Links</h3>
+            <a href="/">Home</a>
+            <a href="/learning">Learn with AI</a>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+          </div>
         </div>
-        <p className="learning-footnote">
-          For urgent crop or animal health problems, contact a local extension
-          worker or veterinarian.
+        <hr />
+        <p className="copyright">
+          © 2026 Agrilinks Nigeria. All rights reserved.
         </p>
-      </main>
-      <footer className="public-learning-footer">
-        <a href="/">Agrilinks Nigeria</a>
-        <span>Growing knowledge. Growing possibilities.</span>
-        <a href="/register">Create an account</a>
       </footer>
     </>
   );

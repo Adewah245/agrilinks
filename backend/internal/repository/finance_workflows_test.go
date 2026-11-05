@@ -135,7 +135,7 @@ func (f *financeFixture) reviewedClaim(id int64) error {
 	if err = security.ConfirmMFA(f.ctx, admin.ID, session, m, 1, nil); err != nil {
 		return err
 	}
-	if err = security.ReviewEvidence(f.ctx, id, admin.ID, session); err != nil {
+	if _, err = security.ReviewEvidence(f.ctx, id, admin.ID, session); err != nil {
 		return err
 	}
 	evidence, err := security.Evidence(f.ctx, id)

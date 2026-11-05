@@ -48,12 +48,9 @@ func TestReactPages(t *testing.T) {
 		"delivery_partner.html":     DeliveryPageData{},
 		"ai-assistant.html":         AIAssistantPageData{},
 		"ai-diagnosis-history.html": AIDiagnosisHistoryPageData{},
-		"learning.html": struct {
-			FarmingTypes []string
-			AIAvailable  bool
-		}{},
-		"learn.html":            LearningHomeData{},
-		"learning_journey.html": LearningJourneyData{},
+		"learning.html":             PublicLearningData{},
+		"learn.html":                LearningHomeData{},
+		"learning_journey.html":     LearningJourneyData{},
 		"learning_rooms.html": struct {
 			Rooms        []models.LearningRoom
 			FarmingTypes []models.FarmingType

@@ -1,3 +1,6 @@
+import { createVoice } from "../lib/voice.js";
+import { addExampleButton } from "../lib/example-images.js";
+
 export default function mount(scope, data) {
   const {
     document,
@@ -20,18 +23,30 @@ export default function mount(scope, data) {
     const status = document.getElementById("learning-status");
     const send = document.getElementById("send-question");
     const reset = document.getElementById("clear-chat");
+    const voice = createVoice(scope, {
+      prefix: "learning",
+      input,
+      uploadAvailable: Boolean(data?.VoiceUploadAvailable),
+    });
+    const pictureCancels = [];
     const starters = [
       ...document.querySelectorAll(".learning-starters button"),
     ];
     const available = !send.disabled;
+    const learningNote =
+      "This chat is for learning. For a serious crop or animal problem, ask a local farm adviser or animal doctor for help.";
     let history = [],
       historyCategory = "",
       pending = false;
-    const addMessage = (text, role, error = false) => {
+    const addMessage = (text, role, error = false, example = null) => {
       const message = document.createElement("article");
-      message.className = `public-learning-message ${role}${error ? " error" : ""}`;
-      const label = document.createElement("span");
-      label.textContent = role === "user" ? "You" : "Agrilinks Nigeria guide";
+      message.className = `learning-message learning-message-${role}${error ? " learning-message-error" : ""}`;
+      if (role === "assistant") {
+        const label = document.createElement("span");
+        label.className = "learning-message-label";
+        label.textContent = "Agrilinks Nigeria learning guide";
+        message.append(label);
+      }
       const content = document.createElement("p");
       String(text)
         .split(/(\*\*[^*]+\*\*)/g)
@@ -42,12 +57,20 @@ export default function mount(scope, data) {
             content.append(bold);
           } else content.append(document.createTextNode(part));
         });
-      message.append(label, content);
+      message.append(content);
+      if (role === "assistant" && !error) {
+        voice.addListenButton(message, text);
+        if (example && data?.ExamplesAvailable)
+          pictureCancels.push(addExampleButton(scope, message, example));
+      }
       list.append(message);
       list.scrollTop = list.scrollHeight;
       return message;
     };
     const newChat = () => {
+      voice.stopReading();
+      voice.stopListening(true);
+      pictureCancels.splice(0).forEach((cancel) => cancel());
       history = [];
       historyCategory = "";
       list.replaceChildren();
@@ -55,8 +78,7 @@ export default function mount(scope, data) {
         "Hello! What would you like to learn about farming today?",
         "assistant",
       );
-      status.textContent =
-        "Choose a category to begin. Your conversation stays in this tab.";
+      status.textContent = learningNote;
     };
     category.addEventListener("change", () => {
       const other = category.value === "other";
@@ -65,8 +87,26 @@ export default function mount(scope, data) {
       custom.required = other;
       document.getElementById("custom-farming-label").hidden = !other;
       if (history.length) newChat();
+      status.textContent =
+        "Choose a farming category and ask a question about it.";
       if (other) custom.focus();
     });
+    const requestedTopic = new URL(window.location.href).searchParams
+      .get("topic")
+      ?.trim();
+    if (
+      requestedTopic &&
+      Array.from(requestedTopic).length <= 80 &&
+      !/[\u0000-\u001f\u007f]/.test(requestedTopic)
+    ) {
+      const existing = [...category.options].some(
+        (option) => option.value === requestedTopic,
+      );
+      category.value = existing ? requestedTopic : "other";
+      category.dispatchEvent(new Event("change"));
+      if (!existing) custom.value = requestedTopic;
+      input.value = `What should I know before getting started with ${requestedTopic.toLowerCase()}?`;
+    }
     reset.addEventListener("click", () => {
       if (!pending) {
         newChat();
@@ -85,6 +125,10 @@ export default function mount(scope, data) {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (pending || !available || !form.reportValidity()) return;
+      if (voice.busy) {
+        status.textContent = "Finish your voice question before sending.";
+        return;
+      }
       const topic =
         category.value === "other" ? custom.value.trim() : category.value;
       const question = input.value.trim();
@@ -95,23 +139,40 @@ export default function mount(scope, data) {
       }
       if (historyCategory && historyCategory !== topic) newChat();
       const messages = [
-        ...history
-          .slice(-10)
-          .map((message) => ({
-            role: message.role,
-            content: Array.from(message.content).slice(0, 1100).join(""),
-          })),
+        ...history.slice(-10).map((message) => ({
+          role: message.role,
+          content: Array.from(message.content).slice(0, 1100).join(""),
+        })),
         { role: "user", content: question },
       ];
       pending = true;
+      voice.stopReading();
+      voice.setBusy(true);
+      list.setAttribute("aria-busy", "true");
       [send, reset, input, category, custom, ...starters].forEach((element) => {
         element.disabled = true;
       });
       addMessage(question, "user");
       const typing = document.createElement("div");
-      typing.className = "public-learning-message typing";
-      typing.textContent = "Your guide is preparing an answer…";
+      typing.className =
+        "learning-message learning-message-assistant learning-typing";
+      typing.setAttribute(
+        "aria-label",
+        "Agrilinks Nigeria is preparing a response",
+      );
+      const typingLabel = document.createElement("span");
+      typingLabel.className = "learning-message-label";
+      typingLabel.textContent = "Agrilinks Nigeria learning guide";
+      const dots = document.createElement("span");
+      dots.className = "learning-typing-dots";
+      dots.setAttribute("aria-hidden", "true");
+      for (let i = 0; i < 3; i++) dots.append(document.createElement("i"));
+      const caption = document.createElement("span");
+      caption.className = "learning-typing-caption";
+      caption.textContent = "Putting together a helpful answer…";
+      typing.append(typingLabel, dots, caption);
       list.append(typing);
+      list.scrollTop = list.scrollHeight;
       status.textContent = "Your guide is working on your question…";
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 125000);
@@ -138,15 +199,22 @@ export default function mount(scope, data) {
             "The guide returned an empty answer. Please try again.",
           );
         typing.remove();
-        addMessage(result.answer, "assistant");
+        const reply = addMessage(result.answer, "assistant", false, {
+          topic,
+          question,
+          answer: result.answer,
+        });
+        voice.autoSpeak(
+          result.answer,
+          reply.querySelector(".ai-listen-button"),
+        );
         history = [
           ...messages,
           { role: "assistant", content: result.answer },
         ].slice(-12);
         historyCategory = topic;
         input.value = "";
-        status.textContent =
-          "Your conversation stays in this tab. Start a new chat whenever you like.";
+        status.textContent = learningNote;
       } catch (error) {
         typing.remove();
         addMessage(
@@ -162,6 +230,8 @@ export default function mount(scope, data) {
         clearTimeout(timeout);
         typing.remove();
         pending = false;
+        voice.setBusy(false);
+        list.removeAttribute("aria-busy");
         [send, reset, input, category, ...starters].forEach((element) => {
           element.disabled = false;
         });

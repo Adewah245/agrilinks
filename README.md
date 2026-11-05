@@ -237,7 +237,7 @@ static-asset tests or when preparing deployment assets.
 
 See [frontend development](frontend/README.md) for configuration details, component locations, and the optional watch command.
 
-Private registration/withdrawal photographs and administrator MFA require `SECURITY_ENCRYPTION_KEY` and migrations 080–082. Withdrawal requests wait for private evidence review before payout submission. Follow [security operations](docs/security-operations.md) for deployment, legacy photo quarantine, authenticator enrollment, monitoring, and retention; see [security verification](docs/security-verification.md) for regression results.
+Registration requires a selfie for the initial public profile picture and retains a separate encrypted original for withdrawal comparisons. Private verification photographs and administrator MFA require `SECURITY_ENCRYPTION_KEY` and migrations 080–083. Withdrawal selfies/GPS stay private, and requests wait for administrator evidence review before payout submission. Follow [security operations](docs/security-operations.md) for deployment, legacy photo quarantine, authenticator enrollment, monitoring, and retention; see [security verification](docs/security-verification.md) for regression results.
 
 ## Database
 

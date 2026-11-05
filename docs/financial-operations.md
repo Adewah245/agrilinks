@@ -1,6 +1,6 @@
 # Agrilinks Nigeria financial operations
 
-Implemented locally on 2 November 2026. Development and verification use disposable PostgreSQL databases and simulated provider responses. No production financial database was connected to or changed.
+The financial foundation was implemented locally on 2 November 2026; private withdrawal review and administrator security were updated through 5 November 2026. Development and verification use disposable PostgreSQL databases and simulated provider responses. No production financial database was connected to or changed.
 
 ## Existing architecture and accounting boundary
 
@@ -62,6 +62,8 @@ The two journals balance independently. Net clearing is ₦10,050, covering ₦1
 
 Withdrawals currently accept whole naira starting at ₦1. A ₦10,000 request pays the bank ₦10,000. The wallet reserves ₦10,300 plus the separately disclosed provider charge. Reservation debits the wallet liability and credits payout and deferred-fee liabilities. Verified success clears the payout, recognizes service revenue, and posts actual provider cost separately. A lower actual provider charge is refunded to the customer. An undisclosed excess is borne by the company, never silently charged to the wallet.
 
+The member must provide a fresh private selfie and GPS evidence bound to the login session and accepted quote. Reservation leaves the withdrawal pending. A different finance administrator with fresh MFA must open the review, compare the withdrawal selfie with the available private registration original, acknowledge the evidence, and record a decision before any provider submission. Public profile edits preserve that original. Replacing private registration evidence or reopening the review requires the photographs to be loaded again. See [security operations](security-operations.md) for capture requirements, private storage, access auditing, and retention.
+
 Failed withdrawals reverse the complete reservation. Any actual failed-transfer cost remains a company expense. Verified payout reversals return the customer's payout and customer fees using reversal postings. Repeated or out-of-order outcomes cannot create a second credit or fee.
 
 Funding is recognized only on verified success. Pending/failed attempts earn no fee. A verified funding reversal reverses the receipt and fee revenue. If the credited money was spent, the system records a recovery receivable, sets wallet recovery debt and blocks new debits. Later credits first repay that debt. Provider charges remain expenses unless there is evidence that they were returned.
@@ -70,7 +72,7 @@ Permanent-account users confirm a funding instruction before sending the exact a
 
 ## Purchase protection
 
-Existing wallet and hosted checkout payments post into escrow, notify the seller, and leave seller spendable funds unchanged. Seller delivery evidence or completed tracked delivery is required. The buyer must confirm receipt. A finance-authorized administrator then checks the stored buyer, seller, order items, agreed total, currency, verified payment, delivery, confirmation and support disputes before release. An administrator cannot approve their own purchase/sale.
+Existing wallet and hosted checkout payments post into escrow, notify the seller, and leave seller spendable funds unchanged. Seller delivery evidence or completed tracked delivery is required. The buyer must confirm receipt. A finance-authorized administrator with fresh MFA then checks the stored buyer, seller, order items, agreed total, currency, verified payment, delivery, confirmation and support disputes before release. An administrator cannot approve their own purchase/sale. Staff access through the shared purchase-protection route also requires MFA and persistent action limits.
 
 Release posts escrow to seller payouts payable and the agreed commission, then clears the seller payable into the existing seller wallet. Refunds use marketplace refunds payable and credit the buyer without a new funding fee. Disputes reclassify the protected amount into a separate frozen liability. Resolving a dispute requires fresh buyer confirmation. Support disputes share the order lock with releases. Repeated releases/refunds are idempotent; decisions record actor, time, reason and order/payment references.
 
@@ -113,6 +115,10 @@ Live statement retrieval is not enabled. The implemented import and independent 
 |---|---|
 | `GET/POST /wallet` | Server fee quotes, funding confirmation/allocation, own-bank withdrawal, PIN and existing wallet operations |
 | `GET /wallet/status` | Existing committed-state polling |
+| `POST /wallet/evidence/challenge` and `POST /wallet/evidence` | Session/quote-bound challenge and encrypted selfie with fresh location evidence |
+| `GET /private/verification/{id}` | Audited private photo access by the owner or a finance administrator with fresh MFA |
+| `GET /admin/withdrawals/{id}/evidence` and `POST /admin/action` | Evidence review and withdrawal decision before provider submission |
+| `GET/POST /admin/security` | Password-protected authenticator enrollment, verification, replacement, and single-use recovery |
 | `GET/POST /orders/protection?order_id=…` | Delivery, buyer confirmation, dispute, administrator release/refund and decision history |
 | `GET/POST /admin/revenue` | Accounting dashboard, company quotes/requests/approvals/execution/receipt confirmation, controlled changes, statement imports/reconciliation |
 | `GET /admin/revenue?export=ledger&from=…&to=…` | Accounting CSV export |
@@ -138,6 +144,10 @@ All are additive extensions of the existing financial structures, with constrain
 | 076 | Explicit funding allocation and immutable settlement import revisions |
 | 077 | Outbound settlement and provider-payable reconciliation |
 | 078 | Finance OTP purpose in the existing OTP system |
+| 080 | Private photographs, withdrawal evidence, review records, and legacy photo quarantine |
+| 081 | Encrypted administrator authenticator secrets, recovery codes, and session verification |
+| 082 | Persistent security rate limits and financial activity events |
+| 083 | Account-photo review binding and private-photo access auditing |
 
 ## Provider access and pricing evidence
 
@@ -170,4 +180,4 @@ The migration test reconstructs the pre-accounting schema, logs existing financi
 
 The negotiation-settings failure was resolved separately: the configured fallback is five rounds, matching the documented policy and existing test. Existing financial tests were updated for the approved fee/escrow behavior without removing their prior replay and permission checks.
 
-See `financial-verification.md` for final run results and artifact locations.
+See [financial verification](financial-verification.md) for the original accounting results and [security verification](security-verification.md) for the current security and complete financial regression results.

@@ -66,12 +66,16 @@
     "styles": [
       "/static/css/style.css",
       "/static/css/ai-assistant.css?v=20260904",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/ai-accessibility.css?v=20261105"
     ],
     "bodyClass": "",
     "fields": [
       "Error",
-      "Result"
+      "Result",
+      "ExamplesAvailable",
+      "Available",
+      "ResultID"
     ]
   },
   "ai-diagnosis-history.html": {
@@ -192,6 +196,7 @@
     "styles": [
       "/static/css/style.css?v=20260904",
       "/static/css/dashboard.css?v=20261103-location",
+      "/static/css/learning_hub.css?v=20261105",
       "/static/css/responsive.css?v=20261027"
     ],
     "bodyClass": "",
@@ -466,12 +471,17 @@
     "title": "Learn farming with AI | Agrilinks Nigeria",
     "styles": [
       "/static/css/style.css",
-      "/static/css/learning_chat.css?v=20261030"
+      "/static/css/learning_chat.css?v=20261105",
+      "/static/css/learning_hub.css?v=20261105",
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/ai-accessibility.css?v=20261105"
     ],
     "bodyClass": "public-learning-page",
     "fields": [
       "AIAvailable",
-      "FarmingTypes.*"
+      "FarmingTypes.*",
+      "ExamplesAvailable",
+      "VoiceUploadAvailable"
     ],
     "description": "Learn about crops, poultry, livestock, fish farming and soil with Agrilinks Nigeria's farming guide."
   },
@@ -481,7 +491,8 @@
     "styles": [
       "/static/css/style.css",
       "/static/css/learning.css",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/ai-accessibility.css?v=20261105"
     ],
     "bodyClass": "learning-page",
     "fields": [
@@ -501,7 +512,9 @@
       "Journey.Status",
       "Messages.*",
       "Messages.*.Content",
-      "Messages.*.SenderType"
+      "Messages.*.SenderType",
+      "ExamplesAvailable",
+      "VoiceUploadAvailable"
     ]
   },
   "learning_rooms.html": {

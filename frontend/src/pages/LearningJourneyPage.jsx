@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import { truth, items, withValue, text, humanStatus } from "../lib/view.js";
 import mountLearning from "../behaviors/learning.js";
 import { usePageBehaviors } from "../lib/behaviors.js";
+import VoiceControls from "../components/VoiceControls.jsx";
 export default function LearningJourneyPage({ data }) {
   usePageBehaviors([mountLearning], data);
   return (
@@ -98,6 +99,7 @@ export default function LearningJourneyPage({ data }) {
                         defaultValue={text(data?.Journey?.ID)}
                       />
                       <label htmlFor="learning-question">Your question</label>
+                      <VoiceControls prefix="journey" />
                       <Textarea
                         id="learning-question"
                         name="content"

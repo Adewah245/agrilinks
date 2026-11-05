@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 
 	"backend/internal/render"
+	"backend/internal/services"
 )
 
 // UserReg contains registration information submitted by a new user.
@@ -97,11 +99,11 @@ func (h *Register) RegisterHandler(
 			return
 		}
 
-		// Verification images are read in memory and stored encrypted in the
-		// same transaction that creates the account. No public file is written.
+		// AuthService derives the public profile picture and an independently
+		// encrypted verification original from this one required camera capture.
 		selfieFile, _, err := r.FormFile("profile_picture")
 		if err != nil {
-			http.Error(w, "Take a private verification selfie before completing registration.", 400)
+			http.Error(w, "Take a selfie for your profile picture and account verification before completing registration.", 400)
 			return
 		}
 		defer selfieFile.Close()
@@ -330,7 +332,6 @@ func (h *Register) RegisterHandler(
 			user.Country,
 
 			role,
-			"",
 
 			user.AccountType,
 			user.OrganisationName,
@@ -340,11 +341,15 @@ func (h *Register) RegisterHandler(
 
 		if err != nil {
 			log.Println("[registration] submission.failed:", err)
+			status := http.StatusBadRequest
+			if errors.Is(err, services.ErrRegistrationPhotoUnavailable) || errors.Is(err, services.ErrSecurityUnavailable) {
+				status = http.StatusServiceUnavailable
+			}
 
 			http.Error(
 				w,
 				err.Error(),
-				http.StatusBadRequest,
+				status,
 			)
 			return
 		}

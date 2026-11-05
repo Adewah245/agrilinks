@@ -18,11 +18,16 @@ func financeLock(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(721001)`)
 	return err
 }
-func financeActor(ctx context.Context, tx *sql.Tx, userID int, permission string) (*models.User, error) {
+func financeActor(ctx context.Context, tx *sql.Tx, userID int, permission string, users ...*UserRepository) (*models.User, error) {
 	u := &models.User{}
 	err := tx.QueryRowContext(ctx, `SELECT id,full_name,is_admin,staff_role,staff_disabled,account_status FROM users WHERE id=$1 AND deleted_at IS NULL FOR SHARE`, userID).Scan(&u.ID, &u.FullName, &u.IsAdmin, &u.StaffRole, &u.StaffDisabled, &u.AccountStatus)
 	if err != nil {
 		return nil, err
+	}
+	// Configuration grants apply only while no explicit staff role overrides
+	// them, matching UserRepository's policy. The current row remains locked.
+	if u.StaffRole == "" && len(users) > 0 && users[0] != nil && users[0].configuredAdministrators[userID] {
+		u.IsAdmin = true
 	}
 	if !u.CanAdmin(permission) {
 		return nil, ErrAdminForbidden

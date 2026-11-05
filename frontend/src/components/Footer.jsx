@@ -21,6 +21,7 @@ export default function Footer() {
           <h2>Quick Links</h2>
           <ul>
             <li><a href="/">Home</a></li>
+            <li><a href="/learning">Learn with AI</a></li>
             <li><a href="/login">Login</a></li>
             <li><a href="/register">Register</a></li>
           </ul>

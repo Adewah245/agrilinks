@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"io"
 	"log"
@@ -28,9 +31,12 @@ func NewAIAssistantHandler(ai *services.AIService) *AIAssistant {
 
 // AIAssistantPageData contains the data rendered on the AI Assistant page.
 type AIAssistantPageData struct {
-	History []models.Diagnosis
-	Result  string
-	Error   string
+	History           []models.Diagnosis
+	Result            string
+	Error             string
+	Available         bool
+	ExamplesAvailable bool
+	ResultID          int
 }
 
 const (
@@ -41,16 +47,13 @@ const (
 
 // validAICategories contains the agricultural categories supported
 // by the Agrilinks Nigeria AI Assistant.
-var validAICategories = map[string]bool{
-	"Crops":                     true,
-	"Livestock":                 true,
-	"Poultry":                   true,
-	"Goats":                     true,
-	"Fish":                      true,
-	"Pests/Insects":             true,
-	"Plant Problems":            true,
-	"General Farming Questions": true,
-}
+var validAICategories = func() map[string]bool {
+	values := make(map[string]bool)
+	for _, category := range services.DiagnosisCategories() {
+		values[category] = true
+	}
+	return values
+}()
 
 // readAIUpload reads and validates an uploaded AI media file.
 //
@@ -139,232 +142,112 @@ func readAIUpload(
 // GET displays the AI Assistant page and the user's diagnosis history.
 // POST validates the submitted agricultural information and optional
 // media, sends the request to the AI service, and displays the result.
-func (h *AIAssistant) Handler(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
+func (h *AIAssistant) Handler(w http.ResponseWriter, r *http.Request) {
 	user, ok := middleware.UserFromContext(r)
-
 	if !ok || user == nil {
-		http.Redirect(
-			w,
-			r,
-			"/login",
-			http.StatusSeeOther,
-		)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-
-	switch r.Method {
-
-	case http.MethodGet:
-		log.Println("User visited AI Assistant page")
-
-		h.render(
-			w,
-			user.ID,
-			"",
-			"",
-		)
-
-	case http.MethodPost:
-
-		// Enforce a real request limit before multipart parsing.
-		r.Body = http.MaxBytesReader(
-			w,
-			r.Body,
-			50<<20,
-		)
-
-		if err := r.ParseMultipartForm(50 << 20); err != nil {
-			h.render(
-				w,
-				user.ID,
-				"",
-				"Couldn't read the submitted information",
-			)
-			return
-		}
-
-		// Clean up temporary multipart files when the request finishes.
-		defer func() {
-			if r.MultipartForm != nil {
-				_ = r.MultipartForm.RemoveAll()
-			}
-		}()
-
-		// Create the request that will be sent to the AI service.
-		request := models.AIRequest{
-			Category:    strings.TrimSpace(r.FormValue("category")),
-			Description: strings.TrimSpace(r.FormValue("description")),
-			Thinking:    r.FormValue("thinking") == "true",
-		}
-
-		var err error
-
-		// Validate the selected agricultural category.
-		if !validAICategories[request.Category] {
-			h.render(
-				w,
-				user.ID,
-				"",
-				"Please select a valid farming category",
-			)
-			return
-		}
-
-		// Require either a description or at least one media attachment.
-		hasImage := len(r.MultipartForm.File["image"]) > 0
-		hasAudio := len(r.MultipartForm.File["audio"]) > 0
-		hasVideo := len(r.MultipartForm.File["video"]) > 0
-
-		if request.Description == "" &&
-			!hasImage &&
-			!hasAudio &&
-			!hasVideo {
-
-			h.render(
-				w,
-				user.ID,
-				"",
-				"Describe the issue or attach media before sending",
-			)
-			return
-		}
-
-		// --------------------------------------------------
-		// OPTIONAL IMAGE
-		// --------------------------------------------------
-
-		request.Image,
-			request.ImageType,
-			err = readAIUpload(
-			r,
-			"image",
-			maxImageSize,
-			"image",
-		)
-
-		if err != nil {
-			h.render(
-				w,
-				user.ID,
-				"",
-				err.Error(),
-			)
-			return
-		}
-
-		// --------------------------------------------------
-		// OPTIONAL AUDIO
-		// --------------------------------------------------
-
-		request.Audio,
-			request.AudioType,
-			err = readAIUpload(
-			r,
-			"audio",
-			maxAudioSize,
-			"audio",
-		)
-
-		if err != nil {
-			h.render(
-				w,
-				user.ID,
-				"",
-				err.Error(),
-			)
-			return
-		}
-
-		// --------------------------------------------------
-		// OPTIONAL VIDEO
-		// --------------------------------------------------
-
-		request.Video,
-			request.VideoType,
-			err = readAIUpload(
-			r,
-			"video",
-			maxVideoSize,
-			"video",
-		)
-
-		if err != nil {
-			h.render(
-				w,
-				user.ID,
-				"",
-				err.Error(),
-			)
-			return
-		}
-
-		// --------------------------------------------------
-		// SEND REQUEST TO AI SERVICE
-		// --------------------------------------------------
-
-		diagnosis, err := h.ai.Diagnose(
-			user.ID,
-			request,
-		)
-
-		if err != nil {
-			h.render(
-				w,
-				user.ID,
-				"",
-				err.Error(),
-			)
-			return
-		}
-
-		if diagnosis == nil {
-			h.render(
-				w,
-				user.ID,
-				"",
-				"AI returned no diagnosis",
-			)
-			return
-		}
-
-		// --------------------------------------------------
-		// BUILD GREETING
-		// --------------------------------------------------
-
-		greeting := "Good evening"
-
-		hour := time.Now().Hour()
-
-		if hour < 12 {
-			greeting = "Good morning"
-		} else if hour < 17 {
-			greeting = "Good afternoon"
-		}
-
-		result :=
-			greeting +
-				", " +
-				user.FullName +
-				". I’m Agrilinks Nigeria AI, and I’m ready to help you.\n\n" +
-				diagnosisText(diagnosis.Result)
-
-		h.render(
-			w,
-			user.ID,
-			result,
-			"",
-		)
-
-	default:
-		http.Error(
-			w,
-			"Method Not Allowed",
-			http.StatusMethodNotAllowed,
-		)
+	if r.Method == http.MethodGet {
+		h.render(w, user.ID, "", "")
+		return
 	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	fail := func(message string, status int) {
+		if wantsJSON(r) {
+			writeError(w, status, message)
+		} else {
+			h.render(w, user.ID, "", message)
+		}
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		fail("We could not read that information. Please try again.", http.StatusBadRequest)
+		return
+	}
+	defer r.MultipartForm.RemoveAll()
+	request := models.AIRequest{UserID: user.ID, UserName: user.FullName, Category: strings.TrimSpace(r.FormValue("category")), Description: strings.TrimSpace(r.FormValue("description")), Thinking: r.FormValue("thinking") == "true"}
+	if !validAICategories[request.Category] {
+		fail("Please choose a farming topic.", http.StatusBadRequest)
+		return
+	}
+	var err error
+	request.Image, request.ImageType, err = readAIUpload(r, "image", maxImageSize, "image")
+	if err != nil {
+		fail(err.Error(), http.StatusBadRequest)
+		return
+	}
+	request.Audio, request.AudioType, err = readAIUpload(r, "audio", maxAudioSize, "audio")
+	if err != nil {
+		fail(err.Error(), http.StatusBadRequest)
+		return
+	}
+	request.Video, request.VideoType, err = readAIUpload(r, "video", maxVideoSize, "video")
+	if err != nil {
+		fail(err.Error(), http.StatusBadRequest)
+		return
+	}
+	if request.Description == "" && len(request.Image)+len(request.Audio)+len(request.Video) == 0 {
+		fail("Describe what happened or attach a photo or recording.", http.StatusBadRequest)
+		return
+	}
+	diagnosis, err := h.ai.Diagnose(r.Context(), user.ID, request)
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			fail("The answer took too long. Please try again.", http.StatusServiceUnavailable)
+			return
+		}
+		fail(err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	if diagnosis == nil {
+		fail("The farming assistant returned no answer. Please try again.", http.StatusServiceUnavailable)
+		return
+	}
+	result := diagnosisText(diagnosis.Result)
+	if wantsJSON(r) {
+		writeJSON(w, http.StatusOK, map[string]any{"result": result, "diagnosis_id": diagnosis.ID, "examples_available": h.ai.ExamplesAvailable()})
+		return
+	}
+	h.render(w, user.ID, result, "", diagnosis.ID)
+}
+
+func (h *AIAssistant) Example(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil {
+		writeError(w, http.StatusUnauthorized, "Please sign in.")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1024)
+	var input struct {
+		DiagnosisID int `json:"diagnosis_id"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&input); err != nil || input.DiagnosisID <= 0 {
+		writeError(w, http.StatusBadRequest, "Choose a saved answer first.")
+		return
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		writeError(w, http.StatusBadRequest, "Choose a saved answer first.")
+		return
+	}
+	result, err := h.ai.Example(r.Context(), user.ID, input.DiagnosisID)
+	if errors.Is(err, sql.ErrNoRows) {
+		writeError(w, http.StatusNotFound, "That answer was not found.")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, services.ErrExampleUnavailable.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 func diagnosisText(value *string) string {
@@ -381,6 +264,7 @@ func (h *AIAssistant) render(
 	userID int,
 	result string,
 	errMsg string,
+	diagnosisID ...int,
 ) {
 	historyStart := time.Now()
 
@@ -401,11 +285,16 @@ func (h *AIAssistant) render(
 	)
 
 	data := AIAssistantPageData{
-		History: history,
-		Result:  result,
-		Error:   errMsg,
+		History:           history,
+		Result:            result,
+		Error:             errMsg,
+		Available:         h.ai.Available(),
+		ExamplesAvailable: h.ai.ExamplesAvailable(),
 	}
 
+	if len(diagnosisID) > 0 {
+		data.ResultID = diagnosisID[0]
+	}
 	if err := render.RenderPage(
 		w,
 		"ai-assistant.html",

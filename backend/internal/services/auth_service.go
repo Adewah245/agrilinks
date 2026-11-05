@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
 	"net/mail"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ type AuthService struct {
 	repo            *repository.UserRepository
 	otp             *OTPService
 	registrationOTP *RegistrationOTPService
+	profilePhotoDir string
 }
 
 func (s *AuthService) SetSecurity(security *SecurityService) { s.security = security }
@@ -27,6 +29,9 @@ func (s *AuthService) SetSecurity(security *SecurityService) { s.security = secu
 func (s *AuthService) SetOTP(otp *OTPService) { s.otp = otp }
 
 func (s *AuthService) SetRegistrationOTP(otp *RegistrationOTPService) { s.registrationOTP = otp }
+
+// SetProfilePhotoDirectory uses the same frontend root as public static files.
+func (s *AuthService) SetProfilePhotoDirectory(directory string) { s.profilePhotoDir = directory }
 
 func (s *AuthService) RequestRegistrationCode(ctx context.Context, phone string) (string, error) {
 	if !s.registrationOTP.Available() {
@@ -111,7 +116,8 @@ func NewAuthService(repo *repository.UserRepository) *AuthService {
 // - farmingTypes represent farming activities the user
 //   already practices.
 // - Phone confirmation is required before an account is created.
-// - A private verification selfie is required; public profile photos are separate.
+// - The required selfie becomes the initial public profile picture, with an
+//   independently encrypted original retained for withdrawal verification.
 // ============================================================
 
 func (s *AuthService) Register(
@@ -127,11 +133,10 @@ func (s *AuthService) Register(
 	state,
 	country,
 	role,
-	photoURL,
 	accountType,
 	organisationName string,
 	farmingTypes []string,
-	verificationImage ...[]byte,
+	selfie []byte,
 ) error {
 	if !s.registrationOTP.Available() {
 		return ErrRegistrationOTPUnavailable
@@ -150,7 +155,6 @@ func (s *AuthService) Register(
 	state = strings.TrimSpace(state)
 	country = strings.TrimSpace(country)
 	role = strings.ToLower(strings.TrimSpace(role))
-	photoURL = strings.TrimSpace(photoURL)
 	accountType = strings.ToLower(strings.TrimSpace(accountType))
 	if accountType == "organization" {
 		accountType = "organisation"
@@ -188,10 +192,14 @@ func (s *AuthService) Register(
 	// Profile picture is compulsory.
 	// --------------------------------------------------------
 
-	if len(verificationImage) != 1 {
-		return errors.New("a private verification selfie is required")
+	if len(selfie) == 0 {
+		return errors.New("take a selfie for your profile picture and account verification")
 	}
-	privatePhoto, err := s.security.PrivateImage(verificationImage[0])
+	profilePhoto, err := NormalizeVerificationImage(selfie)
+	if err != nil {
+		return err
+	}
+	privatePhoto, err := s.security.Seal(profilePhoto, "verification-photo")
 	if err != nil {
 		return err
 	}
@@ -303,6 +311,20 @@ func (s *AuthService) Register(
 		return err
 	}
 
+	// Save the sanitized public copy only after validation. If the account
+	// transaction fails, remove it so rejected signups do not leave uploads.
+	photoURL, removePhoto, err := saveRegistrationProfilePhoto(s.profilePhotoDir, profilePhoto)
+	if err != nil {
+		log.Printf("[registration] profile_photo.save_failed: %v", err)
+		return ErrRegistrationPhotoUnavailable
+	}
+	created := false
+	defer func() {
+		if !created {
+			removePhoto()
+		}
+	}()
+
 	// --------------------------------------------------------
 	// Build user
 	// --------------------------------------------------------
@@ -325,7 +347,7 @@ func (s *AuthService) Register(
 
 		OrganisationName: organisationName,
 
-		PhotoURL:          "",
+		PhotoURL:          photoURL,
 		VerificationPhoto: privatePhoto,
 
 		FarmingTypes: farmingTypes,
@@ -339,6 +361,7 @@ func (s *AuthService) Register(
 	if err != nil {
 		return err
 	}
+	created = true
 
 	return nil
 }

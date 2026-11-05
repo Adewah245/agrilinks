@@ -10,15 +10,34 @@ import (
 )
 
 type LearningService struct {
-	repo     *repository.LearningRepository
-	provider LearningProvider
+	repo        *repository.LearningRepository
+	provider    LearningProvider
+	images      ExampleImageProvider
+	transcriber VoiceTranscriber
 }
 
 func NewLearningService(repo *repository.LearningRepository) *LearningService {
 	return &LearningService{repo: repo}
 }
-func (s *LearningService) SetProvider(provider LearningProvider) { s.provider = provider }
-func (s *LearningService) AIAvailable() bool                     { return s.provider != nil }
+func (s *LearningService) SetProvider(provider LearningProvider)          { s.provider = provider }
+func (s *LearningService) AIAvailable() bool                              { return s.provider != nil }
+func (s *LearningService) SetImageProvider(provider ExampleImageProvider) { s.images = provider }
+func (s *LearningService) ExamplesAvailable() bool                        { return s != nil && s.images != nil }
+func (s *LearningService) SetTranscriber(provider VoiceTranscriber)       { s.transcriber = provider }
+func (s *LearningService) VoiceUploadAvailable() bool                     { return s != nil && s.transcriber != nil }
+func (s *LearningService) Example(ctx context.Context, request ExampleImageRequest) (*ExampleImageResult, error) {
+	if s.images == nil {
+		return nil, ErrExampleUnavailable
+	}
+	request.Diagnosis = false
+	return s.images.Generate(ctx, request)
+}
+func (s *LearningService) Transcribe(ctx context.Context, audio []byte, mime string) (string, error) {
+	if s.transcriber == nil {
+		return "", ErrVoiceUnavailable
+	}
+	return s.transcriber.Transcribe(ctx, audio, mime)
+}
 func (s *LearningService) GetFarmingTypes() ([]models.FarmingType, error) {
 	return s.repo.ListFarmingTypes()
 }

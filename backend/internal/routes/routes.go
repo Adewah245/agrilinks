@@ -13,6 +13,14 @@ import (
 
 func NewHandler(container *app.Container) http.Handler {
 	mux := http.NewServeMux()
+	staffAccess := func(next http.HandlerFunc) http.HandlerFunc {
+		return middleware.RequireAuth(container.Sessions, container.UserRepo,
+			handlers.RequireAdminMFAForStaff(container.Security, handlers.LimitFinancialActions(container.Security, next)))
+	}
+	adminAccess := func(next http.HandlerFunc) http.HandlerFunc {
+		return middleware.RequireAuth(container.Sessions, container.UserRepo,
+			handlers.RequireAdminMFA(container.Security, handlers.LimitFinancialActions(container.Security, next)))
+	}
 	adminHandler := handlers.NewAdminWorkspaceHandler(container.Admin, container.Wallet, container.Security)
 	for _, section := range models.AdminSections {
 		mux.HandleFunc("GET "+section.Path, middleware.OnlyPath(section.Path, middleware.RequireAuth(container.Sessions, container.UserRepo, handlers.RequireAdminMFA(container.Security, adminHandler.Handler))))
@@ -250,6 +258,8 @@ func NewHandler(container *app.Container) http.Handler {
 	)
 	mux.HandleFunc("GET /learning", middleware.OnlyPath("/learning", learningHandler.PublicPage))
 	mux.HandleFunc("POST /learning/chat", middleware.OnlyPath("/learning/chat", learningHandler.PublicChat))
+	mux.HandleFunc("POST /learning/example", middleware.OnlyPath("/learning/example", learningHandler.PublicExample))
+	mux.HandleFunc("POST /learning/transcribe", middleware.OnlyPath("/learning/transcribe", learningHandler.PublicTranscribe))
 	mux.HandleFunc("/learn/checkpoint/create", middleware.OnlyPath("/learn/checkpoint/create", middleware.RequireAuth(container.Sessions, container.UserRepo, learningHandler.CreateCheckpoint)))
 	mux.HandleFunc("GET /learn/rooms", middleware.RequireAuth(container.Sessions, container.UserRepo, learningHandler.Rooms))
 	mux.HandleFunc("POST /learn/rooms/create", middleware.RequireAuth(container.Sessions, container.UserRepo, learningHandler.CreateRoom))
@@ -613,7 +623,7 @@ func NewHandler(container *app.Container) http.Handler {
 
 	orderHandler := handlers.NewOrderHandler(container.Order)
 	escrowHandler := handlers.NewEscrowHandler(container.Escrow)
-	mux.HandleFunc("/orders/protection", middleware.RequireAuth(container.Sessions, container.UserRepo, escrowHandler.Handler))
+	mux.HandleFunc("/orders/protection", staffAccess(escrowHandler.Handler))
 	mux.HandleFunc(
 		"/orders",
 		middleware.OnlyPath(
@@ -652,10 +662,7 @@ func NewHandler(container *app.Container) http.Handler {
 		"/trust",
 		middleware.OnlyPath(
 			"/trust",
-			middleware.RequireAuth(container.Sessions,
-				container.UserRepo,
-				reviewHandler.TrustHandler,
-			),
+			adminAccess(reviewHandler.TrustHandler),
 		),
 	)
 
@@ -690,13 +697,13 @@ func NewHandler(container *app.Container) http.Handler {
 	)
 
 	deliveryHandler := handlers.NewDeliveryHandler(container.Delivery)
-	mux.HandleFunc("/deliveries", middleware.OnlyPath("/deliveries", middleware.OnlyGet(middleware.RequireAuth(container.Sessions, container.UserRepo, deliveryHandler.Handler))))
+	mux.HandleFunc("/deliveries", middleware.OnlyPath("/deliveries", middleware.OnlyGet(staffAccess(deliveryHandler.Handler))))
 	mux.HandleFunc("/deliveries/request", middleware.OnlyPath("/deliveries/request", middleware.RequireAuth(container.Sessions, container.UserRepo, deliveryHandler.RequestDeliveryHandler)))
-	mux.HandleFunc("/deliveries/assign", middleware.OnlyPath("/deliveries/assign", middleware.RequireAuth(container.Sessions, container.UserRepo, deliveryHandler.AssignPartnerHandler)))
-	mux.HandleFunc("/deliveries/status", middleware.OnlyPath("/deliveries/status", middleware.RequireAuth(container.Sessions, container.UserRepo, deliveryHandler.UpdateStatusHandler)))
-	mux.HandleFunc("/deliveries/tracking", middleware.OnlyPath("/deliveries/tracking", middleware.RequireAuth(container.Sessions, container.UserRepo, deliveryHandler.TrackingHandler)))
-	mux.HandleFunc("/delivery-partner", middleware.OnlyPath("/delivery-partner", middleware.RequireAuth(container.Sessions, container.UserRepo, deliveryHandler.PartnerPageHandler)))
-	mux.HandleFunc("/delivery-partner/review", middleware.OnlyPath("/delivery-partner/review", middleware.RequireAuth(container.Sessions, container.UserRepo, deliveryHandler.PartnerReviewHandler)))
+	mux.HandleFunc("/deliveries/assign", middleware.OnlyPath("/deliveries/assign", staffAccess(deliveryHandler.AssignPartnerHandler)))
+	mux.HandleFunc("/deliveries/status", middleware.OnlyPath("/deliveries/status", staffAccess(deliveryHandler.UpdateStatusHandler)))
+	mux.HandleFunc("/deliveries/tracking", middleware.OnlyPath("/deliveries/tracking", staffAccess(deliveryHandler.TrackingHandler)))
+	mux.HandleFunc("/delivery-partner", middleware.OnlyPath("/delivery-partner", staffAccess(deliveryHandler.PartnerPageHandler)))
+	mux.HandleFunc("/delivery-partner/review", middleware.OnlyPath("/delivery-partner/review", adminAccess(deliveryHandler.PartnerReviewHandler)))
 
 	// ========================================================
 	// AI ASSISTANT
@@ -705,6 +712,7 @@ func NewHandler(container *app.Container) http.Handler {
 	aiHandler := handlers.NewAIAssistantHandler(
 		container.AI,
 	)
+	mux.HandleFunc("POST /ai-assistant/example", middleware.RequireAuth(container.Sessions, container.UserRepo, aiHandler.Example))
 
 	diagnosisHistoryHandler := handlers.NewAIDiagnosisHistoryHandler(
 		container.AI,

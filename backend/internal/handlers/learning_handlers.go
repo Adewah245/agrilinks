@@ -32,6 +32,8 @@ type LearningJourneyData struct {
 	Checkpoints []models.LearningCheckpoint
 	Messages    []models.LearningMessage
 	AIAvailable bool
+	ExamplesAvailable bool
+	VoiceUploadAvailable bool
 }
 
 func (h *LearningHandler) LearningHome(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +99,7 @@ func (h *LearningHandler) LearningJourney(w http.ResponseWriter, r *http.Request
 		h.fail(w, r, err)
 		return
 	}
-	h.render(w, "learning_journey.html", LearningJourneyData{Journey: journey, Checkpoints: checkpoints, Messages: messages, AIAvailable: h.service.AIAvailable()})
+	h.render(w, "learning_journey.html", LearningJourneyData{Journey: journey, Checkpoints: checkpoints, Messages: messages, AIAvailable: h.service.AIAvailable(), ExamplesAvailable: h.service.ExamplesAvailable(), VoiceUploadAvailable: h.service.VoiceUploadAvailable()})
 }
 
 func (h *LearningHandler) UpdateJourneyProgress(w http.ResponseWriter, r *http.Request) {

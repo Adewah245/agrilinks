@@ -1,10 +1,12 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"log"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"backend/internal/models"
 	"backend/internal/repository"
@@ -13,7 +15,7 @@ import (
 // AIProvider defines the contract that an AI provider must implement
 // to analyze agricultural requests.
 type AIProvider interface {
-	Analyze(request models.AIRequest) (*models.DiagnosisResult, error)
+	Analyze(context.Context, models.AIRequest) (*models.DiagnosisResult, error)
 }
 
 // AIService coordinates agricultural diagnosis requests between
@@ -21,6 +23,7 @@ type AIProvider interface {
 type AIService struct {
 	repo     *repository.DiagnosisRepository
 	provider AIProvider
+	images   ExampleImageProvider
 }
 
 // NewAIService creates a new AIService with the provided diagnosis
@@ -38,6 +41,7 @@ func NewAIService(
 // Diagnose sends a user's agricultural information to the configured
 // AI provider and stores the resulting diagnosis in the database.
 func (s *AIService) Diagnose(
+	ctx context.Context,
 	userID int,
 	request models.AIRequest,
 ) (*models.Diagnosis, error) {
@@ -59,7 +63,10 @@ func (s *AIService) Diagnose(
 	aiStart := time.Now()
 	log.Println("⏱️ AI analysis started")
 
-	aiResult, err := s.provider.Analyze(request)
+	if utf8.RuneCountInString(request.Description) > 5000 {
+		return nil, errors.New("keep your description under 5,000 characters")
+	}
+	aiResult, err := s.provider.Analyze(ctx, request)
 
 	log.Printf("⏱️ AI analysis took: %v", time.Since(aiStart))
 
@@ -67,7 +74,7 @@ func (s *AIService) Diagnose(
 		return nil, err
 	}
 
-	if aiResult == nil {
+	if aiResult == nil || strings.TrimSpace(aiResult.Result) == "" {
 		return nil, errors.New("AI provider returned no result")
 	}
 
@@ -88,6 +95,20 @@ func (s *AIService) Diagnose(
 	log.Printf("⏱️ Database save took: %v", time.Since(dbStart))
 
 	return diagnosis, nil
+}
+
+func (s *AIService) Available() bool                                { return s != nil && s.provider != nil }
+func (s *AIService) SetImageProvider(provider ExampleImageProvider) { s.images = provider }
+func (s *AIService) ExamplesAvailable() bool                        { return s != nil && s.images != nil }
+func (s *AIService) Example(ctx context.Context, userID, diagnosisID int) (*ExampleImageResult, error) {
+	if s.images == nil {
+		return nil, ErrExampleUnavailable
+	}
+	diagnosis, err := s.repo.GetByIDForUser(diagnosisID, userID)
+	if err != nil {
+		return nil, err
+	}
+	return s.images.Generate(ctx, ExampleImageRequest{Topic: diagnosis.CategoryText(), Question: diagnosis.SymptomsText(), Answer: diagnosis.ResultText(), Diagnosis: true})
 }
 
 func stringPointer(value string) *string { return &value }

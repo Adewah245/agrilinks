@@ -141,6 +141,10 @@ func (h *SecurityHandler) EvidenceUpload(w http.ResponseWriter, r *http.Request)
 }
 func (h *SecurityHandler) PrivatePhoto(w http.ResponseWriter, r *http.Request) {
 	u, _ := middleware.UserFromContext(r)
+	if err := h.security.Limit(r.Context(), u.ID, "private_photo", 60, time.Minute); err != nil {
+		sensitiveActionError(w, err)
+		return
+	}
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil || id <= 0 {
 		http.NotFound(w, r)
@@ -159,21 +163,15 @@ func (h *SecurityHandler) PrivatePhoto(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err = h.security.Repo.Event(r.Context(), u.ID, "private_photo_viewed", "info"); err != nil {
-		http.Error(w, "Private evidence is unavailable", 503)
-		return
-	}
 	data, err := h.security.Open(encrypted, "verification-photo")
 	if err != nil {
 		http.Error(w, "Private evidence is unavailable", 503)
 		return
 	}
-	if owner != u.ID {
-		session, _ := middleware.SessionIDFromRequest(r)
-		if err = h.security.Repo.MarkPhotoViewed(r.Context(), u.ID, services.SecurityHash(session), id); err != nil {
-			http.Error(w, "Could not record evidence access", 503)
-			return
-		}
+	session, _ := middleware.SessionIDFromRequest(r)
+	if err = h.security.Repo.MarkPhotoViewed(r.Context(), u.ID, services.SecurityHash(session), id); err != nil {
+		http.Error(w, "Could not record evidence access", 503)
+		return
 	}
 	w.Header().Set("Cache-Control", "private, no-store, max-age=0")
 	w.Header().Set("Pragma", "no-cache")
@@ -212,7 +210,7 @@ func (h *SecurityHandler) WithdrawalReview(w http.ResponseWriter, r *http.Reques
 	}
 	page := models.WithdrawalReviewPage{Withdrawal: withdrawal, Evidence: evidence, RegistrationPhotoID: photoID, CSRF: adminCSRF(r)}
 	if evidence != nil && withdrawal.UserID != u.ID {
-		if err = h.security.Repo.ReviewEvidence(r.Context(), id, u.ID, services.SecurityHash(session)); err != nil {
+		if page.RegistrationPhotoID, err = h.security.Repo.ReviewEvidence(r.Context(), id, u.ID, services.SecurityHash(session)); err != nil {
 			http.Error(w, "Verify your administrator authenticator again", 403)
 			return
 		}
@@ -243,6 +241,20 @@ func RequireAdminMFA(s *services.SecurityService, next http.HandlerFunc) http.Ha
 			} else {
 				http.Error(w, repository.ErrMFARequired.Error(), 403)
 			}
+			return
+		}
+		next(w, r)
+	}
+}
+
+// Shared member pages can expose administrative powers. Staff sessions must
+// prove MFA there too; members retain the handlers' normal ownership checks.
+func RequireAdminMFAForStaff(s *services.SecurityService, next http.HandlerFunc) http.HandlerFunc {
+	protected := RequireAdminMFA(s, next)
+	return func(w http.ResponseWriter, r *http.Request) {
+		u, _ := middleware.UserFromContext(r)
+		if u.AdminRole() != "" {
+			protected(w, r)
 			return
 		}
 		next(w, r)

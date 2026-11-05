@@ -1,8 +1,10 @@
 # Admin workspace
 
-The central staff dashboard is `/admin`. Staff sign in through `/login`; their
-login opens the admin overview. `/wallet/admin` redirects authorized operators
-to `/admin/finance`.
+The central staff dashboard is `/admin`. Staff sign in through `/login`, then
+enroll or verify their authenticator at `/admin/security` before accessing
+administrator tools. Verification lasts 15 minutes per session. `/wallet/admin`
+redirects authorized operators to `/admin/finance`. See [security operations](security-operations.md)
+for key configuration, migrations, recovery codes, and private withdrawal review.
 
 ## First Super Admin
 
@@ -23,7 +25,7 @@ promotes an enabled existing account, revokes its previous sessions, and records
 the bootstrap action. It refuses to run when an enabled persisted Super Admin
 already exists. It is a local command; there is no public setup endpoint.
 
-Log in again, open `/admin/staff`, and either create a staff account or assign a
+Log in again, complete authenticator enrollment, open `/admin/staff`, and either create a staff account or assign a
 staff role to an existing member ID. Staff roles are independent of farmer,
 buyer, and learner roles. Staff accounts created in the dashboard use buyer as
 their member role and sign in with their phone and password.

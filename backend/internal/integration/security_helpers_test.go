@@ -87,7 +87,8 @@ func fixtureReviewEvidence(t *testing.T, c *app.Container, id int64, adminID int
 	t.Helper()
 	ctx := context.Background()
 	hash := services.SecurityHash(session)
-	if err := c.Security.Repo.ReviewEvidence(ctx, id, adminID, hash); err != nil {
+	registrationID, err := c.Security.Repo.ReviewEvidence(ctx, id, adminID, hash)
+	if err != nil {
 		t.Fatal(err)
 	}
 	evidence, err := c.Security.Repo.Evidence(ctx, id)
@@ -96,5 +97,10 @@ func fixtureReviewEvidence(t *testing.T, c *app.Container, id int64, adminID int
 	}
 	if err = c.Security.Repo.MarkPhotoViewed(ctx, adminID, hash, evidence.PhotoID); err != nil {
 		t.Fatal(err)
+	}
+	if registrationID > 0 {
+		if err = c.Security.Repo.MarkPhotoViewed(ctx, adminID, hash, registrationID); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

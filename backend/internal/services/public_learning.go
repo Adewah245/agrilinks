@@ -23,7 +23,7 @@ type LearningChatRequest struct {
 }
 
 func LearningCategories() []string {
-	return []string{"Crop farming", "Poultry farming", "Livestock farming", "Fish farming", "Vegetable farming", "Soil management", "Starting a farm"}
+	return []string{"Crop farming", "Livestock farming", "Poultry farming", "Fish farming and aquaculture", "Mixed farming", "Horticulture"}
 }
 
 // PublicChat keeps the legacy learning chat independent of registration and

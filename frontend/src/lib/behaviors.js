@@ -65,6 +65,10 @@ export function usePageBehaviors(mounts, data) {
             };
           if (property in scope) return scope[property];
           const value = Reflect.get(object, property, object);
+          // Preserve Web constructors and their static helpers. Binding
+          // MediaRecorder or URL drops isTypeSupported/createObjectURL.
+          if (typeof value === "function" && /^[A-Z]/.test(String(property)))
+            return value;
           return typeof value === "function" ? value.bind(object) : value;
         },
         set(object, property, value) {

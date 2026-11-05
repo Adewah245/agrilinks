@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar.jsx";
+import FarmingLearningHub from "../components/FarmingLearningHub.jsx";
 import { Fragment } from "react";
 import {
   truth,
@@ -52,6 +53,7 @@ export default function DashboardPage({ data }) {
             </>
           ) : null}
           <a href="/chat"> Chat </a>
+          <a href="/learning"> Learn with AI </a>
           {truth(data?.IsBuyer) ? (
             <>
               <a href="/cart" className="cart-nav-link">
@@ -1699,6 +1701,11 @@ export default function DashboardPage({ data }) {
             </div>
           </div>
           <div className="action-grid">
+            <FarmingLearningHub className="action-card">
+              <span>Learning</span>
+              <h3>Learn farming</h3>
+              <p>Explore farming topics and ask the AI learning guide.</p>
+            </FarmingLearningHub>
             {truth(data?.IsBuyer) ? (
               <>
                 <a href="/marketplace" className="action-card">

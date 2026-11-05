@@ -13,11 +13,15 @@ import (
 )
 
 const (
-	defaultNegotiationMaxRounds = 5
-	defaultNegotiationWindow    = 24 * time.Hour
-	defaultPaymentCurrency      = "NGN"
-	defaultOTPDevSender         = "OTP Dev"
-	defaultOTPDevTemplateID     = "a724614a-3a7c-4625-930e-2a8b45141474" // Legacy "Agro-Shield" template; update its text in OTP.dev
+	DefaultGroqLearningModel       = "openai/gpt-oss-20b"
+	DefaultOpenRouterLearningModel = "openai/gpt-oss-20b"
+	DefaultGeminiDiagnosisModel    = "gemini-3.6-flash"
+	DefaultGeminiImageModel        = "gemini-3.1-flash-lite-image"
+	defaultNegotiationMaxRounds    = 5
+	defaultNegotiationWindow       = 24 * time.Hour
+	defaultPaymentCurrency         = "NGN"
+	defaultOTPDevSender            = "OTP Dev"
+	defaultOTPDevTemplateID        = "a724614a-3a7c-4625-930e-2a8b45141474" // Legacy "Agro-Shield" template; update its text in OTP.dev
 )
 
 // Config holds all application settings in one place.
@@ -53,18 +57,21 @@ type Config struct {
 	DatabaseURL string
 
 	// Diagnosis AI — Gemini only
-	GeminiAPIKey string
-	GeminiModel  string
+	GeminiAPIKey     string
+	GeminiModel      string
+	GeminiImageModel string
+	GeminiBaseURL    string
 
 	// Learning AI — Groq primary, OpenRouter backup
-	GroqAPIKey        string
-	OpenRouterAPIKey  string
-	GroqModel         string
-	OpenRouterModel   string
-	GroqBaseURL       string
-	OpenRouterBaseURL string
-	AIRequestTimeout  time.Duration
-	AIMaxTokens       int
+	GroqAPIKey             string
+	OpenRouterAPIKey       string
+	GroqModel              string
+	GroqTranscriptionModel string
+	OpenRouterModel        string
+	GroqBaseURL            string
+	OpenRouterBaseURL      string
+	AIRequestTimeout       time.Duration
+	AIMaxTokens            int
 
 	// Payments — Flutterwave
 	FlutterwaveSecretKey  string
@@ -238,14 +245,17 @@ func Load() (Config, error) {
 		DatabaseURL: strings.TrimSpace(os.Getenv("DATABASE_URL")),
 
 		// AI providers
-		GeminiAPIKey:      strings.TrimSpace(os.Getenv("GEMINI_API_KEY")),
-		GeminiModel:       strings.TrimSpace(os.Getenv("GEMINI_MODEL")),
-		GroqAPIKey:        strings.TrimSpace(os.Getenv("GROQ_API_KEY")),
-		OpenRouterAPIKey:  strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY")),
-		GroqModel:         strings.TrimSpace(os.Getenv("GROQ_MODEL")),
-		OpenRouterModel:   strings.TrimSpace(os.Getenv("OPENROUTER_MODEL")),
-		GroqBaseURL:       envString("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
-		OpenRouterBaseURL: envString("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+		GeminiAPIKey:           envString("GEMINI_API_KEY", strings.TrimSpace(os.Getenv("GOOGLE_API_KEY"))),
+		GeminiModel:            envString("GEMINI_MODEL", DefaultGeminiDiagnosisModel),
+		GeminiImageModel:       envString("GEMINI_IMAGE_MODEL", DefaultGeminiImageModel),
+		GeminiBaseURL:          envString("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com"),
+		GroqAPIKey:             strings.TrimSpace(os.Getenv("GROQ_API_KEY")),
+		OpenRouterAPIKey:       strings.TrimSpace(os.Getenv("OPENROUTER_API_KEY")),
+		GroqModel:              envString("GROQ_MODEL", DefaultGroqLearningModel),
+		GroqTranscriptionModel: envString("GROQ_TRANSCRIPTION_MODEL", "whisper-large-v3-turbo"),
+		OpenRouterModel:        envString("OPENROUTER_MODEL", DefaultOpenRouterLearningModel),
+		GroqBaseURL:            envString("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+		OpenRouterBaseURL:      envString("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
 
 		// Payments
 		FlutterwaveSecretKey:  strings.TrimSpace(os.Getenv("FLUTTERWAVE_SECRET_KEY")),
@@ -390,7 +400,7 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("%s is required when its provider key is configured", provider.setting)
 		}
 	}
-	for name, value := range map[string]string{"GROQ_BASE_URL": cfg.GroqBaseURL, "OPENROUTER_BASE_URL": cfg.OpenRouterBaseURL, "FLUTTERWAVE_BASE_URL": cfg.FlutterwaveBaseURL, "OTPDEV_BASE_URL": cfg.OTPDevBaseURL} {
+	for name, value := range map[string]string{"GEMINI_BASE_URL": cfg.GeminiBaseURL, "GROQ_BASE_URL": cfg.GroqBaseURL, "OPENROUTER_BASE_URL": cfg.OpenRouterBaseURL, "FLUTTERWAVE_BASE_URL": cfg.FlutterwaveBaseURL, "OTPDEV_BASE_URL": cfg.OTPDevBaseURL} {
 		if err := validateHTTPURL(name, value); err != nil {
 			return Config{}, err
 		}

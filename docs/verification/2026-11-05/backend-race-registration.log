@@ -1,0 +1,9 @@
+?   	backend/cmd/admin	[no test files]
+?   	backend/cmd/migrate	[no test files]
+?   	backend/cmd/server	[no test files]
+ok  	backend/internal/app	1.121s
+?   	backend/internal/chat	[no test files]
+ok  	backend/internal/config	1.086s
+ok  	backend/internal/database	1.030s
+?   	backend/internal/dto	[no test files]
+ok  	backend/internal/handlers	22.170s

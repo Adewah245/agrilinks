@@ -32,7 +32,7 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	var diagnosis services.AIProvider
 	var err error
 	if cfg.GeminiAPIKey != "" {
-		diagnosis, err = services.NewGeminiProvider(cfg.GeminiAPIKey, cfg.GeminiModel)
+		diagnosis, err = services.NewConfiguredGeminiProvider(cfg)
 		if err != nil {
 			return nil, fmt.Errorf("configure diagnosis: %w", err)
 		}
@@ -71,11 +71,12 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	}
 	container.UserRepo.SetConfiguredAdministrators(administratorIDs)
 	container.Config = cfg
-	container.Security, err = services.NewSecurityService(repository.NewSecurityRepository(db), cfg.SecurityEncryptionKey)
+	container.Security, err = services.NewSecurityService(repository.NewSecurityRepository(db, container.UserRepo), cfg.SecurityEncryptionKey)
 	if err != nil {
 		return nil, err
 	}
 	container.Auth.SetSecurity(container.Security)
+	container.Auth.SetProfilePhotoDirectory(cfg.FrontendDir)
 	if err = container.Security.MigrateLegacyPhotos(context.Background(), cfg.FrontendDir); err != nil {
 		return nil, fmt.Errorf("migrate private verification photos: %w", err)
 	}
@@ -97,7 +98,7 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	container.Auth.SetRegistrationOTP(services.NewRegistrationOTPService(
 		repository.NewRegistrationOTPRepository(db), phoneDelivery, cfg.OTPTTL, cfg.OTPMaxAttempts, cfg.OTPResendInterval,
 	))
-	container.Wallet = services.NewWalletService(repository.NewWalletRepository(db, cfg.PaymentCurrency, commission), repository.NewPaymentRepository(db, commission), walletProvider, container.OTP, cfg.PaymentCurrency)
+	container.Wallet = services.NewWalletService(repository.NewWalletRepository(db, cfg.PaymentCurrency, commission, container.UserRepo), repository.NewPaymentRepository(db, commission), walletProvider, container.OTP, cfg.PaymentCurrency)
 	container.Wallet.SetPINService(services.NewTransactionPINService(container.UserRepo))
 	container.Wallet.SetSecurity(container.Security)
 	container.Payment.SetWallet(container.Wallet)
@@ -108,6 +109,10 @@ func New(db *sql.DB, cfg config.Config) (*Container, error) {
 	container.Finance = services.NewFinanceService(repository.NewFinanceRepository(db), settlementProvider, container.UserRepo, services.NewTransactionPINService(container.UserRepo), container.OTP)
 	container.Payment.SetFinance(container.Finance)
 	container.Learning.SetProvider(services.NewLearningProvider(cfg))
+	images := services.NewExampleImageProvider(cfg)
+	container.Learning.SetImageProvider(images)
+	container.AI.SetImageProvider(images)
+	container.Learning.SetTranscriber(services.NewVoiceTranscriber(cfg))
 	return container, nil
 }
 

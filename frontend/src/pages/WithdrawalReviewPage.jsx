@@ -51,11 +51,11 @@ export default function WithdrawalReviewPage({ data }) {
               <figure>
                 <img
                   src={`/private/verification/${data.RegistrationPhotoID}`}
-                  alt="Private account verification photograph"
+                  alt="Private original registration selfie"
                   onLoad={() => setAccountPhotoLoaded(true)}
                   onError={() => setPhotoError(true)}
                 />
-                <figcaption>Account verification photograph</figcaption>
+                <figcaption>Original registration selfie</figcaption>
               </figure>
             ) : (
               <p>

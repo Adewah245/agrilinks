@@ -84,9 +84,9 @@ func RequestGuard(next http.Handler, cfg config.Config) http.Handler {
 			switch r.URL.Path {
 			case "/login", "/register", "/register/phone-code", "/register/phone-verify", "/forgot-password", "/admin/security":
 				limiter = authLimit
-			case "/wallet", "/wallet/evidence", "/wallet/evidence/challenge", "/admin/action", "/admin/revenue":
+			case "/wallet", "/wallet/evidence", "/wallet/evidence/challenge", "/admin/action", "/admin/revenue", "/orders/protection", "/trust", "/deliveries/assign", "/deliveries/status", "/deliveries/tracking", "/delivery-partner", "/delivery-partner/review":
 				limiter = financeLimit
-			case "/learn/message", "/learning/chat", "/ai-assistant":
+			case "/learn/message", "/learning/chat", "/learning/example", "/learning/transcribe", "/ai-assistant", "/ai-assistant/example":
 				limiter = aiLimit
 			}
 			if limiter != nil && !limiter.allow(peer) {

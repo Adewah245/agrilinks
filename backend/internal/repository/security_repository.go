@@ -11,9 +11,18 @@ import (
 var ErrPrivateEvidence = errors.New("capture a fresh withdrawal selfie and location before submitting")
 var ErrMFARequired = errors.New("verify your administrator authenticator before continuing")
 
-type SecurityRepository struct{ db *sql.DB }
+type SecurityRepository struct {
+	db    *sql.DB
+	users *UserRepository
+}
 
-func NewSecurityRepository(db *sql.DB) *SecurityRepository { return &SecurityRepository{db: db} }
+func NewSecurityRepository(db *sql.DB, users ...*UserRepository) *SecurityRepository {
+	r := &SecurityRepository{db: db}
+	if len(users) > 0 {
+		r.users = users[0]
+	}
+	return r
+}
 
 func (r *SecurityRepository) Allow(ctx context.Context, key string, limit int, window time.Duration) (bool, error) {
 	var count int
@@ -24,18 +33,35 @@ func (r *SecurityRepository) Allow(ctx context.Context, key string, limit int, w
 	return count <= limit, err
 }
 func (r *SecurityRepository) Event(ctx context.Context, userID int, kind, severity string) error {
-	_, err := r.db.ExecContext(ctx, `INSERT INTO security_events(user_id,kind,severity) VALUES(NULLIF($1,0),$2,$3)`, userID, kind, severity)
+	if kind != "wallet_action_failed" {
+		_, err := r.db.ExecContext(ctx, `INSERT INTO security_events(user_id,kind,severity) VALUES(NULLIF($1,0),$2,$3)`, userID, kind, severity)
+		return err
+	}
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	if kind == "wallet_action_failed" {
-		_, err = r.db.ExecContext(ctx, `INSERT INTO security_events(user_id,kind,severity) SELECT $1,'repeated_wallet_failures','high' WHERE (SELECT count(*) FROM security_events WHERE user_id=$1 AND kind='wallet_action_failed' AND created_at>CURRENT_TIMESTAMP-interval '15 minutes')>=5 AND NOT EXISTS(SELECT 1 FROM security_events WHERE user_id=$1 AND kind='repeated_wallet_failures' AND created_at>CURRENT_TIMESTAMP-interval '15 minutes')`, userID)
+	defer tx.Rollback()
+	// Serialize each account's failure burst across replicas so simultaneous
+	// failures create one alert while retaining every underlying event.
+	if _, err = tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('security-wallet-failures:' || $1::integer::text,0))`, userID); err != nil {
+		return err
 	}
-	return err
+	if _, err = tx.ExecContext(ctx, `INSERT INTO security_events(user_id,kind,severity) VALUES($1,$2,$3)`, userID, kind, severity); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO security_events(user_id,kind,severity) SELECT $1,'repeated_wallet_failures','high' WHERE (SELECT count(*) FROM security_events WHERE user_id=$1 AND kind='wallet_action_failed' AND created_at>CURRENT_TIMESTAMP-interval '15 minutes')>=5 AND NOT EXISTS(SELECT 1 FROM security_events WHERE user_id=$1 AND kind='repeated_wallet_failures' AND created_at>CURRENT_TIMESTAMP-interval '15 minutes')`, userID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 func (r *SecurityRepository) FreshMFA(ctx context.Context, userID int, session string) (bool, error) {
+	return freshMFA(ctx, r.db, userID, session)
+}
+
+func freshMFA(ctx context.Context, q walletQuery, userID int, session string) (bool, error) {
 	var ok bool
-	err := r.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM user_sessions s JOIN admin_mfa m ON m.user_id=s.user_id WHERE s.user_id=$1 AND s.token_hash=$2 AND s.expires_at>CURRENT_TIMESTAMP AND s.mfa_verified_until>CURRENT_TIMESTAMP AND m.enabled)`, userID, session).Scan(&ok)
+	err := q.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM user_sessions s JOIN admin_mfa m ON m.user_id=s.user_id WHERE s.user_id=$1 AND s.token_hash=$2 AND s.expires_at>CURRENT_TIMESTAMP AND s.mfa_verified_until>CURRENT_TIMESTAMP AND m.enabled)`, userID, session).Scan(&ok)
 	return ok, err
 }
 
@@ -197,16 +223,29 @@ func (r *SecurityRepository) Evidence(ctx context.Context, id int64) (*models.Wi
 	}
 	return e, err
 }
-func (r *SecurityRepository) ReviewEvidence(ctx context.Context, id int64, userID int, session string) error {
-	res, err := r.db.ExecContext(ctx, `INSERT INTO withdrawal_evidence_reviews(withdrawal_id,reviewer_id,session_hash) SELECT e.withdrawal_id,$2,$3 FROM withdrawal_evidence e WHERE e.withdrawal_id=$1 AND e.photo_id IS NOT NULL AND e.user_id<>$2 AND EXISTS(SELECT 1 FROM user_sessions s JOIN admin_mfa m ON m.user_id=s.user_id WHERE s.user_id=$2 AND s.token_hash=$3 AND s.expires_at>CURRENT_TIMESTAMP AND s.mfa_verified_until>CURRENT_TIMESTAMP AND m.enabled) ON CONFLICT(withdrawal_id,reviewer_id,session_hash) DO UPDATE SET reviewed_at=CURRENT_TIMESTAMP`, id, userID, session)
+func (r *SecurityRepository) ReviewEvidence(ctx context.Context, id int64, userID int, session string) (int64, error) {
+	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
-	n, _ := res.RowsAffected()
-	if n != 1 {
-		return ErrPrivateEvidence
+	defer tx.Rollback()
+	if _, err = financeActor(ctx, tx, userID, "finance", r.users); err != nil {
+		return 0, err
 	}
-	return nil
+	var registrationID int64
+	err = tx.QueryRowContext(ctx, `INSERT INTO withdrawal_evidence_reviews(withdrawal_id,reviewer_id,session_hash,registration_photo_id)
+      SELECT e.withdrawal_id,$2,$3,(SELECT p.id FROM private_verification_photos p WHERE p.user_id=e.user_id AND p.purpose IN ('registration','legacy') ORDER BY p.created_at DESC,p.id DESC LIMIT 1)
+      FROM withdrawal_evidence e WHERE e.withdrawal_id=$1 AND e.photo_id IS NOT NULL AND e.user_id<>$2
+      AND EXISTS(SELECT 1 FROM user_sessions s JOIN admin_mfa m ON m.user_id=s.user_id WHERE s.user_id=$2 AND s.token_hash=$3 AND s.expires_at>CURRENT_TIMESTAMP AND s.mfa_verified_until>CURRENT_TIMESTAMP AND m.enabled)
+      ON CONFLICT(withdrawal_id,reviewer_id,session_hash) DO UPDATE SET reviewed_at=CURRENT_TIMESTAMP,photo_viewed_at=NULL,registration_photo_id=EXCLUDED.registration_photo_id,registration_photo_viewed_at=NULL
+      RETURNING COALESCE(registration_photo_id,0)`, id, userID, session).Scan(&registrationID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, ErrPrivateEvidence
+	}
+	if err != nil {
+		return 0, err
+	}
+	return registrationID, tx.Commit()
 }
 func (r *SecurityRepository) Photo(ctx context.Context, id int64) (int, []byte, error) {
 	var userID int
@@ -216,8 +255,48 @@ func (r *SecurityRepository) Photo(ctx context.Context, id int64) (int, []byte, 
 }
 
 func (r *SecurityRepository) MarkPhotoViewed(ctx context.Context, userID int, session string, photoID int64) error {
-	_, err := r.db.ExecContext(ctx, `UPDATE withdrawal_evidence_reviews v SET photo_viewed_at=CURRENT_TIMESTAMP FROM withdrawal_evidence e WHERE v.withdrawal_id=e.withdrawal_id AND e.photo_id=$3 AND v.reviewer_id=$1 AND v.session_hash=$2`, userID, session, photoID)
-	return err
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var owner int
+	var purpose string
+	if err = tx.QueryRowContext(ctx, `SELECT user_id,purpose FROM private_verification_photos WHERE id=$1 FOR SHARE`, photoID).Scan(&owner, &purpose); err != nil {
+		return err
+	}
+	var active bool
+	if err = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM user_sessions s JOIN users u ON u.id=s.user_id WHERE s.user_id=$1 AND s.token_hash=$2 AND s.expires_at>CURRENT_TIMESTAMP AND u.deleted_at IS NULL AND u.account_status='active' AND NOT u.staff_disabled)`, userID, session).Scan(&active); err != nil {
+		return err
+	}
+	if !active {
+		return ErrMFARequired
+	}
+	if owner != userID {
+		if _, err = financeActor(ctx, tx, userID, "finance", r.users); err != nil {
+			return err
+		}
+		fresh, err := freshMFA(ctx, tx, userID, session)
+		if err != nil {
+			return err
+		}
+		if !fresh {
+			return ErrMFARequired
+		}
+		if _, err = tx.ExecContext(ctx, `UPDATE withdrawal_evidence_reviews v SET
+          photo_viewed_at=CASE WHEN e.photo_id=$3 THEN CURRENT_TIMESTAMP ELSE v.photo_viewed_at END,
+          registration_photo_viewed_at=CASE WHEN v.registration_photo_id=$3 THEN CURRENT_TIMESTAMP ELSE v.registration_photo_viewed_at END
+          FROM withdrawal_evidence e WHERE v.withdrawal_id=e.withdrawal_id AND (e.photo_id=$3 OR v.registration_photo_id=$3) AND v.reviewer_id=$1 AND v.session_hash=$2 AND v.reviewed_at>CURRENT_TIMESTAMP-interval '15 minutes'`, userID, session, photoID); err != nil {
+			return err
+		}
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO private_photo_access_logs(photo_id,owner_id,viewer_id,session_hash,purpose) VALUES($1,$2,$3,$4,$5)`, photoID, owner, userID, session, purpose); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO security_events(user_id,kind,severity) VALUES($1,'private_photo_viewed','info')`, userID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 func (r *SecurityRepository) RegistrationPhoto(ctx context.Context, userID int) (int64, error) {
 	var id int64

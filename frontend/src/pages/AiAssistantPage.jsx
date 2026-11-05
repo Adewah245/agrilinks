@@ -1,4 +1,5 @@
 import Navbar from "../components/Navbar.jsx";
+import VoiceControls from "../components/VoiceControls.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import "react";
 import { truth, text } from "../lib/view.js";
@@ -63,6 +64,12 @@ export default function AiAssistantPage({ data }) {
             </div>
           </>
         ) : null}
+        {!truth(data?.Available) && (
+          <p className="message error-message" role="status">
+            The farming assistant is unavailable right now. Please try again
+            later.
+          </p>
+        )}
         <form
           method="POST"
           action="/ai-assistant"
@@ -103,6 +110,7 @@ export default function AiAssistantPage({ data }) {
             {" "}
             What happened?{" "}
           </label>
+          <VoiceControls prefix="diagnosis" showInput={false} />
           <div
             className="assistant-composer"
             role="group"
@@ -216,6 +224,7 @@ export default function AiAssistantPage({ data }) {
               <button
                 type="submit"
                 className="send-button"
+                disabled={!truth(data?.Available)}
                 aria-label="Send to AI"
                 title="Send to AI"
               >
@@ -312,18 +321,19 @@ export default function AiAssistantPage({ data }) {
             aria-live="polite"
           ></div>
         </form>
-        {truth(data?.Result) ? (
-          <>
-            <section
-              className="ai-result"
-              aria-live="polite"
-              aria-label="AI diagnosis result"
-            >
-              <h2> 🤖 AI Result </h2>
-              <div className="ai-result-text">{text(data?.Result)}</div>
-            </section>
-          </>
-        ) : null}
+        <section
+          id="ai-result"
+          className="ai-result"
+          aria-live="polite"
+          aria-label="Farming advice"
+          hidden={!truth(data?.Result)}
+        >
+          <h2>Your farming advice</h2>
+          <div id="ai-result-text" className="ai-result-text">
+            {text(data?.Result)}
+          </div>
+          <div id="ai-result-tools"></div>
+        </section>
         <p className="history-link-wrap">
           <a className="history-link" href="/ai-diagnosis-history">
             {" "}

@@ -27,6 +27,15 @@ The merchant account must support Flutterwave permanent virtual accounts.
 Configure Flutterwave to deliver authenticated `charge.completed` events to
 `POST /webhooks/flutterwave` using the configured verification hash.
 
+If startup logs `wallet funding reconciliation: funding account ... verification:
+the payment provider did not permit the request`, Flutterwave returned HTTP
+401 or 403 while the worker checked a payment. Check the API secret key, its
+test/live environment, and merchant API permissions. The
+`FLUTTERWAVE_SECRET_HASH` is for webhook checks and is not the API secret key.
+Update server configuration and restart the backend after correcting it.
+This warning does not stop browsing; refused verification cannot credit a
+wallet, and pending funding remains available for later checks.
+
 Migrations 043–046, 062 and 066 provide wallet funding and recovery fields.
 Apply migrations 067 and 068 before running the updated application; they add
 transaction PINs, verified registration challenges, durable checkout claims,
@@ -112,10 +121,12 @@ conflicts are quarantined and flagged for finance review by migration 068.
 
 Funding now charges the approved ₦50 service fee on top of the requested wallet
 credit. Withdrawals charge the approved ₦50/₦200/₦300 tiers on top of the payout.
-Server-generated quotes show the complete breakdown. Verified own-bank withdrawals
-are submitted without administrator approval; purchases remain protected in escrow
-until delivery, buyer confirmation and administrator release. Apply migrations
-069–078 for this financial foundation. See [Financial operations](financial-operations.md).
+Server-generated quotes show the complete breakdown. Own-bank withdrawals require
+a private selfie and current GPS evidence, followed by review by a different finance
+administrator with fresh MFA before payout submission. Purchases remain protected
+in escrow until delivery, buyer confirmation and administrator release. Apply migrations
+069–078 for the financial foundation and 080–084 for private verification and staff
+security. See [Financial operations](financial-operations.md) and [Security operations](security-operations.md).
 
 ## Checks
 

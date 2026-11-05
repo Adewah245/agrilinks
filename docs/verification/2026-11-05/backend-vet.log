@@ -1,0 +1,3 @@
+Command: go vet ./...
+Exit status: 0
+No diagnostics were emitted.

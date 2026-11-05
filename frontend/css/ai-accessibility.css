@@ -1,0 +1,109 @@
+.voice-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin: 0.9rem 0;
+  padding: 0.85rem;
+  border: 1px solid #dce7de;
+  border-radius: 12px;
+  background: #f8fbf8;
+  color: #24382a;
+}
+.voice-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.voice-controls button,
+.ai-listen-button,
+.ai-example-button {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid #b9d5c2;
+  border-radius: 10px;
+  background: #fff;
+  color: #205f39;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: normal;
+}
+.voice-controls button:disabled,
+.ai-example-button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+.voice-controls [hidden] {
+  display: none !important;
+}
+.voice-controls .voice-read-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.voice-controls .voice-read-option input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: #276b3b;
+  flex: 0 0 18px;
+}
+.voice-status {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.voice-status:empty {
+  display: none;
+}
+.ai-listen-button,
+.ai-example-button {
+  margin: 0.7rem 0.5rem 0 0;
+}
+.ai-example-picture {
+  width: 100%;
+  margin: 1rem 0 0;
+}
+.ai-example-picture img {
+  display: block;
+  width: 100%;
+  max-width: 760px;
+  height: auto;
+  border-radius: 12px;
+}
+.ai-example-picture figcaption,
+.example-image-status {
+  color: #586a5e;
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.example-image-status:empty {
+  display: none;
+}
+:is(
+  .voice-controls button,
+  .ai-listen-button,
+  .ai-example-button
+):focus-visible {
+  outline: 3px solid #276b3b;
+  outline-offset: 3px;
+}
+.learning-message .voice-buttons {
+  white-space: normal;
+}
+@media (max-width: 620px) {
+  .voice-controls {
+    align-items: flex-start;
+  }
+  .voice-buttons {
+    width: 100%;
+  }
+}

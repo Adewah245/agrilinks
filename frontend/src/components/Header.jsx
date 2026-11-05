@@ -59,6 +59,7 @@ export default function Header() {
 
       <nav id="main-navigation" aria-label="Main navigation" onClick={() => setIsOpen(false)}>
         <a href="/" aria-current="page">Home</a>
+        <a href="/learning">Learn with AI</a>
         <a href="/login">Login</a>
         <a href="/register">Register</a>
       </nav>

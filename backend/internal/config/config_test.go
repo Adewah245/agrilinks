@@ -94,6 +94,29 @@ func setValidTestEnvironment(t *testing.T) {
 	t.Setenv("TRUSTED_PROXY_CIDRS", "")
 }
 
+func TestLearningDefaultsMatchAgroShieldAndAllowOverrides(t *testing.T) {
+	setValidTestEnvironment(t)
+	t.Setenv("GROQ_MODEL", "")
+	t.Setenv("OPENROUTER_MODEL", "")
+	t.Setenv("OPENROUTER_API_KEY", "test-openrouter-key")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GroqModel != "openai/gpt-oss-20b" || cfg.OpenRouterModel != "openai/gpt-oss-20b" {
+		t.Fatal("API-key-only learning setup did not use the legacy models")
+	}
+	t.Setenv("GROQ_MODEL", "custom-groq-model")
+	t.Setenv("OPENROUTER_MODEL", "custom-openrouter-model")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.GroqModel != "custom-groq-model" || cfg.OpenRouterModel != "custom-openrouter-model" {
+		t.Fatal("model overrides ignored")
+	}
+}
+
 func TestLoadRejectsForwardedHeadersWithoutTrustedProxyNetworks(t *testing.T) {
 	setValidTestEnvironment(t)
 	t.Setenv("TRUST_PROXY_HEADERS", "true")
