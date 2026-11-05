@@ -1,36 +1,24 @@
-import Navbar from "../components/Navbar.jsx";
+import { WorkspaceSidebar } from "../components/Workspace.jsx";
 import { Fragment } from "react";
 import { truth, items, text, money0 } from "../lib/view.js";
 export default function MarketInsightsPage({ data }) {
   return (
-    <>
-      <Navbar className="navbar">
-        <a
-          className="logo"
-          href="/dashboard"
-          aria-label="Agrilinks Nigeria dashboard"
-        >
-          <img
-            src="/static/assets/logo/agrilinks-nigeria-logo.svg"
-            alt="Agrilinks Nigeria logo"
-          />
+    <div className="workspace-frame">
+      <WorkspaceSidebar current="/market-insights">
+        <a href="/dashboard"> Dashboard </a>
+        <a href="/storage"> Storage </a>
+        <a href="/marketplace"> Marketplace </a>
+        <a href="/negotiations"> Negotiations </a>
+        <a href="/chat"> Chat </a>
+        <a href="/cart" aria-label="Shopping cart">
+          {" "}
+          🛒{" "}
         </a>
-        <nav aria-label="Main navigation">
-          <a href="/dashboard"> Dashboard </a>
-          <a href="/storage"> Storage </a>
-          <a href="/marketplace"> Marketplace </a>
-          <a href="/negotiations"> Negotiations </a>
-          <a href="/chat"> Chat </a>
-          <a href="/cart" aria-label="Shopping cart">
-            {" "}
-            🛒{" "}
-          </a>
-          <a href="/ai-assistant"> AI Assistant </a>
-          <a href="/profile"> Profile </a>
-          <a href="/notifications"> Notifications </a>
-          <a href="/logout"> Logout </a>
-        </nav>
-      </Navbar>
+        <a href="/ai-assistant"> AI Assistant </a>
+        <a href="/profile"> Profile </a>
+        <a href="/notifications"> Notifications </a>
+        <a href="/logout"> Logout </a>
+      </WorkspaceSidebar>
       <main className="dashboard">
         <section
           className="dashboard-header"
@@ -127,6 +115,6 @@ export default function MarketInsightsPage({ data }) {
           )}
         </section>
       </main>
-    </>
+    </div>
   );
 }

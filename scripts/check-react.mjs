@@ -41,7 +41,7 @@ const timeout = setTimeout(() => {
   chrome.kill();
   server.close();
   process.exitCode = 1;
-}, 180000);
+}, 420000);
 try {
   const endpoint = await new Promise((resolve, reject) => {
     let log = "";
@@ -65,7 +65,9 @@ try {
     const response = JSON.parse(event.data);
     if (response.id) {
       const entry = pending.get(response.id);
+      if (!entry) return;
       pending.delete(response.id);
+      clearTimeout(entry.timer);
       if (response.error)
         entry.reject(new Error(JSON.stringify(response.error)));
       else entry.resolve(response.result);
@@ -75,7 +77,11 @@ try {
   const send = (method, params = {}, sessionId) =>
     new Promise((resolve, reject) => {
       const id = ++sequence;
-      pending.set(id, { resolve, reject });
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error(`Browser command timed out: ${method}`));
+      }, 20000);
+      pending.set(id, { resolve, reject, timer });
       browser.send(JSON.stringify({ id, method, params, sessionId }));
     });
   const { targetId } = await send("Target.createTarget", {
@@ -88,6 +94,17 @@ try {
   const call = (method, params = {}) => send(method, params, sessionId);
   await call("Page.enable");
   await call("Runtime.enable");
+  await call("Network.enable");
+  await call("Network.setBlockedURLs", {
+    urls: [
+      "https://cdnjs.cloudflare.com/*",
+      "https://fonts.googleapis.com/*",
+      "https://fonts.gstatic.com/*",
+    ],
+  });
+  await call("Emulation.setEmulatedMedia", {
+    features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+  });
   const evaluate = async (expression) => {
     const response = await call("Runtime.evaluate", {
       expression: `{ ${expression}\n }`,
@@ -208,7 +225,11 @@ try {
           `document.querySelector('.nav-toggle').getAttribute('aria-expanded') === 'false'`,
         );
       }
-      if (width === 390 && /dashboard|wallet-html|register/.test(name)) {
+      if (
+        /dashboard|wallet-html|register|admin-html|ai-assistant-html|deliveries|delivery_partner|wallet_admin|platform_revenue|market-insights|learn-html|profile-html/.test(
+          name,
+        )
+      ) {
         const shot = await call("Page.captureScreenshot", { format: "png" });
         await writeFile(
           resolve(directory, name.replace(".html", `-${width}.png`)),

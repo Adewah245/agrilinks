@@ -33,6 +33,8 @@ export default function mount(scope, data) {
       resultText.textContent = answer;
       resultTools.replaceChildren();
       resultPanel.hidden = !answer;
+      const empty = document.getElementById("ai-result-empty");
+      if (empty) empty.hidden = Boolean(answer);
       if (!answer) return;
       const listen = voice.addListenButton(resultTools, answer);
       if (examples && Number.isInteger(id) && id > 0) {
@@ -123,6 +125,18 @@ export default function mount(scope, data) {
         button.setAttribute("aria-pressed", String(enabled));
         document.getElementById("thinking").value = String(enabled);
       });
+
+    document.querySelectorAll("[data-assistant-question]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (pending) return;
+        const category = document.getElementById("category");
+        const question = document.getElementById("description");
+        category.value = button.dataset.assistantCategory;
+        question.value = button.dataset.assistantQuestion;
+        question.focus();
+        question.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();

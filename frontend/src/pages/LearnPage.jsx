@@ -1,20 +1,10 @@
+import Workspace from "../components/Workspace.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import { truth, items, withValue, text, humanStatus } from "../lib/view.js";
 export default function LearnPage({ data }) {
   return (
-    <>
-      <nav className="learning-nav" aria-label="Main navigation">
-        <a href="/">Agrilinks Nigeria</a>
-        <a href="/marketplace">Buy</a>
-        <a href="/storage">Sell</a>
-        <a href="/learn" aria-current="page">
-          Learn
-        </a>
-        <a href="/chat">Messages</a>
-        <a href="/profile">My profile</a>
-        <a href="/wallet">Wallet</a>
-      </nav>
+    <Workspace current="/learn">
       <main className="learning-main">
         <header>
           <p className="eyebrow">GROW YOUR KNOWLEDGE</p>
@@ -131,6 +121,6 @@ export default function LearnPage({ data }) {
           <a href="/learn/rooms">Find a learning room →</a>
         </section>
       </main>
-    </>
+    </Workspace>
   );
 }

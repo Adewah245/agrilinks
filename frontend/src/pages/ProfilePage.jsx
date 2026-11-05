@@ -1,4 +1,4 @@
-import Navbar from "../components/Navbar.jsx";
+import { WorkspaceSidebar } from "../components/Workspace.jsx";
 import { Select } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import {
@@ -15,63 +15,51 @@ import { usePageBehaviors } from "../lib/behaviors.js";
 export default function ProfilePage({ data }) {
   usePageBehaviors([mountProfile, mountProfileLocations], data);
   return (
-    <>
-      <Navbar className="navbar">
+    <div className="workspace-frame">
+      <WorkspaceSidebar current="/profile">
+        <a href="/dashboard"> Dashboard </a>
+        {truth(!truth(data?.IsBuyer)) ? (
+          <>
+            <a href="/storage"> Storage </a>
+          </>
+        ) : null}
+        <a href="/marketplace"> Marketplace </a>
+        <a href="/negotiations"> Negotiations </a>
+        <a href="/chat"> Chat </a>
+        {truth(!truth(data?.IsBuyer)) ? (
+          <>
+            <a href="/ai-assistant"> AI Assistant </a>
+          </>
+        ) : null}
+        <a href="/cart"> Cart </a>
         <a
-          className="logo"
-          href="/dashboard"
-          aria-label="Agrilinks Nigeria Dashboard"
+          href="/notifications"
+          className="notification-link"
+          aria-label="Notifications"
         >
-          <img
-            src="/static/assets/logo/agrilinks-nigeria-logo.svg?v=20260904"
-            alt="Agrilinks Nigeria"
-          />
-        </a>
-        <nav aria-label="Main navigation">
-          <a href="/dashboard"> Dashboard </a>
-          {truth(!truth(data?.IsBuyer)) ? (
-            <>
-              <a href="/storage"> Storage </a>
-            </>
-          ) : null}
-          <a href="/marketplace"> Marketplace </a>
-          <a href="/negotiations"> Negotiations </a>
-          <a href="/chat"> Chat </a>
-          {truth(!truth(data?.IsBuyer)) ? (
-            <>
-              <a href="/ai-assistant"> AI Assistant </a>
-            </>
-          ) : null}
-          <a href="/cart"> Cart </a>
-          <a
-            href="/notifications"
-            className="notification-link"
-            aria-label="Notifications"
-          >
-            <span className="notification-bell" aria-hidden="true">
-              {" "}
-              🔔{" "}
-            </span>
-            <span className="notification-label"> Notifications </span>
-            {truth(data?.UnreadCount > 0) ? (
-              <>
-                <span
-                  className="notification-badge"
-                  aria-label={text(data?.UnreadCount) + " unread notifications"}
-                >
-                  {text(data?.UnreadCount)}
-                </span>
-              </>
-            ) : null}
-          </a>
-          <a href="/profile" aria-current="page">
+          <span className="notification-bell" aria-hidden="true">
             {" "}
-            Profile{" "}
-          </a>
-          <a href="/logout"> Logout </a>
-          <a href="/wallet">Wallet</a>
-        </nav>
-      </Navbar>
+            🔔{" "}
+          </span>
+          <span className="notification-label"> Notifications </span>
+          {truth(data?.UnreadCount > 0) ? (
+            <>
+              <span
+                className="notification-badge"
+                aria-label={text(data?.UnreadCount) + " unread notifications"}
+              >
+                {text(data?.UnreadCount)}
+              </span>
+            </>
+          ) : null}
+        </a>
+        <a href="/profile" aria-current="page">
+          {" "}
+          Profile{" "}
+        </a>
+        <a href="/logout"> Logout </a>
+        <a href="/wallet">Wallet</a>
+      </WorkspaceSidebar>
       <main className="profile">
         <section className="profile-header" aria-labelledby="profile-name">
           {truth(data?.PhotoURL) ? (
@@ -521,6 +509,6 @@ export default function ProfilePage({ data }) {
         </>
       ) : null}
       {truth(data?.IsOwner) ? <></> : null}
-    </>
+    </div>
   );
 }

@@ -3,9 +3,10 @@
     "component": "AdminPage",
     "title": "{{.Section.Title}} | Agrilinks Nigeria Admin",
     "styles": [
-      "/static/css/admin.css?v=20261030"
+      "/static/css/admin.css?v=20261030",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "admin-page",
+    "bodyClass": "admin-page workspace-page",
     "fields": [
       "CSRF",
       "Error",
@@ -67,9 +68,11 @@
       "/static/css/style.css",
       "/static/css/ai-assistant.css?v=20260904",
       "/static/css/responsive.css?v=20261027",
-      "/static/css/ai-accessibility.css?v=20261105"
+      "/static/css/ai-accessibility.css?v=20261105",
+      "/static/css/workspace.css?v=20261105",
+      "/static/css/assistant-workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Error",
       "Result",
@@ -84,9 +87,10 @@
     "styles": [
       "/static/css/style.css",
       "/static/css/ai-diagnosis-history.css?v=20260904",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "History",
       "History.*",
@@ -197,9 +201,10 @@
       "/static/css/style.css?v=20260904",
       "/static/css/dashboard.css?v=20261103-location",
       "/static/css/learning_hub.css?v=20261105",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "AIDiagnosesThisMonth",
       "AvailableProduce",
@@ -322,9 +327,10 @@
     "title": "Deliveries | Agrilinks Nigeria",
     "styles": [
       "/static/css/style.css",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "AllDeliveries",
       "AllDeliveries.*",
@@ -387,9 +393,10 @@
     "title": "Delivery Partner | Agrilinks Nigeria",
     "styles": [
       "/static/css/style.css",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Error",
       "Notice",
@@ -449,9 +456,10 @@
     "styles": [
       "/static/css/style.css",
       "/static/css/learning.css",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "learning-page",
+    "bodyClass": "learning-page workspace-page",
     "fields": [
       "FarmingTypes",
       "FarmingTypes.*",
@@ -492,9 +500,10 @@
       "/static/css/style.css",
       "/static/css/learning.css",
       "/static/css/responsive.css?v=20261027",
-      "/static/css/ai-accessibility.css?v=20261105"
+      "/static/css/ai-accessibility.css?v=20261105",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "learning-page",
+    "bodyClass": "learning-page workspace-page",
     "fields": [
       "AIAvailable",
       "Checkpoints.*",
@@ -523,9 +532,10 @@
     "styles": [
       "/static/css/style.css",
       "/static/css/learning.css",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "learning-page",
+    "bodyClass": "learning-page workspace-page",
     "fields": [
       "FarmingTypes.*",
       "FarmingTypes.*.ID",
@@ -561,9 +571,10 @@
     "styles": [
       "/static/css/style.css?v=20260904",
       "/static/css/dashboard.css?v=20260904",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "FullName",
       "Summaries.*",
@@ -676,9 +687,10 @@
     "styles": [
       "/static/css/style.css?v=20260904",
       "/static/css/notifications.css?v=20260904",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Notifications",
       "Notifications.*",
@@ -697,9 +709,10 @@
     "title": "Orders | Agrilinks Nigeria",
     "styles": [
       "/static/css/style.css",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Error",
       "Orders",
@@ -720,9 +733,10 @@
     "title": "Payments | Agrilinks Nigeria",
     "styles": [
       "/static/css/style.css",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Error",
       "Notice",
@@ -753,9 +767,10 @@
     "component": "PlatformRevenuePage",
     "title": "Platform revenue | Agrilinks Nigeria",
     "styles": [
-      "/static/css/finance.css"
+      "/static/css/finance.css",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Accounts.*",
       "Accounts.*.Balance",
@@ -877,9 +892,10 @@
     "styles": [
       "/static/css/style.css?v=20260904",
       "/static/css/profile.css?v=20260904",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Badges",
       "Badges.*",
@@ -932,9 +948,10 @@
     "title": "Purchase protection | Agrilinks Nigeria",
     "styles": [
       "/static/css/style.css",
-      "/static/css/finance.css"
+      "/static/css/finance.css",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "CSRF",
       "CanReview",
@@ -998,9 +1015,10 @@
     "styles": [
       "/static/css/style.css?v=20260904",
       "/static/css/sales.css?v=20260904",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Count",
       "Sales",
@@ -1022,9 +1040,10 @@
     "styles": [
       "/static/css/style.css?v=20260904",
       "/static/css/storage.css?v=20260904-storage",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "EditProduct",
       "EditProduct.Category",
@@ -1063,9 +1082,10 @@
     "title": "Trust Badges | Agrilinks Nigeria",
     "styles": [
       "/static/css/style.css",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Badges",
       "Badges.*",
@@ -1086,9 +1106,10 @@
     "styles": [
       "/static/css/style.css",
       "/static/css/responsive.css?v=20261027",
-      "/static/css/wallet.css?v=20261102"
+      "/static/css/wallet.css?v=20261102",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "wallet-page",
+    "bodyClass": "wallet-page workspace-page",
     "fields": [
       "Deposits",
       "Deposits.*",
@@ -1190,9 +1211,10 @@
     "styles": [
       "/static/css/style.css",
       "/static/css/learning.css",
-      "/static/css/responsive.css?v=20261027"
+      "/static/css/responsive.css?v=20261027",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "fields": [
       "Error",
       "Payments.*",
@@ -1223,9 +1245,10 @@
   "admin-security.html": {
     "styles": [
       "/static/css/style.css",
-      "/static/css/security.css"
+      "/static/css/security.css",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "component": "AdminSecurityPage",
     "title": "Administrator security | Agrilinks Nigeria",
     "fields": [
@@ -1239,9 +1262,10 @@
   "withdrawal-review.html": {
     "styles": [
       "/static/css/style.css",
-      "/static/css/security.css"
+      "/static/css/security.css",
+      "/static/css/workspace.css?v=20261105"
     ],
-    "bodyClass": "",
+    "bodyClass": "workspace-page",
     "component": "WithdrawalReviewPage",
     "title": "Private withdrawal review | Agrilinks Nigeria",
     "fields": [

@@ -1,3 +1,4 @@
+import Workspace from "../components/Workspace.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import { truth, items, withValue, text, humanStatus } from "../lib/view.js";
@@ -7,13 +8,7 @@ import VoiceControls from "../components/VoiceControls.jsx";
 export default function LearningJourneyPage({ data }) {
   usePageBehaviors([mountLearning], data);
   return (
-    <>
-      <nav className="learning-nav" aria-label="Learning navigation">
-        <a href="/learn">← Your learning space</a>
-        <a href="/learn/rooms">Learning rooms</a>
-        <a href="/chat">Messages</a>
-        <a href="/profile">My profile</a>
-      </nav>
+    <Workspace current="/learn">
       <main className="learning-main">
         <header>
           <p className="eyebrow">ONE STEP AT A TIME</p>
@@ -304,6 +299,6 @@ export default function LearningJourneyPage({ data }) {
           </form>
         </section>
       </main>
-    </>
+    </Workspace>
   );
 }

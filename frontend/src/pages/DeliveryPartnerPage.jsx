@@ -1,3 +1,4 @@
+import Workspace, { WorkspaceHeading } from "../components/Workspace.jsx";
 import { Select } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import { truth, items, text, humanStatus } from "../lib/view.js";
@@ -6,12 +7,13 @@ import { usePageBehaviors } from "../lib/behaviors.js";
 export default function DeliveryPartnerPage({ data }) {
   usePageBehaviors([mountDeliveryPartner], data);
   return (
-    <>
+    <Workspace current="/delivery-partner">
       <main className="dashboard account-page">
-        <p>
-          <a href="/deliveries">← Deliveries</a>
-        </p>
-        <h1>Delivery partner</h1>
+        <WorkspaceHeading
+          eyebrow="DELIVERY WORKSPACE"
+          title="Delivery partner"
+          description="Manage your delivery business and keep each job moving."
+        />
         {truth(data?.Error) ? (
           <>
             <p role="alert">{text(data?.Error)}</p>
@@ -206,6 +208,6 @@ export default function DeliveryPartnerPage({ data }) {
           </>
         ) : null}
       </main>
-    </>
+    </Workspace>
   );
 }

@@ -1,13 +1,10 @@
+import Workspace from "../components/Workspace.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import { truth, items, text } from "../lib/view.js";
 export default function LearningRoomsPage({ data }) {
   return (
-    <>
-      <nav className="learning-nav">
-        <a href="/learn">← Your learning space</a>
-        <a href="/chat">Messages</a>
-      </nav>
+    <Workspace current="/learn/rooms">
       <main className="learning-main">
         <header>
           <h1>Learn together</h1>
@@ -118,6 +115,6 @@ export default function LearningRoomsPage({ data }) {
           </section>
         </div>
       </main>
-    </>
+    </Workspace>
   );
 }

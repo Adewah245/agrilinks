@@ -1,4 +1,4 @@
-import Navbar from "../components/Navbar.jsx";
+import { WorkspaceSidebar } from "../components/Workspace.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import { Fragment, useState } from "react";
 import {
@@ -18,72 +18,56 @@ export default function StoragePage({ data }) {
     product.Name.toLowerCase().includes(search.toLowerCase()),
   );
   return (
-    <>
-      <Navbar className="navbar">
-        <div className="navbar-container">
-          <a
-            className="navbar-brand"
-            href="/dashboard"
-            aria-label="Agrilinks Nigeria Dashboard"
-          >
-            <img
-              src="/static/assets/logo/agrilinks-nigeria-logo.svg?v=20260904"
-              alt="Agrilinks Nigeria logo"
-              className="navbar-logo"
-            />
-            <span className="navbar-title"> Agrilinks Nigeria </span>
-          </a>
-          <nav className="navbar-menu" aria-label="Main navigation">
-            <a href="/dashboard" className="nav-link">
-              {" "}
-              Dashboard{" "}
-            </a>
-            <a href="/storage" className="nav-link" aria-current="page">
-              {" "}
-              Storage{" "}
-            </a>
-            <a href="/marketplace" className="nav-link">
-              {" "}
-              Marketplace{" "}
-            </a>
-            <a href="/negotiations" className="nav-link">
-              {" "}
-              Negotiations{" "}
-            </a>
-            <a href="/chat" className="nav-link">
-              {" "}
-              Chat{" "}
-            </a>
-            <a href="/cart" className="nav-link">
-              {" "}
-              Cart{" "}
-            </a>
-            <a href="/ai-assistant" className="nav-link">
-              {" "}
-              AI Assistant{" "}
-            </a>
-            <a href="/profile" className="nav-link">
-              {" "}
-              Profile{" "}
-            </a>
-            <a
-              href="/notifications"
-              className="nav-link notification-link"
-              aria-label="Notifications"
-            >
-              <span className="notification-bell" aria-hidden="true">
-                {" "}
-                🔔{" "}
-              </span>
-              <span className="notification-label"> Notifications </span>
-            </a>
-            <a href="/logout" className="nav-link logout-link">
-              {" "}
-              Logout{" "}
-            </a>
-          </nav>
-        </div>
-      </Navbar>
+    <div className="workspace-frame">
+      <WorkspaceSidebar current="/storage">
+        <a href="/dashboard" className="nav-link">
+          {" "}
+          Dashboard{" "}
+        </a>
+        <a href="/storage" className="nav-link" aria-current="page">
+          {" "}
+          Storage{" "}
+        </a>
+        <a href="/marketplace" className="nav-link">
+          {" "}
+          Marketplace{" "}
+        </a>
+        <a href="/negotiations" className="nav-link">
+          {" "}
+          Negotiations{" "}
+        </a>
+        <a href="/chat" className="nav-link">
+          {" "}
+          Chat{" "}
+        </a>
+        <a href="/cart" className="nav-link">
+          {" "}
+          Cart{" "}
+        </a>
+        <a href="/ai-assistant" className="nav-link">
+          {" "}
+          AI Assistant{" "}
+        </a>
+        <a href="/profile" className="nav-link">
+          {" "}
+          Profile{" "}
+        </a>
+        <a
+          href="/notifications"
+          className="nav-link notification-link"
+          aria-label="Notifications"
+        >
+          <span className="notification-bell" aria-hidden="true">
+            {" "}
+            🔔{" "}
+          </span>
+          <span className="notification-label"> Notifications </span>
+        </a>
+        <a href="/logout" className="nav-link logout-link">
+          {" "}
+          Logout{" "}
+        </a>
+      </WorkspaceSidebar>
       <main className="storage">
         <section className="storage-header" aria-labelledby="storage-title">
           <div>
@@ -607,6 +591,6 @@ export default function StoragePage({ data }) {
           </form>
         </div>{" "}
       </main>
-    </>
+    </div>
   );
 }

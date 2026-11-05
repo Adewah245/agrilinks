@@ -1,11 +1,15 @@
+import Workspace, { WorkspaceHeading } from "../components/Workspace.jsx";
 import { Fragment } from "react";
 import { truth, items, text, humanStatus } from "../lib/view.js";
 export default function WalletAdminPage({ data }) {
   return (
-    <>
+    <Workspace current="/wallet/admin" staff>
       <main className="learning-page account-page">
-        <a href="/wallet">← My wallet</a>
-        <h1>Wallet requests</h1>
+        <WorkspaceHeading
+          eyebrow="STAFF WORKSPACE"
+          title="Wallet requests"
+          description="Review money requests and follow each payment."
+        />
         {truth(data?.Error) ? (
           <>
             <p role="alert">{text(data?.Error)}</p>
@@ -128,6 +132,6 @@ export default function WalletAdminPage({ data }) {
           )}
         </section>
       </main>
-    </>
+    </Workspace>
   );
 }

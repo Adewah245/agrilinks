@@ -1,3 +1,4 @@
+import Workspace, { WorkspaceHeading } from "../components/Workspace.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import {
@@ -10,12 +11,13 @@ import {
 } from "../lib/view.js";
 export default function DeliveriesPage({ data }) {
   return (
-    <>
+    <Workspace current="/deliveries">
       <main className="dashboard account-page">
-        <p>
-          <a href="/dashboard">← Dashboard</a>
-        </p>
-        <h1>Deliveries</h1>
+        <WorkspaceHeading
+          eyebrow="YOUR WORKSPACE"
+          title="Deliveries"
+          description="Arrange delivery and follow your orders from the farm to your door."
+        />
         {truth(data?.Error) ? (
           <>
             <p role="alert">{text(data?.Error)}</p>
@@ -456,6 +458,6 @@ export default function DeliveriesPage({ data }) {
           </>
         ) : null}
       </main>
-    </>
+    </Workspace>
   );
 }

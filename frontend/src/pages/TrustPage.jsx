@@ -1,20 +1,16 @@
+import Workspace, { WorkspaceHeading } from "../components/Workspace.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import { truth, items, text, humanBadge, formatDate } from "../lib/view.js";
 export default function TrustPage({ data }) {
   return (
-    <>
+    <Workspace current="/trust" staff>
       <main className="dashboard account-page">
-        <p>
-          <a href="/dashboard">← Dashboard</a>
-        </p>
-        <h1>Trust badges</h1>
-        <p>
-          {" "}
-          Badges help buyers recognise verified farmers, organizations, and
-          trusted sellers. Identity documents and NIN details are never shown
-          here.{" "}
-        </p>
+        <WorkspaceHeading
+          eyebrow="STAFF WORKSPACE"
+          title="Trust badges"
+          description="Help buyers find verified farmers and trusted sellers. Identity documents and NIN details stay private."
+        />
         {truth(data?.Error) ? (
           <>
             <p role="alert">{text(data?.Error)}</p>
@@ -214,6 +210,6 @@ export default function TrustPage({ data }) {
           ) : null}
         </section>
       </main>
-    </>
+    </Workspace>
   );
 }

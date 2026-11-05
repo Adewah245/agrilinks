@@ -1,4 +1,4 @@
-import Navbar from "../components/Navbar.jsx";
+import { WorkspaceSidebar } from "../components/Workspace.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import {
@@ -11,28 +11,16 @@ import {
 } from "../lib/view.js";
 export default function OrdersPage({ data }) {
   return (
-    <>
-      <Navbar className="navbar">
-        <a
-          className="logo"
-          href="/dashboard"
-          aria-label="Agrilinks Nigeria dashboard"
-        >
-          <img
-            src="/static/assets/logo/agrilinks-nigeria-logo.svg"
-            alt="Agrilinks Nigeria"
-          />
-        </a>
-        <nav aria-label="Main navigation">
-          <a href="/dashboard">Dashboard</a>
-          <a href="/marketplace">Marketplace</a>
-          <a href="/cart">Cart</a>
-          <a href="/orders">Orders</a>
-          <a href="/payments">Payments</a>
-          <a href="/logout">Logout</a>
-          <a href="/wallet">Wallet</a>
-        </nav>
-      </Navbar>
+    <div className="workspace-frame">
+      <WorkspaceSidebar current="/orders">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/marketplace">Marketplace</a>
+        <a href="/cart">Cart</a>
+        <a href="/orders">Orders</a>
+        <a href="/payments">Payments</a>
+        <a href="/logout">Logout</a>
+        <a href="/wallet">Wallet</a>
+      </WorkspaceSidebar>
       <main className="dashboard account-page">
         <p>
           <a href="/dashboard">← Dashboard</a>
@@ -164,6 +152,6 @@ export default function OrdersPage({ data }) {
           <a href="/payments">Continue to payments</a>
         </p>
       </main>
-    </>
+    </div>
   );
 }

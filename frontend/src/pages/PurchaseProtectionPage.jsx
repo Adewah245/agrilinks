@@ -1,9 +1,10 @@
+import Workspace from "../components/Workspace.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import { truth, items, text, humanStatus, formatDate } from "../lib/view.js";
 export default function PurchaseProtectionPage({ data }) {
   return (
-    <>
+    <Workspace current="/orders">
       <main className="finance-page">
         <nav>
           <a href="/wallet">Wallet</a> · <a href="/orders">Orders</a> ·{" "}
@@ -253,6 +254,6 @@ export default function PurchaseProtectionPage({ data }) {
             : null}
         </section>
       </main>
-    </>
+    </Workspace>
   );
 }

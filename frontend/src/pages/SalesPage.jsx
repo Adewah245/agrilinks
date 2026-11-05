@@ -1,4 +1,4 @@
-import Navbar from "../components/Navbar.jsx";
+import { WorkspaceSidebar } from "../components/Workspace.jsx";
 import { Fragment } from "react";
 import {
   truth,
@@ -11,46 +11,34 @@ import {
 } from "../lib/view.js";
 export default function SalesPage({ data }) {
   return (
-    <>
-      <Navbar className="navbar">
-        <a
-          className="logo"
-          href="/dashboard"
-          aria-label="Agrilinks Nigeria Dashboard"
-        >
-          <img
-            src="/static/assets/logo/agrilinks-nigeria-logo.svg?v=20260904"
-            alt="Agrilinks Nigeria"
-          />
+    <div className="workspace-frame">
+      <WorkspaceSidebar current="/sales">
+        <a href="/dashboard"> Dashboard </a>
+        <a href="/storage"> Storage </a>
+        <a href="/marketplace"> Marketplace </a>
+        <a href="/negotiations"> Negotiations </a>
+        <a href="/chat"> Chat </a>
+        <a href="/sales" aria-current="page">
+          {" "}
+          Sales{" "}
         </a>
-        <nav aria-label="Main navigation">
-          <a href="/dashboard"> Dashboard </a>
-          <a href="/storage"> Storage </a>
-          <a href="/marketplace"> Marketplace </a>
-          <a href="/negotiations"> Negotiations </a>
-          <a href="/chat"> Chat </a>
-          <a href="/sales" aria-current="page">
+        <a href="/ai-assistant"> AI Assistant </a>
+        <a href="/cart"> Cart </a>
+        <a href="/profile"> Profile </a>
+        <a
+          href="/notifications"
+          className="notification-link"
+          aria-label="Notifications"
+        >
+          <span className="notification-bell" aria-hidden="true">
             {" "}
-            Sales{" "}
-          </a>
-          <a href="/ai-assistant"> AI Assistant </a>
-          <a href="/cart"> Cart </a>
-          <a href="/profile"> Profile </a>
-          <a
-            href="/notifications"
-            className="notification-link"
-            aria-label="Notifications"
-          >
-            <span className="notification-bell" aria-hidden="true">
-              {" "}
-              🔔{" "}
-            </span>
-            <span className="notification-label"> Notifications </span>
-          </a>
-          <a href="/logout"> Logout </a>
-          <a href="/wallet">Wallet</a>
-        </nav>
-      </Navbar>
+            🔔{" "}
+          </span>
+          <span className="notification-label"> Notifications </span>
+        </a>
+        <a href="/logout"> Logout </a>
+        <a href="/wallet">Wallet</a>
+      </WorkspaceSidebar>
       <main className="sales-page">
         <div className="sales-heading">
           <div>
@@ -156,6 +144,6 @@ export default function SalesPage({ data }) {
           )}
         </section>
       </main>
-    </>
+    </div>
   );
 }

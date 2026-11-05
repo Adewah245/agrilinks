@@ -1,0 +1,251 @@
+/* Shared presentation for authenticated workspaces. Public pages keep their own styles. */
+.workspace-page {
+  --workspace-green: #245d45;
+  --workspace-deep: #163b2e;
+  --workspace-lime: #d3edab;
+  --workspace-ink: #21372c;
+  --workspace-muted: #68796e;
+  --workspace-line: #dfe7df;
+  --workspace-paper: #f5f7f2;
+  --workspace-width: 248px;
+  --color-brand: var(--workspace-green);
+  --color-brand-dark: var(--workspace-deep);
+  --color-border: var(--workspace-line);
+  --color-ink: var(--workspace-ink);
+  --color-muted: var(--workspace-muted);
+  --color-primary: var(--workspace-green);
+  --color-primary-dark: var(--workspace-deep);
+  --finance-green: var(--workspace-green);
+  --finance-ink: var(--workspace-ink);
+  --finance-muted: var(--workspace-muted);
+  --finance-line: var(--workspace-line);
+  padding: 0;
+  margin: 0;
+  background: var(--workspace-paper);
+  color: var(--workspace-ink);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.workspace-page *, .workspace-page *::before, .workspace-page *::after { box-sizing: border-box; }
+.workspace-page :is(main, section, article, form, header, div) { min-width: 0; }
+.workspace-page :is(a, button, input, select, textarea, summary):focus-visible { outline: 3px solid #82ae5b; outline-offset: 3px; }
+.workspace-page [hidden] { display: none !important; }
+.workspace-frame { display: grid; grid-template-columns: var(--workspace-width) minmax(0, 1fr); min-height: 100dvh; }
+.workspace-content, .workspace-frame > main { grid-column: 2; min-width: 0; }
+.workspace-page .workspace-frame main { width: 100%; max-width: 1450px; margin: 0 auto; padding: 36px clamp(20px, 3vw, 48px) 64px; }
+.workspace-icon { width: 21px; height: 21px; flex: 0 0 21px; }
+.workspace-page .workspace-sidebar {
+  position: fixed; inset: 0 auto 0 0; z-index: 100; width: var(--workspace-width);
+  height: 100dvh; min-height: 0; display: flex; flex-direction: column; align-items: stretch;
+  justify-content: flex-start; gap: 0; padding: 26px 17px 20px;
+  background: var(--workspace-deep); color: #f4f8ef; border: 0; border-right: 1px solid #244c3b;
+  overflow-y: auto; box-shadow: none; scrollbar-width: thin; scrollbar-color: #53705c transparent;
+}
+.workspace-page .workspace-sidebar .workspace-brand {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 13px; height: auto;
+  padding: 0 13px 23px; text-decoration: none;
+}
+.workspace-page .workspace-brand img { width: 160px; max-width: 100%; height: 48px; padding: 8px 10px; background: #f5f8ef; border-radius: 9px; }
+.workspace-brand > span { font-size: 10px; letter-spacing: .17em; color: #bbcfb6; font-weight: 600; }
+.workspace-page .workspace-sidebar nav {
+  display: flex; flex-direction: column; flex: 0 0 auto; gap: 5px; align-items: stretch;
+  overflow: visible; width: 100%; padding: 0; margin: 0; background: transparent; border: 0; box-shadow: none;
+}
+.workspace-page .workspace-sidebar nav a {
+  display: flex; justify-content: flex-start; align-items: center; gap: 12px; min-height: 44px;
+  padding: 10px 13px; font-size: 13px; line-height: 1.45; font-weight: 500; color: #d0ddca;
+  border-radius: 10px; white-space: normal; text-decoration: none; background: transparent; border: 1px solid transparent;
+}
+.workspace-page .workspace-sidebar nav a:hover { background: #27503b; color: #fff; }
+.workspace-page .workspace-sidebar nav a:is(.active, [aria-current="page"]) { background: var(--workspace-lime); color: #203d2c; font-weight: 700; }
+.workspace-nav-text { flex: 1; min-width: 0; }
+.workspace-sidebar .notification-nav-badge { position: static; margin-left: 8px; border: 0; }
+.workspace-sidebar-footer { margin-top: auto; padding-top: 28px; }
+.workspace-learning-link { display: grid; grid-template-columns: 24px 1fr; gap: 8px 10px; padding: 17px 13px; background: #234d39; color: #eef5e7; border: 1px solid #3b6048; border-radius: 13px; text-decoration: none; }
+.workspace-learning-link .workspace-icon { color: var(--workspace-lime); grid-row: span 2; }
+.workspace-learning-link strong { font-size: 13px; line-height: 1.4; }
+.workspace-learning-link span { color: #c1d5b7; font-size: 11px; }
+.workspace-exit { display: flex; gap: 10px; align-items: center; padding: 18px 13px 0; color: #cadbc2; text-decoration: none; font-size: 13px; }
+.workspace-page .workspace-sidebar .nav-toggle, .workspace-page .workspace-sidebar .nav-quick-actions { display: none; }
+.workspace-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 22px; margin: 0 0 28px; }
+.workspace-eyebrow { margin: 0 0 10px; color: var(--workspace-green); font-size: 11px; font-weight: 700; letter-spacing: .13em; }
+.workspace-heading h1 { margin: 0; font-size: clamp(28px, 3vw, 40px); line-height: 1.2; letter-spacing: -.035em; font-weight: 700; }
+.workspace-description { max-width: 660px; margin: 12px 0 0; color: var(--workspace-muted); line-height: 1.7; }
+.workspace-heading-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.workspace-page :is(.panel, .finance-card, .learning-card, .metric-card) { border: 1px solid var(--workspace-line); border-radius: 17px; background: #fff; box-shadow: 0 4px 18px #273d2d04; }
+.workspace-page :is(.panel, .learning-card, .finance-card) { padding: 24px; }
+.workspace-page :is(.panel, .finance-card, .learning-card) > h2 { margin: 0 0 16px; font-size: 20px; letter-spacing: -.025em; line-height: 1.3; }
+.workspace-page .section-heading h2 { font-size: 21px; letter-spacing: -.025em; }
+.workspace-page .eyebrow { font-size: 11px; letter-spacing: .11em; }
+.workspace-page .dashboard-header {
+  position: relative; isolation: isolate; overflow: hidden; align-items: center; padding: 30px;
+  border-radius: 20px; background: radial-gradient(ellipse at 90% 120%, #4d7044 0, transparent 50%), var(--workspace-deep);
+  border: 1px solid #2e563d; color: #fff; margin-bottom: 22px;
+}
+.workspace-page .dashboard-header::after { content: ""; position: absolute; z-index: -1; width: 300px; height: 300px; border: 1px solid #b4d99a35; border-radius: 50%; right: -85px; top: -80px; box-shadow: 0 0 0 35px #b4d99a09, 0 0 0 70px #b4d99a06; pointer-events: none; }
+.workspace-page .dashboard-header h1 { color: #fff; font-size: clamp(27px, 3vw, 40px); letter-spacing: -.035em; }
+.workspace-page .dashboard-header :is(.eyebrow, .current-time) { color: #c4dcae; }
+.workspace-page .dashboard-header .header-copy { color: #d4e3cc; max-width: 630px; font-size: 14px; }
+.workspace-page .dashboard-header .primary-action { background: var(--workspace-lime); border-color: var(--workspace-lime); color: #1c3b29; box-shadow: none; }
+.workspace-page .metrics { gap: 15px; margin-bottom: 24px; }
+.workspace-page .metric-card { min-height: 150px; padding: 21px; border-top: 3px solid #a7c888; }
+.workspace-page .metric-card strong { font-size: clamp(24px, 2.5vw, 34px); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.workspace-page .metric-label { font-size: 12px; font-weight: 600; }
+.workspace-page .metric-detail { font-size: 12px; color: #697b6c; }
+.workspace-page .quick-actions { margin-bottom: 26px; }
+.workspace-page .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 14px; }
+.workspace-page .action-card { min-height: 135px; padding: 18px; border-radius: 15px; text-align: left; font: inherit; cursor: pointer; background: #fff; box-shadow: none; }
+.workspace-page .action-card > span { font-size: 10px; color: var(--workspace-green); }
+.workspace-page .action-card h3 { font-size: 16px; line-height: 1.4; margin: 8px 0; }
+.workspace-page .action-card p { font-size: 12px; line-height: 1.55; color: var(--workspace-muted); }
+.workspace-page .account-page > .panel { margin: 20px 0; }
+.workspace-page .account-page .panel > article { padding: 20px; margin: 14px 0; background: #f8faf5; border: 1px solid #e5ece2; border-radius: 12px; }
+.workspace-page .account-page .panel > article h3 { margin: 0 0 10px; font-size: 16px; }
+.workspace-page .account-page :is(form, .panel > article) p { color: var(--workspace-muted); overflow-wrap: anywhere; }
+.workspace-page .account-page form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; padding: 18px 0; }
+.workspace-page .account-page form > :is(h3, p, button) { grid-column: 1 / -1; }
+.workspace-page :is(.account-page, .learning-main) label { display: grid; gap: 7px; font-size: 13px; font-weight: 600; }
+.workspace-page :is(.account-page, .learning-main) :is(input:not([type="hidden"]):not([type="checkbox"]), select, textarea),
+.workspace-page .finance-filters input { box-sizing: border-box; width: 100%; min-width: 0; padding: 11px 13px; min-height: 44px; border: 1px solid #cbd8c8; border-radius: 9px; background: #fff; font: inherit; color: var(--workspace-ink); }
+.workspace-page :is(.account-page, .learning-main) button,
+.workspace-page :is(.finance-form button, .finance-button) { width: fit-content; max-width: 100%; padding: 11px 17px; min-height: 44px; border: 1px solid var(--workspace-green); border-radius: 9px; background: var(--workspace-green); color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.workspace-page :is(.account-page, .learning-main) button:hover, .workspace-page .finance-button:hover { background: var(--workspace-deep); }
+.workspace-page .account-page button[value="rejected"], .workspace-page .account-page button[value="cancelled"] { background: #fff6f3; color: #9b453c; border-color: #ecd2cd; }
+.workspace-page :is(.account-page, .learning-main) [role="alert"] { padding: 15px 18px; border: 1px solid #eccfc4; border-radius: 11px; color: #904230; background: #fff4ed; }
+.workspace-page .table-scroll { width: 100%; max-width: 100%; overflow-x: auto; border: 1px solid var(--workspace-line); border-radius: 12px; }
+.workspace-page :is(.account-page, .finance-page, .learning-main) table { width: 100%; border-collapse: collapse; text-align: left; }
+.workspace-page :is(.account-page, .finance-page, .learning-main) :is(td, th) { padding: 14px 16px; border-bottom: 1px solid var(--workspace-line); font-size: 13px; }
+.workspace-page :is(.account-page, .finance-page, .learning-main) th { background: #f2f6ed; color: #617559; font-size: 11px; letter-spacing: .025em; }
+.workspace-page .finance-page > nav { margin: 0 0 24px; gap: 8px; }
+.workspace-page .finance-page > nav a { display: inline-flex; padding: 7px 11px; background: #eaf0e3; border-radius: 8px; font-size: 12px; text-decoration: none; }
+.workspace-page .finance-metrics { gap: 16px; margin: 22px 0; }
+.workspace-page .finance-metric { border-top: 3px solid #a7c888; }
+.workspace-page .finance-metric strong { font-size: 30px; letter-spacing: -.045em; font-variant-numeric: tabular-nums; }
+.workspace-page .finance-card > p { color: var(--workspace-muted); font-size: 13px; line-height: 1.7; }
+.workspace-page .finance-summary { padding: 18px; border-radius: 12px; background: #f4f7ef; margin: 18px 0; }
+.workspace-page .finance-form { max-width: 720px; }
+.workspace-page .finance-page :is(.finance-form, .finance-filters) :is(input, textarea, select) { border-color: #cbd8c8; border-radius: 9px; min-height: 44px; }
+.workspace-page .finance-page summary { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; }
+.workspace-page .finance-page summary::after { content: "+"; font-size: 20px; color: var(--workspace-green); }
+.workspace-page .finance-page details[open] > summary::after { content: "−"; }
+.workspace-page .security-page { max-width: 1100px; }
+.workspace-page .security-page > section { border-radius: 17px; border-color: var(--workspace-line); background: #fff; }
+.workspace-page .security-page > dl { padding: 24px; border: 1px solid var(--workspace-line); border-radius: 17px; background: #fff; }
+.workspace-page .learning-main > header:not(.workspace-heading) { margin-bottom: 26px; }
+.workspace-page .learning-main h1 { font-size: clamp(28px, 3vw, 40px); letter-spacing: -.035em; }
+.workspace-page .learning-main :is(.journey-summary, .learning-checkpoint) { background: #f6f9f2; border: 1px solid #e0e9d8; border-radius: 12px; padding: 18px; }
+
+/* Keep the established staff and wallet navigation, with the same farming palette. */
+.workspace-page.admin-page { --ink: var(--workspace-ink); --muted: var(--workspace-muted); --line: var(--workspace-line); --surface: var(--workspace-paper); --white: #fff; --green: var(--workspace-green); --deep: var(--workspace-deep); --accent: #a0b870; --serif: "Segoe UI", system-ui, sans-serif; }
+.workspace-page .admin-shell { grid-template-columns: var(--workspace-width) minmax(0, 1fr); }
+.workspace-page .admin-sidebar { background: var(--workspace-deep); border-color: #365b42; padding: 27px 18px 20px; }
+.workspace-page .admin-brand { font-size: 20px; color: #f0f7e9; }
+.workspace-page .admin-brand .brand-mark { color: var(--workspace-lime); }
+.workspace-page .admin-brand small { font-size: 10px; color: #b9d1ac; }
+.workspace-page .admin-sidebar nav { margin-top: 26px; }
+.workspace-page .admin-sidebar nav a { font-size: 13px; min-height: 44px; color: #cad9c2; border-radius: 10px; }
+.workspace-page .admin-sidebar nav a.selected { background: var(--workspace-lime); color: #203d2c; border-color: var(--workspace-lime); }
+.workspace-page .admin-sidebar nav a:hover { background: #30573d; color: #fff; }
+.workspace-page .admin-sidebar .nav-caption { font-size: 10px; color: #aecd9e; }
+.workspace-page .admin-sidebar :is(.sidebar-note, .sidebar-footer) small { color: #bdd1b2; font-size: 11px; }
+.workspace-page .admin-main > main { padding: 30px clamp(20px, 3vw, 48px) 48px; }
+.workspace-page .admin-main .page-heading h1 { font-family: "Segoe UI", system-ui, sans-serif; font-size: clamp(30px, 3.3vw, 43px); font-weight: 650; letter-spacing: -.045em; }
+.workspace-page .admin-main .page-heading h1 em { font-style: normal; color: var(--workspace-green); }
+.workspace-page .admin-main .page-heading p { font-size: 14px; }
+.workspace-page .admin-main .page-heading .eyebrow { font-size: 11px; }
+.workspace-page .admin-main .metric { background: #fff; border: 1px solid var(--workspace-line); border-top: 3px solid #a7c888; border-radius: 16px; padding: 22px; min-height: 185px; }
+.workspace-page .admin-main .metric > strong { font-family: inherit; font-weight: 650; font-size: clamp(27px, 3vw, 36px); }
+.workspace-page .admin-main :is(.metric-top p, .metric > small, .metric > a, .record-count, .table-hint, .attention-copy small, .staff-pill, .admin-breadcrumb) { font-size: 12px; }
+.workspace-page .admin-main :is(.panel, .attention-panel, .platform-pulse, .shortcut-card) { border-radius: 17px; }
+.workspace-page .admin-main .platform-pulse { background: linear-gradient(125deg, #1e4431, #3d5a35); }
+.workspace-page .admin-main .shortcut-card { background: #fff; border-color: var(--workspace-line); }
+.workspace-page .admin-main :is(.records-panel .panel-heading h2, .attention-heading h2) { font-family: inherit; font-size: 25px; font-weight: 650; }
+.workspace-page .admin-main :is(.records-tools label, .record-status-filter select, .row-action summary, .row-action label, .pagination, .section-caption h2) { font-size: 12px; }
+.workspace-page.wallet-page { --wallet-ink: var(--workspace-ink); --wallet-muted: var(--workspace-muted); --wallet-gold: #557e3b; --wallet-border: var(--workspace-line); --wallet-paper: var(--workspace-paper); --wallet-serif: "Segoe UI", system-ui, sans-serif; background: var(--workspace-paper); }
+.workspace-page .wallet-sidebar { background: var(--workspace-deep); border-color: #30583e; }
+.workspace-page .wallet-navigation a { font-size: 13px; color: #d0dcc5; }
+.workspace-page .wallet-navigation a.is-current { background: var(--workspace-lime); color: #25422d; border-color: var(--workspace-lime); }
+.workspace-page .wallet-intro h1 { font-weight: 650; font-size: clamp(30px, 3.5vw, 43px); letter-spacing: -.045em; }
+.workspace-page .wallet-intro h1 em { font-style: normal; color: var(--workspace-green); }
+.workspace-page :is(.wallet-intro-copy, .wallet-section-label h2, .wallet-section-label > span, .wallet-breadcrumb, #wallet-date, .wallet-active, .wallet-eyebrow) { font-size: 12px; }
+.workspace-page .wallet-panel { border-radius: 17px; border-color: var(--workspace-line); }
+.workspace-page .wallet-quick-action { border-radius: 12px; }
+
+@media (max-width: 1200px) { .workspace-page .dashboard-header { align-items: flex-start; } .workspace-page .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) {
+  .workspace-frame { display: block; }
+  .workspace-page .workspace-frame main { padding: 26px 24px 50px; }
+  .workspace-page .workspace-sidebar { position: sticky; inset: auto; top: 0; height: auto; width: 100%; overflow: visible; padding: 12px 20px; flex-direction: row; align-items: center; min-height: 74px; background: #fff; color: var(--workspace-ink); border-bottom: 1px solid var(--workspace-line); }
+  .workspace-page .workspace-sidebar .workspace-brand { padding: 0; gap: 0; margin-right: auto; }
+  .workspace-page .workspace-sidebar .workspace-brand img { width: 143px; height: 42px; padding: 0; background: transparent; }
+  .workspace-page .workspace-brand > span, .workspace-sidebar-footer { display: none; }
+  .workspace-page .workspace-sidebar .nav-toggle { display: grid; place-items: center; height: 44px; width: 44px; min-height: 44px; border: 1px solid var(--workspace-line); border-radius: 10px; padding: 0; font-size: 24px; background: #fff; color: var(--workspace-green); }
+  .workspace-page .workspace-sidebar .nav-quick-actions { display: flex; gap: 6px; margin-right: 12px; }
+  .workspace-page .workspace-sidebar.nav-enhanced nav { display: none; position: absolute; inset: 100% 0 auto; max-height: calc(100dvh - 78px); overflow-y: auto; padding: 14px 20px; background: #fff; box-shadow: 0 12px 24px #23372c14; border-bottom: 1px solid var(--workspace-line); z-index: 150; }
+  .workspace-page .workspace-sidebar.nav-open nav { display: flex; }
+  .workspace-page .workspace-sidebar nav a { color: var(--workspace-ink); padding: 12px; }
+  .workspace-page .workspace-sidebar nav a:hover { color: var(--workspace-green); background: #f0f6e9; }
+  .workspace-page .dashboard-header { flex-wrap: wrap; }
+}
+@media (max-width: 700px) {
+  .workspace-page .workspace-frame main { padding: 24px 16px 42px; }
+  .workspace-heading { flex-direction: column; align-items: stretch; gap: 15px; margin-bottom: 24px; }
+  .workspace-heading h1 { font-size: 30px; }
+  .workspace-page .dashboard-header { padding: 25px 21px; border-radius: 17px; gap: 22px; }
+  .workspace-page .dashboard-header h1 { font-size: 29px; }
+  .workspace-page .dashboard-header .header-copy { font-size: 13px; }
+  .workspace-page .dashboard-header .header-actions { width: 100%; }
+  .workspace-page .dashboard-header .primary-action { width: 100%; }
+  .workspace-page :is(.panel, .finance-card, .learning-card) { padding: 20px 17px; }
+  .workspace-page .metrics { gap: 12px; }
+  .workspace-page .metric-card { padding: 17px 14px; min-height: 150px; }
+  .workspace-page .action-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .workspace-page .action-card { padding: 15px; }
+  .workspace-page .action-card h3 { font-size: 14px; }
+  .workspace-page .dashboard-grid, .workspace-page .account-page form { grid-template-columns: 1fr; }
+  .workspace-page .finance-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .workspace-page .finance-metric strong { font-size: 24px; }
+  .workspace-page .admin-main > main { padding: 26px 18px 40px; }
+  .workspace-page .admin-main .metric { padding: 17px; min-height: 175px; }
+  .workspace-page :is(.admin-topbar-actions, .wallet-topbar-actions) { gap: 10px; }
+}
+@media (max-width: 380px) {
+  .workspace-page .workspace-frame main { padding-inline: 12px; }
+  .workspace-page .finance-metrics { grid-template-columns: 1fr; }
+  .workspace-page .dashboard-header h1 { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) { .workspace-page * { scroll-behavior: auto !important; transition-duration: 0s !important; animation-duration: 0s !important; } }
+
+/* Keep record details and money controls readable at every screen size. */
+.workspace-page .workspace-sidebar nav .workspace-mobile-exit { display: none; }
+.workspace-page .admin-main :is(td, th) { font-size: 13px; }
+.workspace-page .admin-main :is(.status-badge, .shortcut-card small, .workspace-footer, .finder-footnote, .directory-card p, .page-heading > .button, .empty-state p) { font-size: 12px; }
+.workspace-page .admin-main :is(.shortcut-card strong, .button) { font-size: 13px; }
+.workspace-page .wallet-main :is(.wallet-quick-action small, .wallet-reserve-note, .wallet-history-footnote, .wallet-bank-copy, .wallet-bank-name, .wallet-bank-holder, .wallet-bank-small, .wallet-bank-link, .wallet-growth-card > p:not(.wallet-eyebrow), .wallet-growth-card a, .wallet-empty p, .wallet-empty a, .wallet-moves-heading > p, .wallet-move-panel small, .wallet-footer, .wallet-form small, .wallet-cancel-form button) { font-size: 12px; }
+.workspace-page .wallet-main :is(.wallet-transaction h4, .wallet-transaction-value strong, .wallet-form label, .wallet-form button, .wallet-move-panel summary strong) { font-size: 14px; }
+.workspace-page .wallet-main :is(.wallet-transaction-description p, .wallet-transaction-description > time, .wallet-transaction-value > time, .wallet-status, .wallet-history-filters button) { font-size: 12px; }
+.workspace-page .wallet-main .wallet-history-filters button > span { font-size: 11px; }
+.workspace-page .wallet-main :is(.wallet-panel-heading .wallet-eyebrow, .wallet-bank-card .wallet-eyebrow, .wallet-growth-card .wallet-eyebrow, .wallet-card-caption, .wallet-balance-caption) { font-size: 11px; }
+.workspace-page .wallet-main :is(.wallet-panel-heading h2, .wallet-bank-card h2, .wallet-growth-card h2, .wallet-moves-heading h2) { font-weight: 650; }
+.workspace-page :is(.sales-card, .sales-summary > div, .profile-header, .profile-content > section, .notification-card, .history-card) { border: 1px solid var(--workspace-line); border-radius: 17px; box-shadow: 0 4px 18px #273d2d04; }
+.workspace-page .profile-header { padding: 28px; }
+.workspace-page .notifications-container { margin: 0 auto; padding: 0; }
+.workspace-page .account-page :is(.account-section, .account-card) { padding: 22px; margin-top: 20px; background: #fff; border: 1px solid var(--workspace-line); border-radius: 17px; }
+@media (max-width: 1100px) { .workspace-page .workspace-sidebar nav .workspace-mobile-exit { display: flex; } }
+@media (max-width: 700px) { .workspace-page .profile-header { padding: 24px 18px; } .workspace-page .wallet-main .wallet-bank-number strong { font-size: 24px; } }
+
+/* Preserve contrast on the staff overview's dark cards. */
+.workspace-page .admin-brand { padding-inline: 0; gap: 9px; font-size: 18px; }
+.workspace-page .admin-main .heading-mobile-break { display: block; }
+.workspace-page .admin-main .metric[data-metric="Revenue"] { background: var(--workspace-deep); border-color: #416447; border-top-color: #a7c888; color: #fff; }
+.workspace-page .admin-main .metric[data-metric="Revenue"] > strong { color: #f2f7e9; }
+.workspace-page .admin-main .metric[data-metric="Revenue"] :is(.metric-top p, small, a) { color: #d0e2be; }
+.workspace-page .admin-main .platform-pulse h2 { color: #f3f8eb; font-weight: 650; }
+.workspace-page .admin-main .platform-pulse h2 em { color: var(--workspace-lime); font-style: normal; }
+.workspace-page .admin-main .platform-pulse :is(.eyebrow, .pulse-link, .pulse-metrics a) { color: #d1e6b9; font-size: 12px; }
+.workspace-page .admin-main .platform-pulse :is(.pulse-copy, .pulse-metrics span) { color: #d4e2c9; font-size: 13px; }
+.workspace-page .admin-main .platform-pulse .pulse-metrics strong { color: #f4f8eb; font-weight: 650; }
+.workspace-page .admin-main .attention-footnote { font-size: 12px; }
+@media (max-width: 900px) { .workspace-page .admin-brand { font-size: 20px; } }

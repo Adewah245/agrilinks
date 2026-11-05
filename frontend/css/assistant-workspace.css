@@ -1,0 +1,57 @@
+/* A clear question form with separate help and answer areas. */
+.workspace-page .ai-assistant { max-width: 1350px; }
+.workspace-page .assistant-history-link { display: inline-flex; padding: 10px 15px; border: 1px solid #ccd9c5; border-radius: 9px; background: #fff; color: var(--workspace-green); text-decoration: none; font-size: 13px; font-weight: 600; }
+.workspace-page .assistant-notice { display: flex; align-items: flex-start; gap: 14px; padding: 18px 21px; margin: 0 0 24px; border: 1px solid #e7d9b7; border-radius: 13px; background: #fcf6e7; color: #655024; font-size: 13px; }
+.assistant-notice .workspace-icon { margin-top: 2px; }
+.assistant-notice p { margin: 5px 0 8px; line-height: 1.6; }
+.assistant-notice a { color: #526b2f; font-weight: 650; }
+.assistant-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.assistant-question-card, .assistant-answer-card { border: 1px solid var(--workspace-line); border-radius: 18px; padding: 27px; background: #fff; }
+.assistant-card-heading, .assistant-answer-empty { display: flex; align-items: flex-start; gap: 14px; }
+.assistant-step { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border: 1px solid #d2dfc6; background: #eef4e5; border-radius: 50%; color: var(--workspace-green); font-size: 13px; font-weight: 700; }
+.workspace-page .ai-assistant :is(.assistant-card-heading, .assistant-answer-empty) h2 { margin: 2px 0 7px; font-size: 20px; line-height: 1.3; color: var(--workspace-ink); letter-spacing: -.025em; }
+.assistant-card-heading p, .assistant-answer-empty p { margin: 0; color: var(--workspace-muted); font-size: 13px; line-height: 1.6; }
+.workspace-page .ai-form { gap: 10px; margin: 24px 0 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.workspace-page .ai-form > label { margin: 7px 0 0; font-size: 13px; font-weight: 650; }
+.workspace-page .ai-form select { min-height: 46px; font-size: 14px; border-color: #cbd8c5; border-radius: 10px; }
+.workspace-page .assistant-composer { border: 1px solid #cbd8c5; border-radius: 12px; background: #fff; box-shadow: none; }
+.workspace-page .assistant-composer:focus-within { border-color: #8dab79; box-shadow: 0 0 0 3px #deebd6; }
+.workspace-page .assistant-composer textarea { height: auto; min-height: 165px; width: 100%; padding: 16px; border-radius: 12px; background: transparent; color: var(--workspace-ink); font-size: 14px; line-height: 1.7; resize: vertical; }
+.workspace-page .assistant-composer textarea::placeholder { color: #798375; }
+.workspace-page .composer-controls { position: static; display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; padding: 12px; background: #f7f9f3; border-top: 1px solid #e5ecdf; border-radius: 0 0 12px 12px; pointer-events: auto; }
+.workspace-page .attachment-menu-wrap { margin-right: 0; }
+.workspace-page .ai-form :is(.composer-icon, #start-audio.microphone-button, .stop-audio-button, .think-toggle) { display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: auto; height: auto; min-height: 42px; padding: 9px 12px; border: 1px solid #d5dfcc; border-radius: 8px; background: #fff; color: var(--workspace-green); font: inherit; font-size: 12px; line-height: 1.5; cursor: pointer; }
+.workspace-page .ai-form :is(.composer-icon, #start-audio.microphone-button, .think-toggle):hover { transform: none; background: #eaf1e0; color: var(--workspace-deep); }
+.workspace-page .ai-form :is(.think-toggle[aria-pressed="true"], #start-audio.recording) { background: var(--workspace-green); border-color: var(--workspace-green); color: #fff; }
+.workspace-page .ai-form .media-help { margin: 0; color: var(--workspace-muted); font-size: 12px; line-height: 1.6; }
+.workspace-page .ai-form .voice-controls { margin: 8px 0; padding: 13px; background: #f5f8ef; }
+.assistant-submit-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 5px; }
+.workspace-page .ai-form .send-button { display: inline-flex; align-items: center; justify-content: center; gap: 14px; flex: 0 1 auto; width: auto; height: auto; min-height: 46px; padding: 12px 18px; border: 1px solid var(--workspace-green); border-radius: 9px; background: var(--workspace-green); color: #fff; font: inherit; font-size: 13px; font-weight: 650; box-shadow: none; }
+.workspace-page .ai-form .send-button:hover { transform: none; background: var(--workspace-deep); }
+.workspace-page .ai-form .send-button:disabled { background: #e8eee0; border-color: #d3dec8; color: #6f7c65; cursor: default; opacity: 1; }
+.workspace-page .ai-form .submit-status { margin: 0; padding: 0; font-size: 13px; line-height: 1.7; }
+.workspace-page .ai-form .submit-status:not(:empty) { padding: 13px; background: #f1f6e9; border-radius: 10px; }
+.workspace-page .ai-form .composer-feedback:empty { display: none; }
+.assistant-help-card { padding: 25px; border: 1px solid #dbe5cc; border-radius: 18px; background: #edf3e2; }
+.assistant-help-icon { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 20px; border: 1px solid #cfdcb9; border-radius: 13px; color: var(--workspace-green); background: #f7faef; }
+.assistant-help-card .workspace-eyebrow { font-size: 10px; line-height: 1.6; }
+.workspace-page .ai-assistant .assistant-help-card h2 { margin: 9px 0 12px; font-size: 23px; line-height: 1.3; letter-spacing: -.03em; color: var(--workspace-deep); }
+.assistant-help-card > p:not(.workspace-eyebrow), .assistant-help-tip p { font-size: 13px; line-height: 1.7; color: #637253; }
+.assistant-suggestions { display: grid; gap: 10px; margin: 19px 0 23px; }
+.assistant-suggestions button { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 13px 14px; border: 1px solid #d3ddc5; border-radius: 10px; background: #fbfcf6; color: var(--workspace-ink); font: inherit; font-size: 12px; line-height: 1.6; text-align: left; cursor: pointer; }
+.assistant-suggestions button:hover { border-color: #98b174; background: #fff; }
+.assistant-suggestions button span { color: var(--workspace-green); font-size: 17px; }
+.assistant-help-tip { border-top: 1px solid #d3dec5; padding: 19px 0; }
+.assistant-help-tip strong { font-size: 13px; }
+.assistant-help-tip p { margin-top: 6px; }
+.assistant-help-card > a { font-size: 13px; font-weight: 650; color: var(--workspace-green); text-decoration: none; }
+.assistant-answer-card { margin-top: 25px; }
+.workspace-page .ai-result { padding: 0; margin: 0; border: 0; background: transparent; border-radius: 0; box-shadow: none; }
+.workspace-page .ai-result h2 { margin: 0 0 18px; font-size: 23px; color: var(--workspace-ink); }
+.workspace-page .ai-result-text { color: var(--workspace-ink); font-size: 15px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 1300px) { .assistant-layout { grid-template-columns: minmax(0, 1fr) 285px; gap: 19px; } .assistant-question-card, .assistant-help-card { padding: 22px; } }
+@media (max-width: 800px) { .assistant-layout { grid-template-columns: 1fr; } .assistant-help-card { order: 2; } .assistant-suggestions { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .assistant-question-card, .assistant-answer-card, .assistant-help-card { padding: 21px 17px; border-radius: 15px; } .assistant-suggestions { grid-template-columns: 1fr; } .workspace-page .assistant-composer textarea { min-height: 175px; } .assistant-submit-row { align-items: stretch; flex-direction: column; } .workspace-page .ai-form .send-button { width: 100%; } .workspace-page .ai-form .think-toggle { align-self: flex-start; } .workspace-page .ai-form .composer-icon { font-size: 12px; } }
+
+.workspace-page .ai-form :is(.submit-status, .recording-status):empty { display: none; }
+.workspace-page .ai-form .composer-feedback { min-height: 0; margin-top: 0; }

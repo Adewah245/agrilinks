@@ -1,4 +1,4 @@
-import Navbar from "../components/Navbar.jsx";
+import { WorkspaceSidebar } from "../components/Workspace.jsx";
 import FarmingLearningHub from "../components/FarmingLearningHub.jsx";
 import { Fragment } from "react";
 import {
@@ -18,82 +18,70 @@ import { usePageBehaviors } from "../lib/behaviors.js";
 export default function DashboardPage({ data }) {
   usePageBehaviors([mountDashboard, mountWeather], data);
   return (
-    <>
-      <Navbar className="navbar">
-        <a
-          className="logo dashboard-logo"
-          href="/dashboard"
-          aria-label="Agrilinks Nigeria Dashboard"
-        >
-          <img
-            src="/static/assets/logo/agrilinks-nigeria-logo.svg"
-            alt="Agrilinks Nigeria"
-          />
+    <div className="workspace-frame">
+      <WorkspaceSidebar current="/dashboard">
+        {truth(data?.IsStaff) ? (
+          <>
+            <a href="/admin">Admin workspace</a>
+          </>
+        ) : null}
+        <a className="active" href="/dashboard" aria-current="page">
+          {" "}
+          Dashboard{" "}
         </a>
-        <nav aria-label="Main navigation">
-          {truth(data?.IsStaff) ? (
+        {truth(!truth(data?.IsBuyer)) ? (
+          <>
+            <a href="/storage"> Storage </a>
+          </>
+        ) : null}
+        <a href="/marketplace"> Marketplace </a>
+        {truth(data?.IsBuyer) ? (
+          <>
+            <a href="/payments"> Payments </a>
+            <a href="/deliveries"> Deliveries </a>
+          </>
+        ) : null}
+        <a href="/chat"> Chat </a>
+        <a href="/learning"> Learn with AI </a>
+        {truth(data?.IsBuyer) ? (
+          <>
+            <a href="/cart" className="cart-nav-link">
+              {" "}
+              Cart{" "}
+              {truth(data?.CartItemCount) ? (
+                <>
+                  <span className="cart-badge">
+                    {text(data?.CartItemCount)}
+                  </span>
+                </>
+              ) : null}
+            </a>
+          </>
+        ) : null}
+        {truth(!truth(data?.IsBuyer)) ? (
+          <>
+            <a href="/ai-assistant"> AI Assistant </a>
+            <a href="/sales"> Sales </a>
+          </>
+        ) : null}
+        <a href="/profile"> Profile </a>
+        <a
+          href="/notifications"
+          className="notification-nav-link"
+          aria-label="Notifications"
+        >
+          Notifications
+          {truth(data?.UnreadNotifications) ? (
             <>
-              <a href="/admin">Admin workspace</a>
+              <span className="notification-nav-badge">
+                {text(data?.UnreadNotifications)}
+              </span>
             </>
           ) : null}
-          <a className="active" href="/dashboard" aria-current="page">
-            {" "}
-            Dashboard{" "}
-          </a>
-          {truth(!truth(data?.IsBuyer)) ? (
-            <>
-              <a href="/storage"> Storage </a>
-            </>
-          ) : null}
-          <a href="/marketplace"> Marketplace </a>
-          {truth(data?.IsBuyer) ? (
-            <>
-              <a href="/payments"> Payments </a>
-              <a href="/deliveries"> Deliveries </a>
-            </>
-          ) : null}
-          <a href="/chat"> Chat </a>
-          <a href="/learning"> Learn with AI </a>
-          {truth(data?.IsBuyer) ? (
-            <>
-              <a href="/cart" className="cart-nav-link">
-                {" "}
-                Cart{" "}
-                {truth(data?.CartItemCount) ? (
-                  <>
-                    <span className="cart-badge">
-                      {text(data?.CartItemCount)}
-                    </span>
-                  </>
-                ) : null}
-              </a>
-            </>
-          ) : null}
-          {truth(!truth(data?.IsBuyer)) ? (
-            <>
-              <a href="/ai-assistant"> AI Assistant </a>
-              <a href="/sales"> Sales </a>
-            </>
-          ) : null}
-          <a href="/profile"> Profile </a>
-          <a
-            href="/notifications"
-            className="notification-nav-link"
-            aria-label="Notifications"
-          >
-            <span aria-hidden="true"> 🔔 </span>
-            {truth(data?.UnreadNotifications) ? (
-              <>
-                <span className="notification-nav-badge">
-                  {text(data?.UnreadNotifications)}
-                </span>
-              </>
-            ) : null}
-          </a>
-          <a href="/logout"> Log out </a>
-          <a href="/wallet">Wallet</a>
-        </nav>{" "}
-      </Navbar>
+        </a>
+        <a href="/logout"> Log out </a>
+        <a href="/wallet">Wallet</a>
+      </WorkspaceSidebar>
       <main className="dashboard">
         <section className="dashboard-header">
           <div className="dashboard-intro">
@@ -123,8 +111,8 @@ export default function DashboardPage({ data }) {
               <>
                 <p className="header-copy">
                   {" "}
-                  Manage your farming activities, products, storage, sales,
-                  health, marketplace, and agricultural operations.{" "}
+                  Keep an eye on your farm, sell your products, and find help
+                  with your next steps.{" "}
                 </p>
               </>
             )}
@@ -142,6 +130,162 @@ export default function DashboardPage({ data }) {
                 <a className="primary-action" href="/storage">
                   {" "}
                   Add product{" "}
+                </a>
+              </>
+            )}
+          </div>
+        </section>
+        <section className="metrics" aria-label="Account overview">
+          {truth(data?.IsBuyer) ? (
+            <>
+              <a href="/profile" className="metric-card">
+                <span className="metric-label"> Purchases made </span>
+                <strong
+                  className="counter"
+                  data-target={text(data?.PurchasesMade)}
+                >
+                  {" "}
+                  0{" "}
+                </strong>
+                <span className="metric-detail"> Completed orders </span>
+              </a>
+              <a href="/profile" className="metric-card">
+                <span className="metric-label"> Total spent </span>
+                <strong> ₦{text(money(data?.TotalSpent))}</strong>
+                <span className="metric-detail"> Across all purchases </span>
+              </a>
+              <a href="/marketplace" className="metric-card">
+                <span className="metric-label"> Available listings </span>
+                <strong>{text(data?.AvailableProduce)}</strong>
+                <span className="metric-detail">
+                  {" "}
+                  Agricultural products currently available{" "}
+                </span>
+              </a>
+              <div className="metric-card">
+                <span className="metric-label"> Account status </span>
+                <strong className="status-positive"> Verified </strong>
+                <span className="metric-detail">
+                  {" "}
+                  Trusted Agrilinks Nigeria buyer{" "}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <a href="/storage" className="metric-card">
+                <span className="metric-label"> Products in storage </span>
+                <strong
+                  className="counter"
+                  data-target={text(data?.ProduceInStorage)}
+                >
+                  {" "}
+                  0{" "}
+                </strong>
+                <span className="metric-detail"> Product items recorded </span>
+              </a>
+              <a href="/storage" className="metric-card">
+                <span className="metric-label"> Active listings </span>
+                <strong
+                  className="counter"
+                  data-target={text(data?.ListingsActive)}
+                >
+                  {" "}
+                  0{" "}
+                </strong>
+                <span className="metric-detail">
+                  {" "}
+                  Visible to buyers · your account{" "}
+                </span>
+              </a>
+              <a href="/ai-diagnosis-history" className="metric-card">
+                <span className="metric-label"> AI health checks </span>
+                <strong
+                  className="counter"
+                  data-target={text(data?.AIDiagnosesThisMonth)}
+                >
+                  {" "}
+                  0{" "}
+                </strong>
+                <span className="metric-detail">
+                  {" "}
+                  Completed this month · your account{" "}
+                </span>
+              </a>
+              <a href="/profile" className="metric-card">
+                <span className="metric-label"> Sales revenue · 30 days </span>
+                <strong> ₦{text(money(data?.Revenue30))}</strong>
+                <span className="metric-detail">
+                  {text(data?.CompletedSales)} completed sales · platform
+                  records{" "}
+                </span>
+              </a>
+            </>
+          )}
+        </section>
+        <section
+          className="quick-actions"
+          aria-labelledby="quick-actions-title"
+        >
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow"> Shortcuts </p>
+              <h2 id="quick-actions-title"> Continue working </h2>
+            </div>
+          </div>
+          <div className="action-grid">
+            <FarmingLearningHub className="action-card">
+              <span>Learning</span>
+              <h3>Learn farming</h3>
+              <p>Explore farming topics and ask the AI learning guide.</p>
+            </FarmingLearningHub>
+            {truth(data?.IsBuyer) ? (
+              <>
+                <a href="/marketplace" className="action-card">
+                  <span> Market </span>
+                  <h3> Explore agricultural products </h3>
+                  <p>
+                    {" "}
+                    Browse available products from farmers and agricultural
+                    sellers.{" "}
+                  </p>
+                </a>
+                <a href="/profile" className="action-card">
+                  <span> Orders </span>
+                  <h3> View purchases </h3>
+                  <p> Review your orders and transactions. </p>
+                </a>
+                <a href="/profile" className="action-card">
+                  <span> Account </span>
+                  <h3> Manage profile </h3>
+                  <p> Update your account and preferences. </p>
+                </a>
+              </>
+            ) : (
+              <>
+                <a href="/storage" className="action-card">
+                  <span> Products </span>
+                  <h3> Manage products </h3>
+                  <p> Add products and keep availability up to date. </p>
+                </a>
+                <a href="/marketplace" className="action-card">
+                  <span> Market </span>
+                  <h3> List products </h3>
+                  <p> Put your agricultural products in front of buyers. </p>
+                </a>
+                <a href="/ai-assistant" className="action-card">
+                  <span> Farm health </span>
+                  <h3> Ask the AI assistant </h3>
+                  <p>
+                    {" "}
+                    Analyse a farm problem, image, or get agricultural
+                    advice.{" "}
+                  </p>
+                </a>
+                <a href="/marketplace" className="action-card">
+                  <span> Sales </span>
+                  <h3> Manage negotiations </h3>
+                  <p> Review offers and negotiate with buyers. </p>
                 </a>
               </>
             )}
@@ -584,94 +728,6 @@ export default function DashboardPage({ data }) {
             </section>
           </>
         ) : null}
-        <section className="metrics" aria-label="Account overview">
-          {truth(data?.IsBuyer) ? (
-            <>
-              <a href="/profile" className="metric-card">
-                <span className="metric-label"> Purchases made </span>
-                <strong
-                  className="counter"
-                  data-target={text(data?.PurchasesMade)}
-                >
-                  {" "}
-                  0{" "}
-                </strong>
-                <span className="metric-detail"> Completed orders </span>
-              </a>
-              <a href="/profile" className="metric-card">
-                <span className="metric-label"> Total spent </span>
-                <strong> ₦{text(money(data?.TotalSpent))}</strong>
-                <span className="metric-detail"> Across all purchases </span>
-              </a>
-              <a href="/marketplace" className="metric-card">
-                <span className="metric-label"> Available listings </span>
-                <strong>{text(data?.AvailableProduce)}</strong>
-                <span className="metric-detail">
-                  {" "}
-                  Agricultural products currently available{" "}
-                </span>
-              </a>
-              <div className="metric-card">
-                <span className="metric-label"> Account status </span>
-                <strong className="status-positive"> Verified </strong>
-                <span className="metric-detail">
-                  {" "}
-                  Trusted Agrilinks Nigeria buyer{" "}
-                </span>
-              </div>
-            </>
-          ) : (
-            <>
-              <a href="/storage" className="metric-card">
-                <span className="metric-label"> Products in storage </span>
-                <strong
-                  className="counter"
-                  data-target={text(data?.ProduceInStorage)}
-                >
-                  {" "}
-                  0{" "}
-                </strong>
-                <span className="metric-detail"> Product items recorded </span>
-              </a>
-              <a href="/storage" className="metric-card">
-                <span className="metric-label"> Active listings </span>
-                <strong
-                  className="counter"
-                  data-target={text(data?.ListingsActive)}
-                >
-                  {" "}
-                  0{" "}
-                </strong>
-                <span className="metric-detail">
-                  {" "}
-                  Visible to buyers · your account{" "}
-                </span>
-              </a>
-              <a href="/ai-diagnosis-history" className="metric-card">
-                <span className="metric-label"> AI health checks </span>
-                <strong
-                  className="counter"
-                  data-target={text(data?.AIDiagnosesThisMonth)}
-                >
-                  {" "}
-                  0{" "}
-                </strong>
-                <span className="metric-detail">
-                  {" "}
-                  Completed this month · your account{" "}
-                </span>
-              </a>
-              <a href="/profile" className="metric-card">
-                <span className="metric-label"> Sales revenue · 30 days </span>
-                <strong> ₦{text(money(data?.Revenue30))}</strong>
-                <span className="metric-detail">
-                  {text(data?.CompletedSales)} completed sales · platform
-                  records{" "}
-                </span>
-              </a>
-            </>
-          )}
-        </section>
         {truth(!truth(data?.IsBuyer)) ? (
           <>
             <section className="dashboard-grid dashboard-grid-single">
@@ -1690,75 +1746,7 @@ export default function DashboardPage({ data }) {
             </div>
           </div>
         </section>
-        <section
-          className="quick-actions"
-          aria-labelledby="quick-actions-title"
-        >
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow"> Shortcuts </p>
-              <h2 id="quick-actions-title"> Continue working </h2>
-            </div>
-          </div>
-          <div className="action-grid">
-            <FarmingLearningHub className="action-card">
-              <span>Learning</span>
-              <h3>Learn farming</h3>
-              <p>Explore farming topics and ask the AI learning guide.</p>
-            </FarmingLearningHub>
-            {truth(data?.IsBuyer) ? (
-              <>
-                <a href="/marketplace" className="action-card">
-                  <span> Market </span>
-                  <h3> Explore agricultural products </h3>
-                  <p>
-                    {" "}
-                    Browse available products from farmers and agricultural
-                    sellers.{" "}
-                  </p>
-                </a>
-                <a href="/profile" className="action-card">
-                  <span> Orders </span>
-                  <h3> View purchases </h3>
-                  <p> Review your orders and transactions. </p>
-                </a>
-                <a href="/profile" className="action-card">
-                  <span> Account </span>
-                  <h3> Manage profile </h3>
-                  <p> Update your account and preferences. </p>
-                </a>
-              </>
-            ) : (
-              <>
-                <a href="/storage" className="action-card">
-                  <span> Products </span>
-                  <h3> Manage products </h3>
-                  <p> Add products and keep availability up to date. </p>
-                </a>
-                <a href="/marketplace" className="action-card">
-                  <span> Market </span>
-                  <h3> List products </h3>
-                  <p> Put your agricultural products in front of buyers. </p>
-                </a>
-                <a href="/ai-assistant" className="action-card">
-                  <span> Farm health </span>
-                  <h3> Ask the AI assistant </h3>
-                  <p>
-                    {" "}
-                    Analyse a farm problem, image, or get agricultural
-                    advice.{" "}
-                  </p>
-                </a>
-                <a href="/marketplace" className="action-card">
-                  <span> Sales </span>
-                  <h3> Manage negotiations </h3>
-                  <p> Review offers and negotiate with buyers. </p>
-                </a>
-              </>
-            )}
-          </div>
-        </section>{" "}
       </main>
-    </>
+    </div>
   );
 }

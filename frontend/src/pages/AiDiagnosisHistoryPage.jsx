@@ -1,4 +1,4 @@
-import Navbar from "../components/Navbar.jsx";
+import { WorkspaceSidebar } from "../components/Workspace.jsx";
 import { Select } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import { truth, items, text, formatDate } from "../lib/view.js";
@@ -7,34 +7,22 @@ import { usePageBehaviors } from "../lib/behaviors.js";
 export default function AiDiagnosisHistoryPage({ data }) {
   usePageBehaviors([mountAiDiagnosisHistory], data);
   return (
-    <>
-      <Navbar className="navbar">
-        <a
-          className="logo"
-          href="/dashboard"
-          aria-label="Agrilinks Nigeria Dashboard"
-        >
-          <img
-            src="/static/assets/logo/agrilinks-nigeria-logo.svg"
-            alt="Agrilinks Nigeria"
-          />
+    <div className="workspace-frame">
+      <WorkspaceSidebar current="/ai-diagnosis-history">
+        <a href="/dashboard"> Dashboard </a>
+        <a href="/storage"> Storage </a>
+        <a href="/marketplace"> Marketplace </a>
+        <a href="/negotiations"> Negotiations </a>
+        <a href="/cart"> Cart </a>
+        <a href="/chat"> Chat </a>
+        <a href="/ai-assistant" aria-current="page">
+          {" "}
+          AI Assistant{" "}
         </a>
-        <nav aria-label="Main navigation">
-          <a href="/dashboard"> Dashboard </a>
-          <a href="/storage"> Storage </a>
-          <a href="/marketplace"> Marketplace </a>
-          <a href="/negotiations"> Negotiations </a>
-          <a href="/cart"> Cart </a>
-          <a href="/chat"> Chat </a>
-          <a href="/ai-assistant" aria-current="page">
-            {" "}
-            AI Assistant{" "}
-          </a>
-          <a href="/notifications"> Notifications </a>
-          <a href="/profile"> Profile </a>
-          <a href="/logout"> Logout </a>
-        </nav>
-      </Navbar>
+        <a href="/notifications"> Notifications </a>
+        <a href="/profile"> Profile </a>
+        <a href="/logout"> Logout </a>
+      </WorkspaceSidebar>
       <main className="diagnosis-history">
         <section className="page-header">
           <div>
@@ -400,6 +388,6 @@ export default function AiDiagnosisHistoryPage({ data }) {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

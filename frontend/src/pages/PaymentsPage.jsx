@@ -1,30 +1,18 @@
-import Navbar from "../components/Navbar.jsx";
+import { WorkspaceSidebar } from "../components/Workspace.jsx";
 import { Fragment } from "react";
 import { truth, items, text, money, humanPaymentStatus } from "../lib/view.js";
 export default function PaymentsPage({ data }) {
   return (
-    <>
-      <Navbar className="navbar">
-        <a
-          className="logo"
-          href="/dashboard"
-          aria-label="Agrilinks Nigeria dashboard"
-        >
-          <img
-            src="/static/assets/logo/agrilinks-nigeria-logo.svg"
-            alt="Agrilinks Nigeria"
-          />
-        </a>
-        <nav aria-label="Main navigation">
-          <a href="/dashboard">Dashboard</a>
-          <a href="/marketplace">Marketplace</a>
-          <a href="/cart">Cart</a>
-          <a href="/orders">Orders</a>
-          <a href="/payments">Payments</a>
-          <a href="/wallet">Wallet</a>
-          <a href="/logout">Logout</a>
-        </nav>
-      </Navbar>
+    <div className="workspace-frame">
+      <WorkspaceSidebar current="/payments">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/marketplace">Marketplace</a>
+        <a href="/cart">Cart</a>
+        <a href="/orders">Orders</a>
+        <a href="/payments">Payments</a>
+        <a href="/wallet">Wallet</a>
+        <a href="/logout">Logout</a>
+      </WorkspaceSidebar>
       <main className="dashboard account-page">
         <p>
           <a href="/dashboard">← Dashboard</a>
@@ -206,6 +194,6 @@ export default function PaymentsPage({ data }) {
           )}
         </section>
       </main>
-    </>
+    </div>
   );
 }

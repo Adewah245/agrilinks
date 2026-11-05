@@ -1,87 +1,69 @@
-import Navbar from "../components/Navbar.jsx";
+import { WorkspaceSidebar } from "../components/Workspace.jsx";
 import { Fragment } from "react";
 import { truth, items, text } from "../lib/view.js";
 export default function NotificationPage({ data }) {
   return (
-    <>
-      <Navbar className="navbar">
-        <div className="navbar-container">
-          <a
-            href="/dashboard"
-            className="navbar-brand"
-            aria-label="Agrilinks Nigeria Dashboard"
-          >
-            <img
-              src="/static/assets/logo/agrilinks-nigeria-logo.svg?v=20260904"
-              alt="Agrilinks Nigeria logo"
-              className="navbar-logo"
-            />
-            <span className="navbar-title"> Agrilinks Nigeria </span>
-          </a>
-          <nav className="navbar-menu" aria-label="Main navigation">
-            <a href="/dashboard" className="nav-link">
-              {" "}
-              Dashboard{" "}
-            </a>
-            <a href="/storage" className="nav-link">
-              {" "}
-              Storage{" "}
-            </a>
-            <a href="/marketplace" className="nav-link">
-              {" "}
-              Marketplace{" "}
-            </a>
-            <a href="/negotiations" className="nav-link">
-              {" "}
-              Negotiations{" "}
-            </a>
-            <a href="/chat" className="nav-link">
-              {" "}
-              Chat{" "}
-            </a>
-            <a href="/cart" className="nav-link">
-              {" "}
-              Cart{" "}
-            </a>
-            <a href="/ai-assistant" className="nav-link">
-              {" "}
-              AI Assistant{" "}
-            </a>
-            <a href="/profile" className="nav-link">
-              {" "}
-              Profile{" "}
-            </a>
-            <a
-              href="/notifications"
-              className="nav-link notification-link"
-              aria-current="page"
-              aria-label="Notifications"
-            >
-              <span className="notification-bell" aria-hidden="true">
-                {" "}
-                🔔{" "}
+    <div className="workspace-frame">
+      <WorkspaceSidebar current="/notifications">
+        <a href="/dashboard" className="nav-link">
+          {" "}
+          Dashboard{" "}
+        </a>
+        <a href="/storage" className="nav-link">
+          {" "}
+          Storage{" "}
+        </a>
+        <a href="/marketplace" className="nav-link">
+          {" "}
+          Marketplace{" "}
+        </a>
+        <a href="/negotiations" className="nav-link">
+          {" "}
+          Negotiations{" "}
+        </a>
+        <a href="/chat" className="nav-link">
+          {" "}
+          Chat{" "}
+        </a>
+        <a href="/cart" className="nav-link">
+          {" "}
+          Cart{" "}
+        </a>
+        <a href="/ai-assistant" className="nav-link">
+          {" "}
+          AI Assistant{" "}
+        </a>
+        <a href="/profile" className="nav-link">
+          {" "}
+          Profile{" "}
+        </a>
+        <a
+          href="/notifications"
+          className="nav-link notification-link"
+          aria-current="page"
+          aria-label="Notifications"
+        >
+          <span className="notification-bell" aria-hidden="true">
+            {" "}
+            🔔{" "}
+          </span>
+          <span className="notification-label"> Notifications </span>
+          {truth(data?.UnreadCount > 0) ? (
+            <>
+              <span
+                className="notification-badge"
+                aria-label={text(data?.UnreadCount) + " unread notifications"}
+              >
+                {text(data?.UnreadCount)}
               </span>
-              <span className="notification-label"> Notifications </span>
-              {truth(data?.UnreadCount > 0) ? (
-                <>
-                  <span
-                    className="notification-badge"
-                    aria-label={
-                      text(data?.UnreadCount) + " unread notifications"
-                    }
-                  >
-                    {text(data?.UnreadCount)}
-                  </span>
-                </>
-              ) : null}
-            </a>
-            <a href="/logout" className="nav-link logout-link">
-              {" "}
-              Logout{" "}
-            </a>
-          </nav>
-        </div>
-      </Navbar>
+            </>
+          ) : null}
+        </a>
+        <a href="/logout" className="nav-link logout-link">
+          {" "}
+          Logout{" "}
+        </a>
+      </WorkspaceSidebar>
       <main className="notifications-page">
         <section
           className="notifications-container"
@@ -229,6 +211,6 @@ export default function NotificationPage({ data }) {
       <footer className="site-footer">
         <p> © 2026 Agrilinks Nigeria. Supporting smarter agriculture. </p>
       </footer>
-    </>
+    </div>
   );
 }

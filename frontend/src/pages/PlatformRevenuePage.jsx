@@ -1,3 +1,4 @@
+import Workspace, { WorkspaceHeading } from "../components/Workspace.jsx";
 import { Select, Textarea } from "../components/FormControls.jsx";
 import { Fragment } from "react";
 import { truth, items, text, formatDate, requestKey } from "../lib/view.js";
@@ -6,7 +7,7 @@ import { usePageBehaviors } from "../lib/behaviors.js";
 export default function PlatformRevenuePage({ data }) {
   usePageBehaviors([mountFinance], data);
   return (
-    <>
+    <Workspace current="/admin/revenue" staff>
       <main className="finance-page">
         <nav aria-label="Finance navigation">
           <a href="/admin/finance">Admin finance</a>
@@ -16,14 +17,11 @@ export default function PlatformRevenuePage({ data }) {
           <a href="#settlements">Settlements</a>
           <a href="#accounts">Chart of accounts</a>
         </nav>
-        <p className="finance-eyebrow">
-          Agrilinks Nigeria · FINANCIAL OPERATIONS
-        </p>
-        <h1>Platform revenue &amp; treasury</h1>
-        <p>
-          Revenue, customer obligations and reconciled company cash, with a
-          traceable record of every movement.
-        </p>
+        <WorkspaceHeading
+          eyebrow="FINANCE WORKSPACE"
+          title="Revenue and company money"
+          description="See what the business earned, what it owes, and where its money went."
+        />
         {truth(data?.Error) ? (
           <>
             <p className="finance-alert" role="alert">
@@ -1099,6 +1097,6 @@ export default function PlatformRevenuePage({ data }) {
           <p>Agrilinks Nigeria financial operations · NGN · UTC reporting</p>
         </footer>
       </main>
-    </>
+    </Workspace>
   );
 }
