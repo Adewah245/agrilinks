@@ -331,7 +331,14 @@ func (r *WalletRepository) RequestTransfer(ctx context.Context, senderID int, re
 	if err = financeLock(ctx, tx); err != nil {
 		return err
 	}
-	if err = lockWalletRequest(ctx, tx, reference); err != nil {
+	if err = r.requestTransfer(ctx, tx, senderID, recipientNumber, amount, reference, note, false); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (r *WalletRepository) requestTransfer(ctx context.Context, tx *sql.Tx, senderID int, recipientNumber, amount, reference, note string, immediate bool) error {
+	if err := lockWalletRequest(ctx, tx, reference); err != nil {
 		return err
 	}
 	if found, err := transferMatches(ctx, tx, senderID, recipientNumber, amount, reference, note, r.currency); err != nil || found {
@@ -340,7 +347,7 @@ func (r *WalletRepository) RequestTransfer(ctx context.Context, senderID int, re
 	var recipientID int
 	var recipientWallet int64
 	var recipientPhone string
-	err = tx.QueryRowContext(ctx, `SELECT w.id,w.owner_id,u.phone FROM wallets w JOIN users u ON u.id=w.owner_id WHERE w.wallet_number=$1 AND w.currency=$2 AND w.owner_type='user' AND u.deleted_at IS NULL`, recipientNumber, r.currency).Scan(&recipientWallet, &recipientID, &recipientPhone)
+	err := tx.QueryRowContext(ctx, `SELECT w.id,w.owner_id,u.phone FROM wallets w JOIN users u ON u.id=w.owner_id WHERE w.wallet_number=$1 AND w.currency=$2 AND w.owner_type='user' AND u.deleted_at IS NULL AND u.account_status='active' AND NOT u.staff_disabled FOR SHARE OF u`, recipientNumber, r.currency).Scan(&recipientWallet, &recipientID, &recipientPhone)
 	if err != nil {
 		return fmt.Errorf("recipient wallet was not found")
 	}
@@ -367,15 +374,34 @@ func (r *WalletRepository) RequestTransfer(ctx context.Context, senderID int, re
 	if err != nil {
 		return err
 	}
-	for _, account := range []string{walletAccount(senderWallet), "transfer:" + reference} {
+	destination := "transfer:" + reference
+	if immediate {
+		destination = walletAccount(recipientWallet)
+	}
+	for _, account := range []string{walletAccount(senderWallet), destination} {
 		if err = ensureAccount(tx, account, "liability"); err != nil {
 			return err
 		}
 	}
-	if err = postJournal(tx, reference+":reserve", "wallet_transfer_reservation", r.currency, senderID, "{}", debit(walletAccount(senderWallet), principal), credit("transfer:"+reference, principal)); err != nil {
+	journalRef, journalKind := reference+":reserve", "wallet_transfer_reservation"
+	if immediate {
+		journalRef, journalKind = reference+":complete", "wallet_transfer_completed"
+	}
+	if err = postJournal(tx, journalRef, journalKind, r.currency, senderID, "{}", debit(walletAccount(senderWallet), principal), credit(destination, principal)); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if immediate {
+		if err = creditWalletKobo(tx, recipientWallet, principal, reference+":in"); err != nil {
+			return err
+		}
+		if err = walletEntry(tx, recipientWallet, "transfer_in", principal, reference+":in"); err != nil {
+			return err
+		}
+		if _, err = tx.ExecContext(ctx, `UPDATE wallet_transfers SET status='completed',updated_at=CURRENT_TIMESTAMP WHERE reference=$1`, reference); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *WalletRepository) DecideTransfer(ctx context.Context, actorID int, admin bool, id int64, decision string) error {
@@ -455,10 +481,17 @@ func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, am
 	if err = financeLock(ctx, tx); err != nil {
 		return err
 	}
+	if err = r.requestWithdrawal(ctx, tx, userID, amount, reference, account, quote, auth); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (r *WalletRepository) requestWithdrawal(ctx context.Context, tx *sql.Tx, userID int, amount, reference string, account *models.UserBankAccount, quote *models.FeeQuote, auth models.WithdrawalAuthorization) error {
 	if account == nil {
 		return errors.New("save your bank account first")
 	}
-	if err = lockWalletRequest(ctx, tx, reference); err != nil {
+	if err := lockWalletRequest(ctx, tx, reference); err != nil {
 		return err
 	}
 	if found, err := withdrawalMatches(ctx, tx, userID, amount, reference, account.BankCode, account.AccountNumber, r.currency); err != nil || found {
@@ -484,6 +517,9 @@ func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, am
 			if err != nil {
 				return err
 			}
+		}
+		if q.PolicyID != policy.ID {
+			return errors.New("the fee policy changed; review a new quote")
 		}
 		if q.BankCode != account.BankCode || q.AccountNumber != account.AccountNumber {
 			return errors.New("bank destination does not match quote")
@@ -540,7 +576,7 @@ func (r *WalletRepository) RequestWithdrawal(ctx context.Context, userID int, am
 	if err = reserveWithdrawalFees(tx, walletID, reference, r.currency, principal, q); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return nil
 }
 
 const withdrawalColumns = `w.id,w.user_id,u.full_name,w.amount::text,w.currency,w.bank_name,w.bank_code,w.account_name,w.account_number,w.reference,w.provider_transfer_id,w.status,w.name_check_status,w.created_at,w.updated_at`

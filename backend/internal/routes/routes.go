@@ -446,6 +446,7 @@ func NewHandler(container *app.Container) http.Handler {
 		),
 	)
 
+	mux.HandleFunc("POST /profile/pin", middleware.RequireAuth(container.Sessions, container.UserRepo, profileHandler.PINHandler))
 	profileEditHandler := handlers.NewProfileEditHandler(
 		container.Auth,
 	)
@@ -1010,6 +1011,10 @@ func NewHandler(container *app.Container) http.Handler {
 	walletHandler := handlers.NewWalletHandler(container.Wallet, container.Security)
 	mux.HandleFunc("/wallet", middleware.OnlyPath("/wallet", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Handler)))
 	mux.HandleFunc("GET /wallet/banks", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Banks))
+	mux.HandleFunc("POST /wallet/recipient", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Recipient))
+	mux.HandleFunc("POST /wallet/confirmation/start", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.ConfirmationStart))
+	mux.HandleFunc("POST /wallet/confirmation/verify", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.ConfirmationVerify))
+	mux.HandleFunc("POST /wallet/confirmation/complete", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.ConfirmationComplete))
 	mux.HandleFunc("GET /wallet/status", middleware.RequireAuth(container.Sessions, container.UserRepo, walletHandler.Status))
 	mux.HandleFunc("GET /wallet/admin", middleware.OnlyPath("/wallet/admin", middleware.RequireAuth(container.Sessions, container.UserRepo, func(w http.ResponseWriter, r *http.Request) {
 		user, _ := middleware.UserFromContext(r)

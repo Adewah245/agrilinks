@@ -82,9 +82,9 @@ func RequestGuard(next http.Handler, cfg config.Config) http.Handler {
 		if r.Method == http.MethodPost {
 			var limiter *requestLimiter
 			switch r.URL.Path {
-			case "/login", "/register", "/register/phone-code", "/register/phone-verify", "/forgot-password", "/admin/security":
+			case "/login", "/register", "/register/phone-code", "/register/phone-verify", "/forgot-password", "/admin/security", "/profile/pin":
 				limiter = authLimit
-			case "/wallet", "/wallet/evidence", "/wallet/evidence/challenge", "/admin/action", "/admin/revenue", "/orders/protection", "/trust", "/deliveries/assign", "/deliveries/status", "/deliveries/tracking", "/delivery-partner", "/delivery-partner/review":
+			case "/wallet", "/wallet/confirmation/start", "/wallet/confirmation/verify", "/wallet/confirmation/complete", "/wallet/evidence", "/wallet/evidence/challenge", "/admin/action", "/admin/revenue", "/orders/protection", "/trust", "/deliveries/assign", "/deliveries/status", "/deliveries/tracking", "/delivery-partner", "/delivery-partner/review":
 				limiter = financeLimit
 			case "/learn/message", "/learning/chat", "/learning/example", "/learning/transcribe", "/ai-assistant", "/ai-assistant/example":
 				limiter = aiLimit

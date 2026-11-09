@@ -111,15 +111,8 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 				http.Redirect(w, r, "/orders", http.StatusSeeOther)
 				return
 			}
-		case "send_code":
-			err = h.service.SendCode(r.Context(), user, r.FormValue("purpose"))
-			notice = "code_sent"
-		case "transfer":
-			err = h.service.RequestTransfer(r.Context(), user, r.FormValue("recipient"), r.FormValue("amount"), r.FormValue("note"), r.FormValue("code"), r.PostFormValue("transaction_pin"), r.PostFormValue("request_key"))
-		case "withdraw":
-			session, _ := middleware.SessionIDFromRequest(r)
-			err = h.service.RequestWithdrawal(r.Context(), user, r.FormValue("amount"), r.FormValue("code"), r.PostFormValue("transaction_pin"), r.PostFormValue("request_key"), r.PostFormValue("evidence_token"), session)
-			notice = "withdrawal_review"
+		case "send_code", "transfer", "withdraw":
+			err = errors.New("confirm your PIN, OTP and live selfie using the wallet transfer or withdrawal card")
 		case "save_bank":
 			err = h.service.SaveBank(r.Context(), user.ID, r.FormValue("bank_code"), r.FormValue("account_number"), r.PostFormValue("transaction_pin"))
 			if err == nil && h.security != nil {
@@ -181,6 +174,8 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 	switch r.URL.Query().Get("notice") {
+	case "transfer_completed":
+		page.Notice = "Transfer completed. The recipient's wallet has been credited."
 	case "withdrawal_review":
 		page.Notice = "Your withdrawal and private evidence are awaiting administrator review. No payout has been submitted."
 	case "funding_instruction":
@@ -234,6 +229,41 @@ func (h *WalletHandler) Banks(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(banks)
+}
+
+func (h *WalletHandler) Recipient(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	reject := func(status int, message string) {
+		w.WriteHeader(status)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
+	}
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil {
+		reject(http.StatusUnauthorized, "Please sign in")
+		return
+	}
+	if h.security != nil {
+		if err := h.security.Limit(r.Context(), user.ID, "wallet-recipient", 30, time.Minute); err != nil {
+			reject(http.StatusTooManyRequests, "Please wait a moment before checking another recipient.")
+			return
+		}
+	}
+	if err := r.ParseForm(); err != nil {
+		reject(http.StatusBadRequest, "Could not read the recipient")
+		return
+	}
+	recipient, err := h.service.ResolveRecipient(r.Context(), user.ID, r.PostFormValue("recipient"))
+	switch {
+	case errors.Is(err, services.ErrInvalidRecipient), errors.Is(err, services.ErrRecipientIsSelf), errors.Is(err, services.ErrRecipientAmbiguous):
+		reject(http.StatusBadRequest, err.Error())
+	case errors.Is(err, services.ErrRecipientNotFound):
+		reject(http.StatusNotFound, err.Error())
+	case err != nil:
+		reject(http.StatusServiceUnavailable, "We couldn't check this recipient. Please try again.")
+	default:
+		_ = json.NewEncoder(w).Encode(recipient)
+	}
 }
 
 func (h *WalletHandler) Admin(w http.ResponseWriter, r *http.Request) {

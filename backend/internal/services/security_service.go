@@ -293,13 +293,20 @@ func (s *SecurityService) SaveEvidence(ctx context.Context, userID int, session,
 	if err := s.Limit(ctx, userID, "evidence_upload", 12, time.Hour); err != nil {
 		return err
 	}
-	now := time.Now()
-	if len(token) != 64 || math.IsNaN(e.Latitude) || math.IsNaN(e.Longitude) || math.IsNaN(e.AccuracyM) || math.IsInf(e.Latitude, 0) || math.IsInf(e.Longitude, 0) || math.IsInf(e.AccuracyM, 0) || e.Latitude < -90 || e.Latitude > 90 || e.Longitude < -180 || e.Longitude > 180 || e.AccuracyM < 0 || e.AccuracyM > 1000 || e.CapturedAt.Before(now.Add(-2*time.Minute)) || e.CapturedAt.After(now.Add(30*time.Second)) {
-		return errors.New("capture a fresh, accurate location together with your selfie")
+	if err := validateVerificationCapture(token, e); err != nil {
+		return err
 	}
 	encrypted, err := s.PrivateImage(data)
 	if err != nil {
 		return err
 	}
 	return s.Repo.SaveEvidence(ctx, userID, SecurityHash(session), SecurityHash(token), encrypted, e)
+}
+
+func validateVerificationCapture(token string, e models.WithdrawalEvidence) error {
+	now := time.Now()
+	if len(token) != 64 || math.IsNaN(e.Latitude) || math.IsNaN(e.Longitude) || math.IsNaN(e.AccuracyM) || math.IsInf(e.Latitude, 0) || math.IsInf(e.Longitude, 0) || math.IsInf(e.AccuracyM, 0) || e.Latitude < -90 || e.Latitude > 90 || e.Longitude < -180 || e.Longitude > 180 || e.AccuracyM < 0 || e.AccuracyM > 1000 || e.CapturedAt.Before(now.Add(-2*time.Minute)) || e.CapturedAt.After(now.Add(30*time.Second)) {
+		return errors.New("capture a fresh, accurate location together with your selfie")
+	}
+	return nil
 }

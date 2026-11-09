@@ -8,15 +8,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
 
 var (
-	ErrProviderRefused      = errors.New("the payment provider refused the request")
-	ErrProviderNotFound     = errors.New("the provider has no record for this reference")
-	ErrProviderAccessDenied = errors.New("the payment provider did not permit the request")
+	ErrProviderRefused        = errors.New("the payment provider refused the request")
+	ErrProviderNotFound       = errors.New("the provider has no record for this reference")
+	ErrProviderAccessDenied   = errors.New("the payment provider did not permit the request")
+	ErrBankAccountUnconfirmed = errors.New("the bank did not confirm this account")
 )
 
 func providerResponseError(status int, data []byte) error {
@@ -77,6 +79,9 @@ func (c *FlutterwaveClient) walletRequest(ctx context.Context, method, path stri
 		return fmt.Errorf("%w: unreadable response", ErrPaymentProvider)
 	}
 	if envelope.Status != "success" {
+		if path == "/accounts/resolve" && providerRecordMissing(data) {
+			return ErrBankAccountUnconfirmed
+		}
 		if method == http.MethodGet && providerRecordMissing(data) {
 			return ErrProviderNotFound
 		}
@@ -138,11 +143,23 @@ func (c *FlutterwaveClient) ListBanks(ctx context.Context) ([]Bank, error) {
 	if err := c.walletRequest(ctx, "GET", "/banks/NG", nil, &response); err != nil {
 		return nil, err
 	}
-	if len(response.Data) == 0 {
+	// Include the full Nigerian directory, including fintechs and microfinance
+	// banks. Codes remain the provider's identifiers, without checksum filtering.
+	banks := make([]Bank, 0, len(response.Data))
+	seen := make(map[string]bool)
+	for _, bank := range response.Data {
+		bank.Name, bank.Code = strings.TrimSpace(bank.Name), strings.TrimSpace(bank.Code)
+		if bank.Name != "" && bank.Code != "" && !seen[bank.Code] {
+			banks = append(banks, bank)
+			seen[bank.Code] = true
+		}
+	}
+	if len(banks) == 0 {
 		return nil, errors.New("the bank directory is unavailable")
 	}
-	c.bankCache, c.bankCacheUntil = append([]Bank(nil), response.Data...), time.Now().Add(6*time.Hour)
-	return append([]Bank(nil), response.Data...), nil
+	sort.Slice(banks, func(i, j int) bool { return strings.ToLower(banks[i].Name) < strings.ToLower(banks[j].Name) })
+	c.bankCache, c.bankCacheUntil = append([]Bank(nil), banks...), time.Now().Add(6*time.Hour)
+	return append([]Bank(nil), banks...), nil
 }
 
 func (c *FlutterwaveClient) ResolveAccount(ctx context.Context, number, bank string) (*ResolvedAccount, error) {
@@ -152,8 +169,9 @@ func (c *FlutterwaveClient) ResolveAccount(ctx context.Context, number, bank str
 	if err := c.walletRequest(ctx, "POST", "/accounts/resolve", map[string]string{"account_number": number, "account_bank": bank}, &response); err != nil {
 		return nil, err
 	}
+	response.Data.AccountName = strings.TrimSpace(response.Data.AccountName)
 	if response.Data.AccountNumber != number || response.Data.AccountName == "" {
-		return nil, fmt.Errorf("the bank did not confirm this account")
+		return nil, ErrBankAccountUnconfirmed
 	}
 	return &response.Data, nil
 }

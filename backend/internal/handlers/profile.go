@@ -45,12 +45,14 @@ func NewProfileHandler(
 // Products, purchases, and sales contain role-specific profile data.
 type ProfilePageData struct {
 	*models.User
-	IsOwner     bool
-	Products    []models.Product
-	Purchases   []models.Order
-	Sales       []models.Order
-	Badges      []models.VerificationBadge
-	UnreadCount int
+	IsOwner             bool
+	Products            []models.Product
+	Purchases           []models.Order
+	Sales               []models.Order
+	Badges              []models.VerificationBadge
+	UnreadCount         int
+	HasTransactionPIN   bool
+	PINError, PINNotice string
 }
 
 // ProfileHandler displays the authenticated user's profile or
@@ -64,6 +66,29 @@ func (h *Profile) ProfileHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
+	h.renderProfile(w, r, "")
+}
+
+func (h *Profile) PINHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.UserFromContext(r)
+	if !ok || user == nil {
+		http.Error(w, "Please sign in", http.StatusUnauthorized)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Could not read the PIN form", http.StatusBadRequest)
+		return
+	}
+	err := services.NewTransactionPINService(h.users).Setup(r.Context(), user, r.PostFormValue("current_password"), r.PostFormValue("transaction_pin"), r.PostFormValue("transaction_pin_confirmation"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		h.renderProfile(w, r, err.Error())
+		return
+	}
+	http.Redirect(w, r, "/profile?notice=pin_created#profile-pin", http.StatusSeeOther)
+}
+
+func (h *Profile) renderProfile(w http.ResponseWriter, r *http.Request, pinError string) {
 	// ========================================================
 	// 1. GET AUTHENTICATED USER
 	// ========================================================
@@ -123,8 +148,20 @@ func (h *Profile) ProfileHandler(
 	// ========================================================
 
 	data := ProfilePageData{
-		User:    user,
-		IsOwner: idValue == "",
+		User:     user,
+		IsOwner:  idValue == "",
+		PINError: pinError,
+	}
+	if data.IsOwner {
+		var err error
+		data.HasTransactionPIN, err = h.users.HasTransactionPIN(r.Context(), user.ID)
+		if err != nil {
+			http.Error(w, "Could not load wallet security", http.StatusInternalServerError)
+			return
+		}
+		if r.URL.Query().Get("notice") == "pin_created" {
+			data.PINNotice = "Your transaction PIN is ready. Keep it private."
+		}
 	}
 	if h.notification != nil {
 		if count, err := h.notification.GetUnreadCount(viewerID); err == nil {

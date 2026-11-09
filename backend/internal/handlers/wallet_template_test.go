@@ -84,14 +84,25 @@ func TestWalletTemplatePreservesMoneyActionForms(t *testing.T) {
 		t.Fatalf("populated wallet should render: %v", err)
 	}
 	body := testui.HTML(t, response.Body.String())
-	for _, action := range []string{"quote_deposit", "save_bank", "send_code", "quote_withdrawal", "transfer", "cancel_transfer", "cancel_withdrawal"} {
+	for _, action := range []string{"quote_deposit", "save_bank", "quote_withdrawal", "cancel_transfer", "cancel_withdrawal"} {
 		if !strings.Contains(body, `name="action" value="`+action+`"`) {
 			t.Errorf("missing existing money action %s", action)
 		}
 	}
-	for _, field := range []string{"request_key", "bank_code", "account_number", "recipient", "amount", "note", "code", "purpose"} {
+	for _, field := range []string{"request_key", "bank_code", "account_number", "recipient", "amount", "note", "kind", "transaction_pin"} {
 		if !strings.Contains(body, `name="`+field+`"`) {
 			t.Errorf("missing required wallet form field %s", field)
+		}
+	}
+	if !strings.Contains(body, `action="/wallet/confirmation/start"`) || !strings.Contains(body, `data-confirmation-stage="pin"`) {
+		t.Error("wallet transfers must begin with PIN confirmation")
+	}
+	if strings.Contains(body, `id="wallet-pin-setup"`) || strings.Contains(body, `name="transaction_pin_confirmation"`) {
+		t.Error("PIN enrolment belongs in the profile")
+	}
+	for _, id := range []string{"wallet-bank-details", "wallet-transfer", "wallet-withdraw", "wallet-activity"} {
+		if !strings.Contains(body, `id="`+id+`"`) {
+			t.Errorf("missing everyday wallet card %s", id)
 		}
 	}
 	for _, id := range []string{"101", "201"} {

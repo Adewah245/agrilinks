@@ -20,6 +20,15 @@ type Wallet struct {
 	UpdatedAt time.Time
 }
 
+// WalletRecipient contains only the public identity needed to confirm a payee.
+type WalletRecipient struct {
+	UserID       int    `json:"user_id"`
+	FullName     string `json:"full_name"`
+	WalletNumber string `json:"wallet_number"`
+	Currency     string `json:"currency"`
+	PhotoURL     string `json:"photo_url"`
+}
+
 // WalletStatus is the small read-only snapshot the wallet page polls while it is
 // open. It exists so a confirmed credit can move the on-screen balance and
 // history without the browser ever computing or crediting anything: the server
@@ -238,10 +247,8 @@ func (w Withdrawal) MaskedAccountNumber() string {
 
 // Wallet-to-wallet transfer statuses.
 //
-// A transfer is reserved from the sender the moment it is requested, and the
-// recipient is only credited once an admin approves it — the same reserve-first
-// shape withdrawals already use, so a mistaken or fraudulent transfer can be
-// reversed without chasing money that has already left.
+// New PIN/OTP/selfie confirmations complete transfers immediately. Older
+// pending requests retain their existing reserve and administrator review path.
 const (
 	TransferPending   = "pending"
 	TransferCompleted = "completed"

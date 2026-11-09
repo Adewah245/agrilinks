@@ -293,6 +293,11 @@ func (s *WalletService) RequestTransfer(ctx context.Context, user *models.User, 
 	if !requestToken.MatchString(key) {
 		return errors.New("reload the wallet page before sending money")
 	}
+	payee, err := s.ResolveRecipient(ctx, user.ID, recipient)
+	if err != nil {
+		return err
+	}
+	recipient = payee.WalletNumber
 	reference := fmt.Sprintf("TRANSFER-%d-%s", user.ID, key)
 	if found, err := s.repo.TransferMatches(ctx, user.ID, recipient, amount, reference, note); err != nil || found {
 		return err
