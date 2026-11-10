@@ -3,6 +3,8 @@ import { spawn } from "node:child_process";
 import { readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { startPreviewServer } from "./preview-server.mjs";
+import { checkBankVerification } from "./bank-verification-checks.mjs";
+import { checkWalletRecipient } from "./wallet-recipient-checks.mjs";
 
 const directory =
   process.env.REACT_PREVIEW_DIR || "/tmp/agrilinks-react-preview";
@@ -758,6 +760,8 @@ try {
   console.log(
     "Storage editor and GPS denial, marketplace search, profile editing, and wallet controls passed.",
   );
+  await checkBankVerification({ call, navigate, evaluate, until, directory });
+  await checkWalletRecipient({ call, navigate, evaluate, until });
   assert.deepEqual(exceptions, [], "Browser JavaScript exceptions");
   assert.deepEqual(overflows, [], "Pages overflow their viewport");
   console.log("PASS: 70 page layouts and interactive authentication flows.");

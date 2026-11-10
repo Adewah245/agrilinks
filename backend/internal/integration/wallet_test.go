@@ -179,7 +179,7 @@ func TestWalletMoneyFlowsWithPostgresAndProvider(t *testing.T) {
 		t.Fatal(err)
 	}
 	balance(sender.ID, "900.00")
-	if err = c.Wallet.SaveBank(ctx, sender.ID, "001", "0123456789", "582491"); err != nil {
+	if err = c.Wallet.SaveBank(ctx, sender.ID, "001", "0123456789", sender.FullName, "582491"); err != nil {
 		t.Fatal(err)
 	}
 	if err = c.Wallet.SendCode(ctx, sender, "withdrawal"); err != nil {

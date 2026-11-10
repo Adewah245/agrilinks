@@ -315,9 +315,11 @@ export default function mount(scope, data) {
       if (!event.persisted) return;
       document.querySelectorAll('form[action="/wallet"]').forEach((form) => {
         delete form.dataset.submitting;
-        form.querySelectorAll('button[type="submit"]').forEach((button) => {
-          button.disabled = false;
-        });
+        if (!form.matches("[data-bank-account-form], [data-wallet-transfer-form]")) {
+          form.querySelectorAll('button[type="submit"]').forEach((button) => {
+            button.disabled = false;
+          });
+        }
         form.querySelectorAll('input[type="password"]').forEach((input) => {
           input.value = "";
         });
@@ -434,48 +436,6 @@ export default function mount(scope, data) {
       window
         .matchMedia("(min-width: 1001px)")
         .addEventListener("change", () => setMenuOpen(false));
-    }
-
-    const select = document.getElementById("wallet-bank");
-    if (select) {
-      const saveBank = document.getElementById("wallet-save-bank");
-      const loadBanks = async () => {
-        select.disabled = true;
-        if (saveBank) saveBank.disabled = true;
-        try {
-          const response = await fetch("/wallet/banks", {
-            headers: { Accept: "application/json" },
-          });
-          if (!response.ok || response.redirected)
-            throw new Error(
-              "Could not load the bank list. Please reload the page.",
-            );
-          const banks = await response.json();
-          if (
-            !Array.isArray(banks) ||
-            !banks.length ||
-            banks.some(
-              (bank) =>
-                typeof bank.name !== "string" || typeof bank.code !== "string",
-            )
-          )
-            throw new Error(
-              "The bank list is unavailable. Please reload the page.",
-            );
-          select.replaceChildren(new Option("Choose your bank", ""));
-          banks.forEach((bank) => select.add(new Option(bank.name, bank.code)));
-          select.disabled = false;
-          if (saveBank) saveBank.disabled = false;
-        } catch (error) {
-          select.replaceChildren(new Option("Bank list unavailable", ""));
-          const errorMessage = document.getElementById("bank-error");
-          if (errorMessage)
-            errorMessage.textContent =
-              error.message ||
-              "Could not load the bank list. Please reload the page.";
-        }
-      };
-      loadBanks();
     }
   });
 }

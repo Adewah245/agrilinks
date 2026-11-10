@@ -252,6 +252,13 @@
 .wallet-inline-link .w-icon { width: 16px; height: 16px; }
 .wallet-field-error { font-size: 11px; line-height: 1.7; color: #9c4937; }
 .wallet-field-error:empty { display: none; }
+.wallet-bank-verification { display: flex; flex-direction: column; gap: 9px; }
+.wallet-verified-name { display: block; padding: 13px; border-left: 3px solid #aca58c; background: #f3f2eb; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.wallet-bank-verification[data-state="verified"] .wallet-verified-name { border-color: #96a385; background: #eff2e9; color: #3c5234; }
+.wallet-bank-verification p { margin: 0; font-size: 11px; line-height: 1.7; color: var(--wallet-muted); }
+.wallet-bank-verification[data-state="verified"] p { color: #3c5234; }
+.wallet-bank-retry { align-self: flex-start; min-height: 44px; padding: 9px 13px; border: 1px solid #dcd1be; border-radius: 7px; background: #f4efdf; color: #725b35; font-size: 12px; }
+.wallet-form .wallet-submit:disabled { cursor: not-allowed; opacity: .55; }
 .wallet-saved-bank { display: flex; flex-direction: column; gap: 5px; padding: 13px; margin-bottom: 13px; border: 1px solid #dbe1d4; border-radius: 7px; background: #eff2e9; font-size: 11px; }
 .wallet-saved-bank strong { font-weight: 500; color: #57634b; }
 .wallet-saved-bank span { color: #747968; font-size: 10px; }

@@ -114,7 +114,8 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 		case "send_code", "transfer", "withdraw":
 			err = errors.New("confirm your PIN, OTP and live selfie using the wallet transfer or withdrawal card")
 		case "save_bank":
-			err = h.service.SaveBank(r.Context(), user.ID, r.FormValue("bank_code"), r.FormValue("account_number"), r.PostFormValue("transaction_pin"))
+			err = h.service.SaveBank(r.Context(), user.ID, r.PostFormValue("bank_code"), r.PostFormValue("account_number"), r.PostFormValue("account_name"), r.PostFormValue("transaction_pin"))
+			notice = "bank_saved"
 			if err == nil && h.security != nil {
 				h.security.Event(r.Context(), user.ID, "payout_bank_changed", "warning")
 			}
@@ -170,6 +171,9 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 		if fundingAction {
 			page.Error = fundingErrorMessage(err)
 		}
+		if page.FailedAction == "save_bank" {
+			page.Error = bankAccountErrorMessage(err)
+		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusBadRequest)
 	}
@@ -182,6 +186,8 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 		page.Notice = "Funding instruction confirmed. Transfer the exact total shown below to receive your full requested wallet credit."
 	case "pin_created":
 		page.Notice = "Your transaction PIN is ready. Keep it private; Agrilinks Nigeria staff will never ask for it."
+	case "bank_saved":
+		page.Notice = "Your verified bank account has been saved for withdrawals."
 	case "saved":
 		page.Notice = "Your request was saved. Check its status below."
 	case "code_sent":

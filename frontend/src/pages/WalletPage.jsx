@@ -1,6 +1,8 @@
 import WithdrawalEvidenceCapture from "../components/WithdrawalEvidenceCapture.jsx";
+import BankAccountForm from "../components/BankAccountForm.jsx";
+import WalletRecipientFields from "../components/WalletRecipientFields.jsx";
 import { Select } from "../components/FormControls.jsx";
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   truth,
   items,
@@ -16,6 +18,20 @@ import mountWallet from "../behaviors/wallet.js";
 import { usePageBehaviors } from "../lib/behaviors.js";
 export default function WalletPage({ data }) {
   usePageBehaviors([mountWallet], data);
+  const [transferRecipient, setTransferRecipient] = useState(null);
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
+  const [transferKey] = useState(() =>
+    data?.FailedAction === "transfer" && data?.RequestKey
+      ? text(data.RequestKey)
+      : requestKey(),
+  );
+  useEffect(() => {
+    const restore = (event) => {
+      if (event.persisted) setTransferSubmitting(false);
+    };
+    window.addEventListener("pageshow", restore);
+    return () => window.removeEventListener("pageshow", restore);
+  }, []);
   return (
     <>
       <a className="wallet-skip-link" href="#wallet-main">
@@ -1902,28 +1918,25 @@ export default function WalletPage({ data }) {
                     Send transfer code
                   </button>
                 </form>
-                <form method="POST" action="/wallet" className="wallet-form">
-                  <input type="hidden" name="action" defaultValue="transfer" />
-                  <input
-                    type="hidden"
-                    name="request_key"
-                    defaultValue={
-                      truth(
-                        truth(data?.FailedAction === "transfer") &&
-                          truth(data?.RequestKey),
-                      )
-                        ? text(data?.RequestKey)
-                        : text(requestKey())
+                <form
+                  method="POST"
+                  action="/wallet"
+                  className="wallet-form"
+                  data-wallet-transfer-form
+                  onSubmitCapture={(event) => {
+                    if (!transferRecipient || transferSubmitting) {
+                      event.preventDefault();
+                      return;
                     }
-                  />
-                  <label htmlFor="wallet-recipient">
-                    Recipient wallet number
-                  </label>
-                  <input
-                    id="wallet-recipient"
-                    name="recipient"
-                    placeholder="Enter their wallet number"
-                    required={true}
+                    setTransferSubmitting(true);
+                  }}
+                >
+                  <input type="hidden" name="action" defaultValue="transfer" />
+                  <input type="hidden" name="request_key" value={transferKey} />
+                  <WalletRecipientFields
+                    currency={data?.Wallet?.Currency}
+                    onVerified={setTransferRecipient}
+                    submitting={transferSubmitting}
                   />
                   <label htmlFor="wallet-transfer-amount">
                     Amount in {text(data?.Wallet?.Currency)}
@@ -1970,7 +1983,11 @@ export default function WalletPage({ data }) {
                     autoComplete="off"
                     required={true}
                   />
-                  <button type="submit" className="wallet-submit">
+                  <button
+                    type="submit"
+                    className="wallet-submit"
+                    disabled={!transferRecipient || transferSubmitting}
+                  >
                     Request transfer
                     <svg className="w-icon">
                       <use href="#w-arrow" />
@@ -2115,8 +2132,9 @@ export default function WalletPage({ data }) {
                 {truth(data?.ProviderAvailable) ? (
                   <>
                     <p>
-                      Choose your bank and enter your account number. We'll
-                      check the account details before saving.
+                      Choose your bank and enter your account number. Review the
+                      confirmed account name, then save with your transaction
+                      PIN.
                     </p>
                     {truth(data?.Profile?.AccountNumber) ? (
                       <>
@@ -2129,64 +2147,10 @@ export default function WalletPage({ data }) {
                         </div>
                       </>
                     ) : null}
-                    <form
-                      method="POST"
-                      action="/wallet"
-                      className="wallet-form"
-                    >
-                      <input
-                        type="hidden"
-                        name="action"
-                        defaultValue="save_bank"
-                      />
-                      <label htmlFor="wallet-bank">Bank</label>
-                      <Select
-                        name="bank_code"
-                        id="wallet-bank"
-                        required={true}
-                        aria-describedby="bank-error"
-                      >
-                        <option value="">Loading banks…</option>
-                      </Select>
-                      <label htmlFor="wallet-account-number">
-                        Account number
-                      </label>
-                      <input
-                        id="wallet-account-number"
-                        name="account_number"
-                        inputMode="numeric"
-                        pattern="[0-9]{10}"
-                        maxLength="10"
-                        placeholder="10-digit account number"
-                        required={true}
-                      />
-                      <p
-                        id="bank-error"
-                        className="wallet-field-error"
-                        role="alert"
-                      ></p>
-                      <label htmlFor="wallet-bank-pin">Transaction PIN</label>
-                      <input
-                        id="wallet-bank-pin"
-                        name="transaction_pin"
-                        type="password"
-                        inputMode="numeric"
-                        pattern="[0-9]{6}"
-                        maxLength="6"
-                        autoComplete="off"
-                        required={true}
-                      />
-                      <button
-                        type="submit"
-                        className="wallet-submit"
-                        id="wallet-save-bank"
-                      >
-                        Check and save account
-                        <svg className="w-icon">
-                          <use href="#w-check" />
-                        </svg>
-                      </button>
-                    </form>
+                    <BankAccountForm
+                      hasTransactionPIN={truth(data?.HasTransactionPIN)}
+                      registeredName={text(data?.User?.FullName)}
+                    />
                     <noscript>
                       <p className="wallet-field-error">
                         Please enable JavaScript to load the bank list.

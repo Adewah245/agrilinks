@@ -322,37 +322,6 @@ func (s *WalletService) Banks(ctx context.Context) ([]Bank, error) {
 	return s.provider.ListBanks(ctx)
 }
 
-func (s *WalletService) SaveBank(ctx context.Context, userID int, bankCode, number, pin string) error {
-	if err := s.verifyPIN(ctx, userID, pin); err != nil {
-		return err
-	}
-	if !s.ProviderAvailable() {
-		return ErrPaymentProvider
-	}
-	if !accountNumber.MatchString(number) {
-		return errors.New("enter the ten digits of your bank account number")
-	}
-	banks, err := s.provider.ListBanks(ctx)
-	if err != nil {
-		return err
-	}
-	name := ""
-	for _, bank := range banks {
-		if bank.Code == bankCode {
-			name = bank.Name
-			break
-		}
-	}
-	if name == "" {
-		return errors.New("choose a bank from the list")
-	}
-	account, err := s.provider.ResolveAccount(ctx, number, bankCode)
-	if err != nil {
-		return err
-	}
-	return s.profiles.UpsertBankAccount(&models.UserBankAccount{UserID: userID, BankName: name, BankCode: bankCode, AccountName: account.AccountName, AccountNumber: number})
-}
-
 func (s *WalletService) RequestWithdrawal(ctx context.Context, user *models.User, amount, code, pin, key string, proof ...string) error {
 	if user == nil || user.ID <= 0 {
 		return errors.New("please sign in")
