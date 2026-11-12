@@ -1,6 +1,8 @@
 import { createVoice } from "../lib/voice.js";
 import { addExampleButton } from "../lib/example-images.js";
 
+import { navigateTo, reloadPage } from "../lib/device.js";
+
 export default function mount(scope, data) {
   const {
     document,
@@ -75,7 +77,7 @@ export default function mount(scope, data) {
           credentials: "same-origin",
         });
         if (response.redirected) {
-          window.location.assign(response.url);
+          navigateTo(response.url);
           return;
         }
         const result = await response.json();
@@ -91,7 +93,7 @@ export default function mount(scope, data) {
             );
           } catch {}
         }
-        window.location.reload();
+        reloadPage();
       } catch (problem) {
         error.textContent =
           problem.message || "Please check your connection and try again.";

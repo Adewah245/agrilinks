@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { fetchWithPageSignal } from "./page-fetch.js";
 
 // Browser integrations are mounted after React commits a complete page. Each
 // route uses document navigation, so forms retain Go's redirects and sessions.
@@ -34,12 +35,7 @@ export function usePageBehaviors(mounts, data) {
         return id;
       },
       fetch: (input, init = {}) =>
-        window.fetch(input, {
-          ...init,
-          signal: init.signal
-            ? AbortSignal.any([init.signal, controller.signal])
-            : controller.signal,
-        }),
+        fetchWithPageSignal(window.fetch, input, init, controller.signal),
     };
     const observe = (Constructor) =>
       Constructor &&

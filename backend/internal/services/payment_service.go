@@ -99,11 +99,16 @@ type InitiatePaymentResult struct {
 	Reference   string
 }
 
+type CheckoutOptions struct {
+	ReturnToApp bool
+}
+
 // Initiate creates a pending transaction and asks Flutterwave for checkout.
 func (s *PaymentService) Initiate(
 	ctx context.Context,
 	buyerID,
 	orderID int,
+	options ...CheckoutOptions,
 ) (*InitiatePaymentResult, error) {
 	if s == nil || s.repo == nil || s.orders == nil || s.users == nil {
 		return nil, errors.New("payment service is not configured")
@@ -171,14 +176,18 @@ func (s *PaymentService) Initiate(
 	if !claimed {
 		return nil, errors.New("this payment is already being prepared; check its status before trying again")
 	}
-	checkoutURL, err := s.gateway.InitializePayment(ctx, InitializePaymentRequest{
+	request := InitializePaymentRequest{
 		Reference:     payment.Reference,
 		Amount:        payment.Amount,
 		Currency:      payment.Currency,
 		CustomerEmail: buyer.Email,
 		CustomerName:  buyer.FullName,
 		Description:   fmt.Sprintf("Payment for order %d", orderID),
-	})
+	}
+	if len(options) > 0 && options[0].ReturnToApp {
+		request.AppReturn = "payments"
+	}
+	checkoutURL, err := s.gateway.InitializePayment(ctx, request)
 	if err != nil {
 		// A timeout does not prove the provider rejected the payment. Keep
 		// this reference for retries until a verified result settles it.

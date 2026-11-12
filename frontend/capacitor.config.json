@@ -1,0 +1,32 @@
+{
+  "appId": "ng.agrilinks.app",
+  "appName": "Agrilinks Nigeria",
+  "webDir": "mobile-dist",
+  "backgroundColor": "#f7f9f4",
+  "android": {
+    "allowMixedContent": false,
+    "minWebViewVersion": 107
+  },
+  "ios": {
+    "contentInset": "never"
+  },
+  "plugins": {
+    "Keyboard": {
+      "resize": "native"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 500,
+      "backgroundColor": "#f7f9f4",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#f7f9f4"
+    },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover",
+      "style": "LIGHT"
+    }
+  }
+}

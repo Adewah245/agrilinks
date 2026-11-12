@@ -70,6 +70,51 @@ func (s *WalletService) ResolveBankAccount(ctx context.Context, user *models.Use
 	}, nil
 }
 
+// ResolveBankAccountByNumber attempts to resolve an account number across all
+// banks to auto-detect the bank. It probes each bank in turn until one
+// confirms the account. This lets users enter just an account number and
+// have the bank identified automatically.
+func (s *WalletService) ResolveBankAccountByNumber(ctx context.Context, user *models.User, number string) (*BankAccountVerification, error) {
+	if user == nil || user.ID <= 0 {
+		return nil, errors.New("please sign in")
+	}
+	number = strings.TrimSpace(number)
+	if !accountNumber.MatchString(number) {
+		return nil, ErrBankAccountNumber
+	}
+	if !s.ProviderAvailable() {
+		return nil, ErrBankVerificationUnavailable
+	}
+	banks, err := s.provider.ListBanks(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrBankVerificationUnavailable, err)
+	}
+	var lastErr error
+	for _, bank := range banks {
+		account, err := s.provider.ResolveAccount(ctx, number, bank.Code)
+		if errors.Is(err, ErrBankAccountUnconfirmed) || errors.Is(err, ErrProviderNotFound) {
+			// This bank doesn't have this account; try the next bank.
+			lastErr = err
+			continue
+		}
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		return &BankAccountVerification{
+			BankCode:       bank.Code,
+			BankName:       bank.Name,
+			AccountNumber:  account.AccountNumber,
+			AccountName:    account.AccountName,
+			MatchesProfile: sameAccountOwner(user.FullName, account.AccountName),
+		}, nil
+	}
+	if lastErr != nil {
+		return nil, fmt.Errorf("%w: %w", ErrBankVerificationUnavailable, lastErr)
+	}
+	return nil, ErrBankAccountUnconfirmed
+}
+
 func (s *WalletService) SaveBank(ctx context.Context, userID int, bankCode, number, confirmedName, pin string) error {
 	if err := s.verifyPIN(ctx, userID, pin); err != nil {
 		return err

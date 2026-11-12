@@ -1,3 +1,9 @@
+import {
+  getDeviceLocation,
+  hasDeviceLocation,
+  mobileApp,
+} from "../lib/device.js";
+
 export default function mount(scope, data) {
   const {
     document,
@@ -289,14 +295,14 @@ export default function mount(scope, data) {
         placeCredit.hidden = true;
         field("location").textContent = "Your device location";
         lastAttempt = Date.now();
-        if (!window.isSecureContext) {
+        if (!window.isSecureContext && !mobileApp()?.locate) {
           fail(
             "Device location needs a secure connection. Open the HTTPS version of this site and try again.",
             "insecure",
           );
           return;
         }
-        if (!navigator.geolocation) {
+        if (!hasDeviceLocation()) {
           fail(
             "This browser cannot share your device location. Use a browser with location support.",
             "unsupported",
@@ -313,12 +319,15 @@ export default function mount(scope, data) {
         status.textContent =
           "Finding your current location. Allow location access when your browser asks.";
         try {
-          navigator.geolocation.getCurrentPosition(
+          getDeviceLocation({
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0,
+          }).then(
             (position) => loadForecast(position, currentGeneration),
             (error) => {
               if (currentGeneration === generation) locationError(error);
             },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
           );
         } catch {
           locationError({ code: 2 });

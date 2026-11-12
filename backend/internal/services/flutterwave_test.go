@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -71,6 +72,37 @@ func TestFlutterwaveInitializePayment(t *testing.T) {
 	}
 	if link != "https://checkout.flutterwave.test/session" {
 		t.Fatalf("checkout link = %q", link)
+	}
+}
+
+func TestFlutterwaveMobileReturnKeepsTheConfiguredCallbackOrigin(t *testing.T) {
+	for _, screen := range []string{"wallet", "payments", "https://other.example", ""} {
+		t.Run(screen, func(t *testing.T) {
+			client := NewFlutterwaveClient("secret", "https://agro.example/payments/callback?existing=yes", "card")
+			client.httpClient = &http.Client{Transport: flutterwaveRoundTripFunc(func(req *http.Request) (*http.Response, error) {
+				var payload initializePaymentPayload
+				if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+					t.Fatal(err)
+				}
+				redirect, err := url.Parse(payload.RedirectURL)
+				if err != nil || redirect.Host != "agro.example" || redirect.Path != "/payments/callback" || redirect.Query().Get("existing") != "yes" {
+					t.Fatalf("mobile return changed the trusted provider callback: %s", payload.RedirectURL)
+				}
+				want := ""
+				if screen == "wallet" || screen == "payments" {
+					want = screen
+				}
+				if redirect.Query().Get("app_return") != want {
+					t.Fatal("unrecognized app destinations must not be sent to the provider")
+				}
+				return jsonHTTPResponse(http.StatusOK, `{"status":"success","data":{"link":"https://checkout.flutterwave.test/session"}}`), nil
+			})}
+			if _, err := client.InitializePayment(context.Background(), InitializePaymentRequest{
+				Reference: "ORDER-9-reference", Amount: "2500.50", Currency: "NGN", CustomerEmail: "buyer@example.test", AppReturn: screen,
+			}); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 

@@ -1,6 +1,8 @@
 import { createVoice } from "../lib/voice.js";
 import { addExampleButton } from "../lib/example-images.js";
 
+import { navigateTo } from "../lib/device.js";
+
 export default function mount(scope, data) {
   const { document, window, fetch } = scope;
   scope.ready(() => {
@@ -173,7 +175,7 @@ export default function mount(scope, data) {
         });
         if (!active) return;
         if (response.redirected) {
-          window.location.assign(response.url);
+          navigateTo(response.url);
           return;
         }
         const result = await response.json();

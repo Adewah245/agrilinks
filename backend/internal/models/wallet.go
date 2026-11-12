@@ -27,6 +27,22 @@ type WalletRecipient struct {
 	WalletNumber string `json:"wallet_number"`
 	Currency     string `json:"currency"`
 	PhotoURL     string `json:"photo_url"`
+
+	// BankAccount holds the recipient's saved payout account details, resolved
+	// from Flutterwave so the sender can confirm the account name before
+	// sending money wallet-to-wallet.
+	BankAccount *WalletBankAccount `json:"bank_account,omitempty"`
+}
+
+// WalletBankAccount is the recipient's verified bank account, returned by
+// Flutterwave so the sender can confirm the account name matches before
+// crediting the recipient's wallet.
+type WalletBankAccount struct {
+	BankName       string `json:"bank_name"`
+	BankCode       string `json:"bank_code"`
+	AccountName    string `json:"account_name"`
+	AccountNumber  string `json:"account_number"`
+	MatchesProfile bool   `json:"matches_profile"`
 }
 
 // WalletStatus is the small read-only snapshot the wallet page polls while it is

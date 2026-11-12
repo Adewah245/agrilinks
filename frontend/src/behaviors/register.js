@@ -1,3 +1,9 @@
+import {
+  captureNativeSelfie,
+  hasNativeCamera,
+  navigateTo,
+} from "../lib/device.js";
+
 export default function mount(scope, data) {
   const {
     document,
@@ -94,6 +100,26 @@ export default function mount(scope, data) {
     selfieVideo.hidden = !hasCamera;
     selfiePreview.hidden = !hasSelfie;
     selfieViewport.hidden = !hasCamera && !hasSelfie;
+    if (!openingCamera)
+      cameraButton.textContent = hasNativeCamera()
+        ? "Take selfie"
+        : "Open camera";
+  }
+
+  function saveSelfie(blob) {
+    if (!blob || blob.size === 0 || blob.size > 2 * 1024 * 1024)
+      throw new Error("Could not save your selfie. Please take it again.");
+    const previewURL = URL.createObjectURL(blob);
+    if (selfiePreviewURL) URL.revokeObjectURL(selfiePreviewURL);
+    selfieBlob = blob;
+    selfiePreviewURL = previewURL;
+    selfiePreview.src = previewURL;
+    stopSelfieCamera("selfie_captured");
+    message.textContent = "";
+    selfieStatus.textContent =
+      "Selfie captured. This will be your public profile picture. A private original will be kept for withdrawal verification.";
+    updateConfirmationControls();
+    retakeButton.focus();
   }
 
   function stopSelfieCamera(reason) {
@@ -143,6 +169,29 @@ export default function mount(scope, data) {
       selfieBlob
     )
       return;
+    if (hasNativeCamera()) {
+      const request = ++cameraRequest;
+      openingCamera = true;
+      selfieStatus.textContent = "Take a selfie with your phone’s camera.";
+      updateConfirmationControls();
+      try {
+        const blob = await captureNativeSelfie();
+        if (request !== cameraRequest || !selfieStep) return;
+        saveSelfie(blob);
+      } catch (error) {
+        if (request !== cameraRequest || !selfieStep) return;
+        selfieStatus.textContent = /cancel/i.test(error.message || "")
+          ? "No selfie was saved. Tap Take selfie when you’re ready."
+          : error.message ||
+            "Allow camera access for Agrilinks in your device settings, then retry.";
+      } finally {
+        if (request === cameraRequest) {
+          openingCamera = false;
+          updateConfirmationControls();
+        }
+      }
+      return;
+    }
     if (!window.isSecureContext) {
       registrationLog(
         "selfie.camera.unavailable",
@@ -267,26 +316,15 @@ export default function mount(scope, data) {
         registrationLog("selfie.capture.discarded", { request });
         return;
       }
-      if (!blob || blob.size === 0 || blob.size > 2 * 1024 * 1024) {
+      if (!blob || blob.size === 0 || blob.size > 2 * 1024 * 1024)
         throw new Error("Could not save your selfie. Please take it again.");
-      }
-      const previewURL = URL.createObjectURL(blob);
-      if (selfiePreviewURL) URL.revokeObjectURL(selfiePreviewURL);
-      selfieBlob = blob;
-      selfiePreviewURL = previewURL;
-      selfiePreview.src = previewURL;
       registrationLog("selfie.capture.completed", {
         bytes: blob.size,
         type: blob.type,
         width: canvas.width,
         height: canvas.height,
       });
-      stopSelfieCamera("selfie_captured");
-      message.textContent = "";
-      selfieStatus.textContent =
-        "Selfie captured. This will be your public profile picture. A private original will be kept for withdrawal verification.";
-      updateConfirmationControls();
-      retakeButton.focus();
+      saveSelfie(blob);
     } catch (error) {
       if (request !== cameraRequest || !selfieStep) return;
       registrationLog(
@@ -823,7 +861,7 @@ export default function mount(scope, data) {
         new URL(response.url).pathname === "/login"
       ) {
         registrationLog("submission.completed");
-        window.location.assign(response.url);
+        navigateTo(response.url);
         return;
       }
       throw new Error(

@@ -99,7 +99,7 @@ func (h *WalletHandler) Handler(w http.ResponseWriter, r *http.Request) {
 			notice = "funding_instruction"
 		case "deposit":
 			var result *services.InitiatePaymentResult
-			result, err = h.service.StartDeposit(r.Context(), user, r.FormValue("amount"), r.FormValue("request_key"))
+			result, err = h.service.StartDeposit(r.Context(), user, r.FormValue("amount"), r.FormValue("request_key"), services.CheckoutOptions{ReturnToApp: render.RequestsPageData(r)})
 			if err == nil {
 				http.Redirect(w, r, result.CheckoutURL, http.StatusSeeOther)
 				return

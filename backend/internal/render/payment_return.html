@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f9f4" />
+    <title>Return to Agrilinks Nigeria</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #f7f9f4; color: #183b20; font: 16px/1.6 system-ui, sans-serif; }
+      main { max-width: 440px; margin: 12vh auto; padding: 32px 24px; text-align: center; }
+      img { max-width: 100%; height: auto; }
+      h1 { font-size: 26px; line-height: 1.2; margin-top: 32px; }
+      p { color: #4c6351; }
+      a { display: block; padding: 14px 18px; margin-top: 16px; border-radius: 14px; color: #fff; background: #1b5e20; font-weight: 600; text-decoration: none; }
+      a.web { background: transparent; color: #1b5e20; border: 1px solid #b7c9b8; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/static/assets/logo/agrilinks-nigeria-logo.svg" width="240" height="64" alt="Agrilinks Nigeria" />
+      <h1>Continue in Agrilinks</h1>
+      <p>Return to the app to check your payment status. Agrilinks confirms payments securely with the payment provider.</p>
+      <a href="{{.AppURL}}">Open Agrilinks app</a>
+      <a class="web" href="{{.WebURL}}">Continue in your browser</a>
+    </main>
+  </body>
+</html>

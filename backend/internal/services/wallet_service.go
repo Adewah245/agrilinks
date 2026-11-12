@@ -167,7 +167,7 @@ func newWalletReference(prefix string, userID int) (string, error) {
 	return fmt.Sprintf("%s-%d-%s", prefix, userID, hex.EncodeToString(b)), nil
 }
 
-func (s *WalletService) StartDeposit(ctx context.Context, user *models.User, amount, key string) (*InitiatePaymentResult, error) {
+func (s *WalletService) StartDeposit(ctx context.Context, user *models.User, amount, key string, options ...CheckoutOptions) (*InitiatePaymentResult, error) {
 	if !s.ProviderAvailable() {
 		return nil, ErrPaymentProvider
 	}
@@ -224,7 +224,11 @@ func (s *WalletService) StartDeposit(ctx context.Context, user *models.User, amo
 	if !claimed {
 		return nil, errors.New("this payment is already being prepared; check funding history before trying again")
 	}
-	link, err := s.provider.InitializePayment(ctx, InitializePaymentRequest{Reference: reference, Amount: d.Amount, Currency: d.Currency, CustomerEmail: user.Email, CustomerName: user.FullName, Description: "Add money to your Agrilinks Nigeria wallet", PaymentOptions: q.PaymentMethod})
+	request := InitializePaymentRequest{Reference: reference, Amount: d.Amount, Currency: d.Currency, CustomerEmail: user.Email, CustomerName: user.FullName, Description: "Add money to your Agrilinks Nigeria wallet", PaymentOptions: q.PaymentMethod}
+	if len(options) > 0 && options[0].ReturnToApp {
+		request.AppReturn = "wallet"
+	}
+	link, err := s.provider.InitializePayment(ctx, request)
 	if err != nil {
 		return nil, err
 	}

@@ -9,9 +9,17 @@
     "backend": "cd backend && go run ./cmd/server",
     "dev": "npm --prefix frontend run dev",
     "test": "npm --prefix frontend test && cd backend && go test ./...",
-    "test:browser": "node scripts/check-react.mjs"
+    "test:browser": "node scripts/check-react.mjs",
+    "mobile:build": "npm --prefix frontend run mobile:build",
+    "mobile:build:dev": "npm --prefix frontend run mobile:build:dev",
+    "mobile:sync": "npm --prefix frontend run mobile:sync",
+    "mobile:sync:dev": "npm --prefix frontend run mobile:sync:dev",
+    "mobile:android": "npm --prefix frontend run mobile:android",
+    "mobile:ios": "npm --prefix frontend run mobile:ios",
+    "mobile:preview": "npm --prefix frontend run mobile:preview",
+    "mobile:test": "npm --prefix frontend run mobile:test"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": ">=22.12.0"
   }
 }

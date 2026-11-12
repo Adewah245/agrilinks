@@ -183,6 +183,23 @@ func TestInitiatePaymentUsesConfiguredCurrency(t *testing.T) {
 	if gateway.initializeRequest.Reference != store.createdReference {
 		t.Fatalf("gateway reference = %q, stored reference = %q", gateway.initializeRequest.Reference, store.createdReference)
 	}
+	if gateway.initializeRequest.AppReturn != "" {
+		t.Fatal("web checkout unexpectedly requested an app return")
+	}
+}
+
+func TestInitiateMobilePaymentRequestsItsOwnReturnScreen(t *testing.T) {
+	store := &fakePaymentStore{}
+	orders := &fakePaymentOrders{order: &models.Order{ID: 9, BuyerID: 4, Status: "pending", TotalAmount: 2500.5}}
+	users := &fakePaymentUsers{user: &models.User{ID: 4, Email: "buyer@example.test"}}
+	gateway := &fakePaymentGateway{initializeURL: "https://checkout.flutterwave.test/session"}
+	service := newPaymentServiceForTest(store, orders, users, gateway, nil)
+	if _, err := service.Initiate(context.Background(), 4, 9, CheckoutOptions{ReturnToApp: true}); err != nil {
+		t.Fatal(err)
+	}
+	if gateway.initializeRequest.AppReturn != "payments" || gateway.initializeRequest.Reference != store.createdReference {
+		t.Fatal("mobile checkout lost its return destination or payment reference")
+	}
 }
 
 func TestInitiateRejectsOrderThatIsNotPending(t *testing.T) {

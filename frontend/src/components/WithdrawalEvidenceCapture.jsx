@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  captureNativeSelfie,
+  getDeviceLocation,
+  hasDeviceLocation,
+  hasNativeCamera,
+} from "../lib/device.js";
 
 export default function WithdrawalEvidenceCapture({ quote }) {
   const root = useRef(null);
   const video = useRef(null);
   const stream = useRef(null);
+  const nativePhoto = useRef(null);
+  const nativePhotoURL = useRef("");
+  const [preview, setPreview] = useState("");
   const challenge = useRef("");
   const mounted = useRef(true);
   const [ready, setReady] = useState(false);
@@ -14,6 +23,10 @@ export default function WithdrawalEvidenceCapture({ quote }) {
   const stop = () => {
     stream.current?.getTracks().forEach((track) => track.stop());
     stream.current = null;
+    nativePhoto.current = null;
+    if (nativePhotoURL.current) URL.revokeObjectURL(nativePhotoURL.current);
+    nativePhotoURL.current = "";
+    if (mounted.current) setPreview("");
   };
   useEffect(() => {
     mounted.current = true;
@@ -69,7 +82,10 @@ export default function WithdrawalEvidenceCapture({ quote }) {
         throw new Error(
           "Confirm that you agree to this private verification first.",
         );
-      if (!navigator.mediaDevices?.getUserMedia || !navigator.geolocation)
+      if (
+        (!hasNativeCamera() && !navigator.mediaDevices?.getUserMedia) ||
+        !hasDeviceLocation()
+      )
         throw new Error(
           "Use a browser with camera and location access to request a withdrawal.",
         );
@@ -81,6 +97,18 @@ export default function WithdrawalEvidenceCapture({ quote }) {
       );
       challenge.current = result.token;
       if (!mounted.current) return;
+      if (hasNativeCamera()) {
+        const photo = await captureNativeSelfie();
+        if (!mounted.current) return;
+        nativePhoto.current = photo;
+        nativePhotoURL.current = URL.createObjectURL(photo);
+        setPreview(nativePhotoURL.current);
+        setReady(true);
+        setMessage(
+          "Selfie captured. Save it with your current location for private verification.",
+        );
+        return;
+      }
       const media = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 960 } },
         audio: false,
@@ -110,21 +138,22 @@ export default function WithdrawalEvidenceCapture({ quote }) {
     setBusy(true);
     setMessage("Capturing your current location and saving private evidence…");
     try {
-      const position = await new Promise((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 20000,
-        }),
-      );
+      const position = await getDeviceLocation({
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 20000,
+      });
       if (!mounted.current) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = video.current.videoWidth;
-      canvas.height = video.current.videoHeight;
-      canvas.getContext("2d").drawImage(video.current, 0, 0);
-      const blob = await new Promise((resolve) =>
-        canvas.toBlob(resolve, "image/jpeg", 0.85),
-      );
+      let blob = nativePhoto.current;
+      if (!blob) {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.current.videoWidth;
+        canvas.height = video.current.videoHeight;
+        canvas.getContext("2d").drawImage(video.current, 0, 0);
+        blob = await new Promise((resolve) =>
+          canvas.toBlob(resolve, "image/jpeg", 0.85),
+        );
+      }
       if (!blob)
         throw new Error(
           "Could not capture the selfie. Open your camera again.",
@@ -188,6 +217,13 @@ export default function WithdrawalEvidenceCapture({ quote }) {
         onLoadedMetadata={() => setReady(true)}
         hidden={!stream.current}
       />
+      {preview && (
+        <img
+          className="evidence-camera"
+          src={preview}
+          alt="Your private verification selfie"
+        />
+      )}
       <div className="evidence-actions">
         <button type="button" onClick={start} disabled={busy || !consent}>
           {token ? "Capture again" : "Open camera"}
@@ -197,7 +233,9 @@ export default function WithdrawalEvidenceCapture({ quote }) {
           onClick={capture}
           disabled={busy || !ready || !consent}
         >
-          Capture selfie and location
+          {hasNativeCamera()
+            ? "Save selfie and location"
+            : "Capture selfie and location"}
         </button>
       </div>
       <p role="status" aria-live="polite">

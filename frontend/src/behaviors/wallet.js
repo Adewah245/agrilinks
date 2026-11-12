@@ -1,3 +1,5 @@
+import { reloadPage } from "../lib/device.js";
+
 export default function mount(scope, data) {
   const {
     document,
@@ -315,7 +317,9 @@ export default function mount(scope, data) {
       if (!event.persisted) return;
       document.querySelectorAll('form[action="/wallet"]').forEach((form) => {
         delete form.dataset.submitting;
-        if (!form.matches("[data-bank-account-form], [data-wallet-transfer-form]")) {
+        if (
+          !form.matches("[data-bank-account-form], [data-wallet-transfer-form]")
+        ) {
           form.querySelectorAll('button[type="submit"]').forEach((button) => {
             button.disabled = false;
           });
@@ -384,7 +388,7 @@ export default function mount(scope, data) {
           const notice = document.getElementById("wallet-update-notice");
           if (notice) notice.hidden = false;
         } else {
-          window.location.reload();
+          reloadPage();
         }
       } catch {
         /* A temporary connection failure must not interrupt money forms. */

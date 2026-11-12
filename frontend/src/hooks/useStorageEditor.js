@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getDeviceLocation, hasDeviceLocation } from "../lib/device.js";
 
 export default function useStorageEditor(initialProduct) {
   const [product, setProduct] = useState(initialProduct || null);
@@ -32,13 +33,17 @@ export default function useStorageEditor(initialProduct) {
   }, [open, product]);
 
   function capture() {
-    if (!navigator.geolocation) {
+    if (!hasDeviceLocation()) {
       setStatus("This device does not support GPS.");
       return;
     }
     const id = ++request.current;
     setStatus("Getting your farm location…");
-    navigator.geolocation.getCurrentPosition(
+    getDeviceLocation({
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 30000,
+    }).then(
       (position) => {
         if (id !== request.current || !form.current) return;
         const fields = form.current.elements;
@@ -53,7 +58,6 @@ export default function useStorageEditor(initialProduct) {
         if (id === request.current)
           setStatus("Allow location access to register this product.");
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
     );
   }
 

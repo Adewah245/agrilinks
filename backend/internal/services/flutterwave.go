@@ -62,6 +62,7 @@ type InitializePaymentRequest struct {
 	CustomerName   string
 	Description    string
 	PaymentOptions string
+	AppReturn      string
 }
 
 type initializePaymentPayload struct {
@@ -112,6 +113,16 @@ func (c *FlutterwaveClient) InitializePayment(
 	}
 	if req.PaymentOptions != "" {
 		payload.PaymentOptions = req.PaymentOptions
+	}
+	if req.AppReturn == "wallet" || req.AppReturn == "payments" {
+		redirect, err := url.Parse(c.redirectURL)
+		if err != nil || redirect.Host == "" || (redirect.Scheme != "http" && redirect.Scheme != "https") {
+			return "", fmt.Errorf("invalid configured payment redirect URL")
+		}
+		query := redirect.Query()
+		query.Set("app_return", req.AppReturn)
+		redirect.RawQuery = query.Encode()
+		payload.RedirectURL = redirect.String()
 	}
 	payload.Customer.Email = req.CustomerEmail
 	payload.Customer.Name = req.CustomerName

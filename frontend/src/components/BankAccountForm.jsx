@@ -19,10 +19,12 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
   const [directory, setDirectory] = useState({
     status: "loading",
     banks: [],
+    filteredBanks: [],
     error: "",
   });
   const [directoryAttempt, setDirectoryAttempt] = useState(0);
   const [bankCode, setBankCode] = useState("");
+  const [bankSearch, setBankSearch] = useState("");
   const [number, setNumber] = useState("");
   const [verification, setVerification] = useState(null);
   const [lookupStatus, setLookupStatus] = useState("idle");
@@ -30,12 +32,13 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
   const [lookupAttempt, setLookupAttempt] = useState(0);
   const [pin, setPin] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [autoDetecting, setAutoDetecting] = useState(false);
 
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
-    setDirectory({ status: "loading", banks: [], error: "" });
+    setDirectory({ status: "loading", banks: [], filteredBanks: [], error: "" });
     async function loadBanks() {
       try {
         const banks = await readResponse(
@@ -62,12 +65,18 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
           )
         )
           throw new Error("The bank list is unavailable. Please try again.");
-        setDirectory({ status: "ready", banks, error: "" });
+        setDirectory({
+          status: "ready",
+          banks,
+          filteredBanks: banks,
+          error: "",
+        });
       } catch (error) {
         if (active)
           setDirectory({
             status: "error",
             banks: [],
+            filteredBanks: [],
             error: controller.signal.aborted
               ? "Loading banks took too long. Please try again."
               : error.message ||
@@ -86,10 +95,27 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
   }, [directoryAttempt]);
 
   useEffect(() => {
+    const query = bankSearch.toLowerCase().trim();
+    if (!query) {
+      setDirectory((prev) => ({ ...prev, filteredBanks: prev.banks }));
+      return;
+    }
+    setDirectory((prev) => ({
+      ...prev,
+      filteredBanks: prev.banks.filter(
+        (bank) =>
+          bank.name.toLowerCase().includes(query) ||
+          bank.code.toLowerCase().includes(query),
+      ),
+    }));
+  }, [bankSearch, directory.banks]);
+
+  useEffect(() => {
     setVerification(null);
     setLookupError("");
     setLookupStatus("idle");
     setPin("");
+    setAutoDetecting(false);
     if (
       directory.status !== "ready" ||
       !bankCode ||
@@ -101,7 +127,6 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
     let timeout;
     const controller = new AbortController();
     setLookupStatus("checking");
-    // Wait for typing to settle and cancel older requests when either detail changes.
     const delay = setTimeout(async () => {
       timeout = setTimeout(() => controller.abort(), 25000);
       try {
@@ -157,6 +182,77 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
   }, [bankCode, number, directory.status, lookupAttempt]);
 
   useEffect(() => {
+    setVerification(null);
+    setLookupError("");
+    setLookupStatus("idle");
+    setPin("");
+    setAutoDetecting(false);
+    if (
+      directory.status !== "ready" ||
+      !/^[0-9]{10}$/.test(number)
+    )
+      return;
+
+    let active = true;
+    let timeout;
+    const controller = new AbortController();
+    setAutoDetecting(true);
+    setLookupStatus("checking");
+    const delay = setTimeout(async () => {
+      timeout = setTimeout(() => controller.abort(), 60000);
+      try {
+        const account = await readResponse(
+          await fetch("/wallet/resolve-account-by-number", {
+            method: "POST",
+            credentials: "same-origin",
+            cache: "no-store",
+            headers: { Accept: "application/json" },
+            body: new URLSearchParams({
+              account_number: number,
+            }),
+            signal: controller.signal,
+          }),
+          "We couldn't find your bank account. Please try again.",
+        );
+        if (!active) return;
+        if (controller.signal.aborted)
+          throw new Error("Bank lookup timed out.");
+        if (
+          typeof account.account_name !== "string" ||
+          !account.account_name.trim() ||
+          typeof account.matches_profile !== "boolean"
+        ) {
+          throw new Error(
+            "The bank did not confirm these account details. Please check again.",
+          );
+        }
+        setBankCode(account.bank_code);
+        setVerification(account);
+        setLookupStatus("resolved");
+        setAutoDetecting(false);
+      } catch (error) {
+        if (!active) return;
+        setAutoDetecting(false);
+        setLookupStatus("error");
+        setLookupError(
+          controller.signal.aborted
+            ? "The bank lookup took too long. Please try again."
+            : error.message ||
+                "We couldn't find your bank account. Please try again.",
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
+    }, 400);
+    return () => {
+      active = false;
+      clearTimeout(delay);
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [number, directory.status, lookupAttempt]);
+
+  useEffect(() => {
     if (!verification) return;
     const timeout = setTimeout(
       () => {
@@ -188,6 +284,7 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
     setVerification(null);
     setLookupError("");
     setPin("");
+    setAutoDetecting(false);
   };
   const account =
     verification?.bank_code === bankCode &&
@@ -202,6 +299,8 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
     (account && !verified
       ? `This account name does not match your registered name${registeredName ? ` (${registeredName})` : ""}. Use an account in your name or correct your profile.`
       : "");
+
+  const selectedBank = directory.banks.find((b) => b.code === bankCode);
 
   return (
     <form
@@ -220,33 +319,49 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
     >
       <input type="hidden" name="action" value="save_bank" />
       <label htmlFor="wallet-bank">Bank</label>
-      <select
-        name="bank_code"
-        id="wallet-bank"
-        required
-        value={bankCode}
-        disabled={directory.status !== "ready"}
-        aria-describedby="bank-error"
-        onChange={(event) => {
-          if (!submitting) {
-            setBankCode(event.target.value);
-            invalidate();
-          }
-        }}
-      >
-        <option value="">
-          {directory.status === "loading"
-            ? "Loading banks…"
-            : directory.status === "error"
-              ? "Bank list unavailable"
-              : "Choose your bank"}
-        </option>
-        {directory.banks.map((bank) => (
-          <option key={bank.code} value={bank.code}>
-            {bank.name}
+      <div className="wallet-bank-select-wrapper">
+        <input
+          id="wallet-bank-search"
+          type="search"
+          placeholder="Search banks by name or code…"
+          value={bankSearch}
+          onChange={(event) => setBankSearch(event.target.value)}
+          disabled={directory.status !== "ready" || submitting}
+          autoComplete="off"
+        />
+        <select
+          name="bank_code"
+          id="wallet-bank"
+          required
+          value={bankCode}
+          disabled={directory.status !== "ready" || submitting}
+          aria-describedby="bank-error"
+          onChange={(event) => {
+            if (!submitting) {
+              setBankCode(event.target.value);
+              invalidate();
+            }
+          }}
+        >
+          <option value="">
+            {directory.status === "loading"
+              ? "Loading banks…"
+              : directory.status === "error"
+                ? "Bank list unavailable"
+                : "Choose your bank"}
           </option>
-        ))}
-      </select>
+          {directory.filteredBanks.map((bank) => (
+            <option key={bank.code} value={bank.code}>
+              {bank.name}
+            </option>
+          ))}
+        </select>
+        {autoDetecting && (
+          <span className="wallet-bank-autodetect" aria-live="polite">
+            Detecting bank from account number…
+          </span>
+        )}
+      </div>
       {directory.status === "error" && (
         <button
           type="button"
@@ -285,7 +400,7 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
       <div
         className="wallet-bank-verification"
         data-state={verified ? "verified" : "unverified"}
-        aria-busy={lookupStatus === "checking"}
+        aria-busy={lookupStatus === "checking" || autoDetecting}
       >
         {account && (
           <>
@@ -310,13 +425,15 @@ export default function BankAccountForm({ hasTransactionPIN, registeredName }) {
           aria-live="polite"
           aria-atomic="true"
         >
-          {lookupStatus === "checking"
-            ? "Checking account name with your bank…"
+          {lookupStatus === "checking" || autoDetecting
+            ? autoDetecting
+              ? "Looking up your bank from the account number…"
+              : "Checking account name with your bank…"
             : verified
               ? "Account name verified. Confirm it is yours before saving."
               : account
                 ? "Account name returned by your bank."
-                : "Choose your bank and enter all 10 digits to check the name."}
+                : "Enter a 10-digit account number to find your bank and verify the name."}
         </p>
       </div>
       <p id="bank-error" className="wallet-field-error" role="alert">

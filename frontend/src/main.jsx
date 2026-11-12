@@ -1,6 +1,7 @@
 import { Component, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { pages } from "./pages/registry.js";
+import { reloadPage } from "./lib/device.js";
 import "./styles/index.css";
 
 class PageErrorBoundary extends Component {
@@ -14,7 +15,7 @@ class PageErrorBoundary extends Component {
         <main className="page-load-message" role="alert">
           <h1>This page could not be loaded.</h1>
           <p>Please refresh the page and try again.</p>
-          <button type="button" onClick={() => window.location.reload()}>
+          <button type="button" onClick={reloadPage}>
             Try again
           </button>
         </main>

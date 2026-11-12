@@ -54,7 +54,7 @@ func (h *PaymentHandler) Handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		result, err := h.service.Initiate(r.Context(), user.ID, orderID)
+		result, err := h.service.Initiate(r.Context(), user.ID, orderID, services.CheckoutOptions{ReturnToApp: render.RequestsPageData(r)})
 		if err != nil {
 			log.Printf("start payment for order %d: %v", orderID, err)
 			h.render(w, user, paymentErrorMessage(err), "")
@@ -77,7 +77,19 @@ func (h *PaymentHandler) CallbackHandler(w http.ResponseWriter, r *http.Request)
 
 	transactionID := r.URL.Query().Get("transaction_id")
 	reference := r.URL.Query().Get("tx_ref")
+	appReturn := r.URL.Query().Get("app_return")
+	if appReturn != "wallet" && appReturn != "payments" {
+		appReturn = ""
+	}
 	if transactionID == "" || reference == "" {
+		if appReturn != "" {
+			// Cancelled checkouts may have no transaction ID. This page makes
+			// no payment claim and cannot update an order or wallet balance.
+			if err := render.RenderPaymentReturn(w, appReturn); err != nil {
+				log.Printf("payment app return render error: %v", err)
+			}
+			return
+		}
 		http.Error(w, "Invalid payment callback", http.StatusBadRequest)
 		return
 	}
@@ -94,6 +106,12 @@ func (h *PaymentHandler) CallbackHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	log.Printf("verified payment callback for reference %s with status %s", reference, status)
+	if appReturn != "" {
+		if err := render.RenderPaymentReturn(w, appReturn); err != nil {
+			log.Printf("payment app return render error: %v", err)
+		}
+		return
+	}
 	http.Redirect(w, r, "/payments", http.StatusSeeOther)
 }
 

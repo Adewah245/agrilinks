@@ -73,6 +73,19 @@ func RenderPage(w http.ResponseWriter, name string, data any) error {
 		return renderError(w, err)
 	}
 	page.Title = strings.Join(strings.Fields(title.String()), " ")
+	w.Header().Add("Vary", "Accept")
+	if wantsPageData(w) {
+		w.Header().Set("Content-Type", PageDataContentType+"; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		return json.NewEncoder(w).Encode(struct {
+			Page        string   `json:"page"`
+			Data        any      `json:"data"`
+			Title       string   `json:"title"`
+			Description string   `json:"description"`
+			Styles      []string `json:"styles"`
+			BodyClass   string   `json:"bodyClass"`
+		}{name, props, page.Title, page.Description, page.Styles, page.BodyClass})
+	}
 	bootstrap := struct {
 		Page string `json:"page"`
 		Data any    `json:"data"`
